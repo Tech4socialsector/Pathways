@@ -1,0 +1,20 @@
+<!doctype html>
+<html class="h-full" lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Pathways</title>
+    <script type="module" crossorigin src="/assets/pathways/frontend/assets/index-Bmzt2b0r.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/pathways/frontend/assets/index-BsbRSF0Y.css">
+  </head>
+  <body class="h-full">
+    <div id="app" class="h-full"></div>
+  
+          <script>
+              {% for key in boot %}
+              window["{{ key }}"] = {{ boot[key] | tojson }};
+              {% endfor %}
+          </script>
+          </body>
+          
+</html>

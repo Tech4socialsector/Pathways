@@ -1,0 +1,46 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "creation": "2026-09-21 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "responsibility_type",
+  "duration_months",
+  "details"
+ ],
+ "fields": [
+  {
+   "fieldname": "responsibility_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Responsibility Type",
+   "options": "Committee Member / Warden / Assistant Warden / Faculty Advisor\nLeadership Position (e.g. Chair/Convenor of a Committee)\nRegistrar of a University / Principal of a College\nVice Chancellor of a University / Director of NGO / Research Org or Head of Institute",
+   "reqd": 1
+  },
+  {
+   "fieldname": "duration_months",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Duration (Months)"
+  },
+  {
+   "fieldname": "details",
+   "fieldtype": "Small Text",
+   "label": "Details"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2026-09-21 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Pathways",
+ "name": "Application Administrative Responsibility",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

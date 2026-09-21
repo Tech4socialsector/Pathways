@@ -1,0 +1,349 @@
+{
+ "charts": [],
+ "content": "[{\"id\":\"pwy-h1\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Pathways — Recruitment</span>\",\"col\":12}},{\"id\":\"pwy-s1\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"pwy-c1\",\"type\":\"card\",\"data\":{\"card_name\":\"Recruitment Pipeline\",\"col\":4}},{\"id\":\"pwy-c2\",\"type\":\"card\",\"data\":{\"card_name\":\"Screening & Selection\",\"col\":4}},{\"id\":\"pwy-c3\",\"type\":\"card\",\"data\":{\"card_name\":\"Approvals\",\"col\":4}},{\"id\":\"pwy-c4\",\"type\":\"card\",\"data\":{\"card_name\":\"Offers & Onboarding\",\"col\":4}},{\"id\":\"pwy-c5\",\"type\":\"card\",\"data\":{\"card_name\":\"Masters & Settings\",\"col\":4}},{\"id\":\"pwy-c6\",\"type\":\"card\",\"data\":{\"card_name\":\"Audit\",\"col\":4}}]",
+ "creation": "2026-09-21 00:00:00.000000",
+ "custom_blocks": [],
+ "docstatus": 0,
+ "doctype": "Workspace",
+ "for_user": "",
+ "hide_custom": 0,
+ "icon": "folder-normal",
+ "idx": 1,
+ "is_hidden": 0,
+ "label": "Pathways",
+ "links": [
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Recruitment Pipeline",
+   "link_count": 4,
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Job Opening",
+   "link_count": 0,
+   "link_to": "Job Opening",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Candidate",
+   "link_count": 0,
+   "link_to": "Candidate",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Application",
+   "link_count": 0,
+   "link_to": "Application",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Recruitment Notification",
+   "link_count": 0,
+   "link_to": "Recruitment Notification",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Screening & Selection",
+   "link_count": 6,
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Eligibility Check",
+   "link_count": 0,
+   "link_to": "Eligibility Check",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Shortlisting Committee",
+   "link_count": 0,
+   "link_to": "Shortlisting Committee",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Shortlisting Score",
+   "link_count": 0,
+   "link_to": "Shortlisting Score",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Selection Committee",
+   "link_count": 0,
+   "link_to": "Selection Committee",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Interview",
+   "link_count": 0,
+   "link_to": "Interview",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Reference Check",
+   "link_count": 0,
+   "link_to": "Reference Check",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Approvals",
+   "link_count": 2,
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Pre-Recruitment Green Sheet",
+   "link_count": 0,
+   "link_to": "Pre-Recruitment Green Sheet",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Post-Interview Green Sheet",
+   "link_count": 0,
+   "link_to": "Post-Interview Green Sheet",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Offers & Onboarding",
+   "link_count": 4,
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Offer Appointment Order",
+   "link_count": 0,
+   "link_to": "Offer Appointment Order",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Document Collection",
+   "link_count": 0,
+   "link_to": "Document Collection",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Joining",
+   "link_count": 0,
+   "link_to": "Joining",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Employee",
+   "link_count": 0,
+   "link_to": "Employee",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Masters & Settings",
+   "link_count": 9,
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Recruitment Track",
+   "link_count": 0,
+   "link_to": "Recruitment Track",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Department",
+   "link_count": 0,
+   "link_to": "Department",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Designation",
+   "link_count": 0,
+   "link_to": "Designation",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Approval Chain Template",
+   "link_count": 0,
+   "link_to": "Approval Chain Template",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Scoring Rubric Template",
+   "link_count": 0,
+   "link_to": "Scoring Rubric Template",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Document Type Master",
+   "link_count": 0,
+   "link_to": "Document Type Master",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Institution Master",
+   "link_count": 0,
+   "link_to": "Institution Master",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Specialization Master",
+   "link_count": 0,
+   "link_to": "Specialization Master",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Pathways Settings",
+   "link_count": 0,
+   "link_to": "Pathways Settings",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Audit",
+   "link_count": 2,
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Application Status History",
+   "link_count": 0,
+   "link_to": "Application Status History",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Communication Log",
+   "link_count": 0,
+   "link_to": "Communication Log",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  }
+ ],
+ "modified": "2026-09-21 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Pathways",
+ "name": "Pathways",
+ "number_cards": [],
+ "owner": "Administrator",
+ "parent_page": "",
+ "public": 1,
+ "quick_lists": [],
+ "restrict_to_domain": "",
+ "roles": [],
+ "sequence_id": 1.0,
+ "shortcuts": [],
+ "title": "Pathways",
+ "type": "Workspace"
+}

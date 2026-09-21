@@ -1,0 +1,216 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "naming_series:",
+ "creation": "2026-09-21 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "naming_series",
+  "job_opening",
+  "track",
+  "column_break_1",
+  "approval_chain_template",
+  "current_approval_level",
+  "status",
+  "recommendation_section",
+  "recommended_application",
+  "waitlist_application",
+  "compensation_section",
+  "compensation_narrative",
+  "compensation_table",
+  "approval_section",
+  "approval_log"
+ ],
+ "fields": [
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Series",
+   "options": "PWY-POSTGS-.YYYY.-"
+  },
+  {
+   "fieldname": "job_opening",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Job Opening",
+   "options": "Job Opening",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "job_opening.track",
+   "fieldname": "track",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Recruitment Track",
+   "options": "Recruitment Track",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "approval_chain_template",
+   "fieldtype": "Link",
+   "label": "Approval Chain Template",
+   "options": "Approval Chain Template",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "default": "0",
+   "fieldname": "current_approval_level",
+   "fieldtype": "Int",
+   "label": "Current Approval Level",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "default": "Draft",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "Draft\nUnder Approval\nApproved\nReturned for Revision",
+   "read_only": 1
+  },
+  {
+   "fieldname": "recommendation_section",
+   "fieldtype": "Section Break",
+   "label": "Recommendation"
+  },
+  {
+   "fieldname": "recommended_application",
+   "fieldtype": "Link",
+   "label": "Recommended Application",
+   "options": "Application",
+   "reqd": 1
+  },
+  {
+   "fieldname": "waitlist_application",
+   "fieldtype": "Link",
+   "label": "Waitlist Application",
+   "options": "Application"
+  },
+  {
+   "fieldname": "compensation_section",
+   "fieldtype": "Section Break",
+   "label": "Compensation"
+  },
+  {
+   "fieldname": "compensation_narrative",
+   "fieldtype": "Text Editor",
+   "label": "Compensation Narrative"
+  },
+  {
+   "description": "Used for Consultant / Research fee-table variant",
+   "fieldname": "compensation_table",
+   "fieldtype": "Table",
+   "label": "Compensation Table",
+   "options": "Compensation Table Row"
+  },
+  {
+   "fieldname": "approval_section",
+   "fieldtype": "Section Break",
+   "label": "Approval Log"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "approval_log",
+   "fieldtype": "Table",
+   "label": "Approval Log",
+   "options": "Green Sheet Approval Log",
+   "read_only": 1
+  }
+ ],
+ "is_submittable": 1,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-09-21 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Pathways",
+ "name": "Post-Interview Green Sheet",
+ "naming_rule": "By \"Naming Series\" field",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Pathways Admin",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "cancel": 1,
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Pathways Recruiter",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "read": 1,
+   "role": "Pathways PNCO",
+   "write": 1
+  },
+  {
+   "read": 1,
+   "role": "Pathways CFO",
+   "write": 1
+  },
+  {
+   "read": 1,
+   "role": "Pathways Dean Academics",
+   "write": 1
+  },
+  {
+   "read": 1,
+   "role": "Pathways Dean Research",
+   "write": 1
+  },
+  {
+   "read": 1,
+   "role": "Pathways Senior Manager Research",
+   "write": 1
+  },
+  {
+   "read": 1,
+   "role": "Pathways Registrar",
+   "write": 1
+  },
+  {
+   "read": 1,
+   "role": "Pathways Vice Chancellor",
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

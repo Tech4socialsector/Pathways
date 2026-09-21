@@ -1,0 +1,212 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "naming_series:",
+ "creation": "2026-09-21 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "naming_series",
+  "job_title",
+  "track",
+  "department",
+  "designation",
+  "column_break_1",
+  "employment_type",
+  "vacancies",
+  "tenure_description",
+  "pay_level",
+  "status",
+  "reservation_section",
+  "reservation_breakdown",
+  "jd_section",
+  "jd_attachment",
+  "jd_text",
+  "links_section",
+  "pre_recruitment_green_sheet"
+ ],
+ "fields": [
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Series",
+   "options": "PWY-JOB-.YYYY.-"
+  },
+  {
+   "fieldname": "job_title",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Job Title",
+   "reqd": 1
+  },
+  {
+   "fieldname": "track",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Recruitment Track",
+   "options": "Recruitment Track",
+   "reqd": 1
+  },
+  {
+   "fieldname": "department",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Department",
+   "options": "Department",
+   "reqd": 1
+  },
+  {
+   "fieldname": "designation",
+   "fieldtype": "Link",
+   "label": "Designation",
+   "options": "Designation"
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fetch_from": "designation.employment_type",
+   "fieldname": "employment_type",
+   "fieldtype": "Select",
+   "label": "Employment Type",
+   "options": "Permanent\nConsultant\nGrant-funded\nContract",
+   "reqd": 1
+  },
+  {
+   "default": "1",
+   "fieldname": "vacancies",
+   "fieldtype": "Int",
+   "label": "Vacancies",
+   "reqd": 1
+  },
+  {
+   "fieldname": "tenure_description",
+   "fieldtype": "Small Text",
+   "label": "Tenure Description"
+  },
+  {
+   "fetch_from": "designation.pay_level_range",
+   "fieldname": "pay_level",
+   "fieldtype": "Data",
+   "label": "Pay Level"
+  },
+  {
+   "default": "Draft",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "Draft\nPending Approval\nApproved\nAdvertised\nClosed\nFilled\nCancelled",
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval:doc.track",
+   "fieldname": "reservation_section",
+   "fieldtype": "Section Break",
+   "label": "Reservation Category Breakdown"
+  },
+  {
+   "description": "Applicable primarily to teaching posts",
+   "fieldname": "reservation_breakdown",
+   "fieldtype": "Table",
+   "label": "Reservation Breakdown",
+   "options": "Reservation Category Row"
+  },
+  {
+   "fieldname": "jd_section",
+   "fieldtype": "Section Break",
+   "label": "Job Description"
+  },
+  {
+   "fieldname": "jd_attachment",
+   "fieldtype": "Attach",
+   "label": "JD Attachment"
+  },
+  {
+   "fieldname": "jd_text",
+   "fieldtype": "Text Editor",
+   "label": "JD Text"
+  },
+  {
+   "fieldname": "links_section",
+   "fieldtype": "Section Break",
+   "label": "Approvals"
+  },
+  {
+   "fieldname": "pre_recruitment_green_sheet",
+   "fieldtype": "Link",
+   "label": "Pre-Recruitment Green Sheet",
+   "options": "Pre-Recruitment Green Sheet",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-09-21 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Pathways",
+ "name": "Job Opening",
+ "naming_rule": "By \"Naming Series\" field",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Pathways Admin",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Pathways Recruiter",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "read": 1,
+   "role": "Pathways PNCO"
+  },
+  {
+   "read": 1,
+   "role": "Pathways Registrar"
+  },
+  {
+   "read": 1,
+   "role": "Pathways Vice Chancellor"
+  },
+  {
+   "read": 1,
+   "role": "Pathways Communications"
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

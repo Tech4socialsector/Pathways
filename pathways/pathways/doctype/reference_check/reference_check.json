@@ -1,0 +1,143 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "hash",
+ "creation": "2026-09-21 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "application",
+  "referee_name",
+  "referee_designation_org",
+  "column_break_1",
+  "relationship_to_candidate",
+  "referee_email",
+  "referee_mobile",
+  "status",
+  "responses_section",
+  "responses",
+  "overall_assessment_summary"
+ ],
+ "fields": [
+  {
+   "fieldname": "application",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Application",
+   "options": "Application",
+   "reqd": 1
+  },
+  {
+   "fieldname": "referee_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Referee Name",
+   "reqd": 1
+  },
+  {
+   "fieldname": "referee_designation_org",
+   "fieldtype": "Data",
+   "label": "Referee Designation & Organization"
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "relationship_to_candidate",
+   "fieldtype": "Data",
+   "label": "Relationship to Candidate"
+  },
+  {
+   "fieldname": "referee_email",
+   "fieldtype": "Data",
+   "label": "Referee Email",
+   "options": "Email"
+  },
+  {
+   "fieldname": "referee_mobile",
+   "fieldtype": "Data",
+   "label": "Referee Mobile"
+  },
+  {
+   "default": "Pending",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "Pending\nIn Progress\nCompleted"
+  },
+  {
+   "fieldname": "responses_section",
+   "fieldtype": "Section Break",
+   "label": "Responses"
+  },
+  {
+   "fieldname": "responses",
+   "fieldtype": "Table",
+   "label": "Responses",
+   "options": "Reference Check Response Row"
+  },
+  {
+   "fieldname": "overall_assessment_summary",
+   "fieldtype": "Small Text",
+   "label": "Overall Assessment Summary"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-09-21 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Pathways",
+ "name": "Reference Check",
+ "naming_rule": "Random",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Pathways Admin",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Pathways Recruiter",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "read": 1,
+   "role": "Pathways PNCO",
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

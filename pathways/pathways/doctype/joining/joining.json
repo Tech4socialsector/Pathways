@@ -1,0 +1,137 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "hash",
+ "creation": "2026-09-21 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "application",
+  "confirmed_doj",
+  "column_break_1",
+  "reporting_location",
+  "reporting_time",
+  "onboarding_section",
+  "bio_writeup_attachment",
+  "directory_photo_attachment",
+  "provisioning_section",
+  "it_facilities_request"
+ ],
+ "fields": [
+  {
+   "fieldname": "application",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Application",
+   "options": "Application",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "confirmed_doj",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Confirmed Date of Joining",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "reporting_location",
+   "fieldtype": "Data",
+   "label": "Reporting Location"
+  },
+  {
+   "fieldname": "reporting_time",
+   "fieldtype": "Time",
+   "label": "Reporting Time"
+  },
+  {
+   "fieldname": "onboarding_section",
+   "fieldtype": "Section Break",
+   "label": "Onboarding"
+  },
+  {
+   "fieldname": "bio_writeup_attachment",
+   "fieldtype": "Attach",
+   "label": "Bio Write-up"
+  },
+  {
+   "fieldname": "directory_photo_attachment",
+   "fieldtype": "Attach",
+   "label": "Directory Photo"
+  },
+  {
+   "fieldname": "provisioning_section",
+   "fieldtype": "Section Break",
+   "label": "IT / Facilities"
+  },
+  {
+   "fieldname": "it_facilities_request",
+   "fieldtype": "Link",
+   "label": "IT Facilities Provisioning Request",
+   "options": "IT Facilities Provisioning Request",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-09-21 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Pathways",
+ "name": "Joining",
+ "naming_rule": "Random",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Pathways Admin",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Pathways Recruiter",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "read": 1,
+   "role": "Pathways PNCO"
+  },
+  {
+   "read": 1,
+   "role": "Pathways Candidate"
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

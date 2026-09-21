@@ -1,0 +1,166 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "naming_series:",
+ "creation": "2026-09-21 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "naming_series",
+  "application",
+  "post_interview_green_sheet",
+  "column_break_1",
+  "appointment_order_template",
+  "status",
+  "dates_section",
+  "offer_date",
+  "acceptance_deadline",
+  "column_break_2",
+  "candidate_confirmed_doj",
+  "response_section",
+  "signed_copy_attachment"
+ ],
+ "fields": [
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Series",
+   "options": "PWY-OFFER-.YYYY.-"
+  },
+  {
+   "fieldname": "application",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Application",
+   "options": "Application",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "post_interview_green_sheet",
+   "fieldtype": "Link",
+   "label": "Post-Interview Green Sheet",
+   "options": "Post-Interview Green Sheet",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "appointment_order_template",
+   "fieldtype": "Link",
+   "label": "Appointment Order Template",
+   "options": "Print Format"
+  },
+  {
+   "default": "Verbal Offer",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "Verbal Offer\nDrafted\nSigned by Registrar\nSent\nAccepted\nDeclined\nExpired",
+   "read_only": 1
+  },
+  {
+   "fieldname": "dates_section",
+   "fieldtype": "Section Break",
+   "label": "Dates"
+  },
+  {
+   "default": "Today",
+   "fieldname": "offer_date",
+   "fieldtype": "Date",
+   "label": "Offer Date"
+  },
+  {
+   "fieldname": "acceptance_deadline",
+   "fieldtype": "Date",
+   "label": "Acceptance Deadline"
+  },
+  {
+   "fieldname": "column_break_2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "candidate_confirmed_doj",
+   "fieldtype": "Date",
+   "label": "Candidate Confirmed DOJ"
+  },
+  {
+   "fieldname": "response_section",
+   "fieldtype": "Section Break",
+   "label": "Candidate Response"
+  },
+  {
+   "fieldname": "signed_copy_attachment",
+   "fieldtype": "Attach",
+   "label": "Signed Copy"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-09-21 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Pathways",
+ "name": "Offer Appointment Order",
+ "naming_rule": "By \"Naming Series\" field",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Pathways Admin",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Pathways Recruiter",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "read": 1,
+   "role": "Pathways PNCO",
+   "write": 1
+  },
+  {
+   "read": 1,
+   "role": "Pathways Registrar",
+   "write": 1
+  },
+  {
+   "read": 1,
+   "role": "Pathways Candidate"
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

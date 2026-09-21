@@ -1,0 +1,143 @@
+{
+ "actions": [],
+ "creation": "2026-09-21 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "general_section",
+  "default_sender_email",
+  "recruitment_contact_email",
+  "column_break_1",
+  "acceptance_deadline_days",
+  "interview_login_buffer_minutes",
+  "shortlisting_section",
+  "default_shortlisting_ratio",
+  "min_shortlisting_committee_size",
+  "max_shortlisting_committee_size",
+  "column_break_2",
+  "min_selection_committee_size",
+  "max_selection_committee_size",
+  "general_conditions_section",
+  "default_general_conditions"
+ ],
+ "fields": [
+  {
+   "fieldname": "general_section",
+   "fieldtype": "Section Break",
+   "label": "General"
+  },
+  {
+   "fieldname": "default_sender_email",
+   "fieldtype": "Data",
+   "label": "Default Sender Email",
+   "options": "Email"
+  },
+  {
+   "fieldname": "recruitment_contact_email",
+   "fieldtype": "Data",
+   "label": "Recruitment Contact Email",
+   "options": "Email"
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "7",
+   "fieldname": "acceptance_deadline_days",
+   "fieldtype": "Int",
+   "label": "Offer Acceptance Deadline (Days)"
+  },
+  {
+   "default": "20",
+   "fieldname": "interview_login_buffer_minutes",
+   "fieldtype": "Int",
+   "label": "Interview Login Buffer (Minutes)"
+  },
+  {
+   "fieldname": "shortlisting_section",
+   "fieldtype": "Section Break",
+   "label": "Shortlisting & Panels"
+  },
+  {
+   "default": "5",
+   "description": "Shortlist 1 candidate per N applications, where available",
+   "fieldname": "default_shortlisting_ratio",
+   "fieldtype": "Int",
+   "label": "Default Shortlisting Ratio (1:N)"
+  },
+  {
+   "default": "2",
+   "fieldname": "min_shortlisting_committee_size",
+   "fieldtype": "Int",
+   "label": "Min Shortlisting Committee Size"
+  },
+  {
+   "default": "3",
+   "fieldname": "max_shortlisting_committee_size",
+   "fieldtype": "Int",
+   "label": "Max Shortlisting Committee Size"
+  },
+  {
+   "fieldname": "column_break_2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "3",
+   "fieldname": "min_selection_committee_size",
+   "fieldtype": "Int",
+   "label": "Min Selection Committee Size"
+  },
+  {
+   "default": "5",
+   "fieldname": "max_selection_committee_size",
+   "fieldtype": "Int",
+   "label": "Max Selection Committee Size"
+  },
+  {
+   "fieldname": "general_conditions_section",
+   "fieldtype": "Section Break",
+   "label": "Notification Defaults"
+  },
+  {
+   "description": "Default boilerplate General Conditions text for formal Notifications",
+   "fieldname": "default_general_conditions",
+   "fieldtype": "Text Editor",
+   "label": "Default General Conditions"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "issingle": 1,
+ "links": [],
+ "modified": "2026-09-21 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Pathways",
+ "name": "Pathways Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "Pathways Admin",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

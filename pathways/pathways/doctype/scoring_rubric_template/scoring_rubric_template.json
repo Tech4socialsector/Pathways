@@ -1,0 +1,127 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "field:rubric_name",
+ "creation": "2026-09-21 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "rubric_name",
+  "track",
+  "stage",
+  "column_break_1",
+  "scoring_mode",
+  "pass_threshold_percent",
+  "is_active",
+  "criteria_section",
+  "criteria"
+ ],
+ "fields": [
+  {
+   "fieldname": "rubric_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Rubric Name",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "track",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Recruitment Track",
+   "options": "Recruitment Track",
+   "reqd": 1
+  },
+  {
+   "fieldname": "stage",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Stage",
+   "options": "Shortlisting\nFinal Interview",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "Weighted Score",
+   "fieldname": "scoring_mode",
+   "fieldtype": "Select",
+   "label": "Scoring Mode",
+   "options": "Weighted Score\nPass/Fail Only",
+   "reqd": 1
+  },
+  {
+   "default": "50",
+   "depends_on": "eval:doc.scoring_mode=='Weighted Score'",
+   "fieldname": "pass_threshold_percent",
+   "fieldtype": "Percent",
+   "label": "Pass Threshold %"
+  },
+  {
+   "default": "1",
+   "fieldname": "is_active",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Is Active"
+  },
+  {
+   "depends_on": "eval:doc.scoring_mode=='Weighted Score'",
+   "fieldname": "criteria_section",
+   "fieldtype": "Section Break",
+   "label": "Scoring Criteria"
+  },
+  {
+   "fieldname": "criteria",
+   "fieldtype": "Table",
+   "label": "Criteria",
+   "options": "Scoring Criterion Row"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-09-21 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Pathways",
+ "name": "Scoring Rubric Template",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Pathways Admin",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "read": 1,
+   "role": "Pathways Recruiter"
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

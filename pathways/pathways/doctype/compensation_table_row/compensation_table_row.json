@@ -1,0 +1,73 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "creation": "2026-09-21 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "candidate_name",
+  "years_experience",
+  "highest_qualification",
+  "recommended_salary",
+  "position_offered",
+  "medical_insurance",
+  "leave_applicable"
+ ],
+ "fields": [
+  {
+   "fieldname": "candidate_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Name",
+   "reqd": 1
+  },
+  {
+   "fieldname": "years_experience",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Total Years of Experience"
+  },
+  {
+   "fieldname": "highest_qualification",
+   "fieldtype": "Data",
+   "label": "Highest Qualification"
+  },
+  {
+   "fieldname": "recommended_salary",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Recommended Salary/Month"
+  },
+  {
+   "fieldname": "position_offered",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Position Offered"
+  },
+  {
+   "default": "0",
+   "fieldname": "medical_insurance",
+   "fieldtype": "Check",
+   "label": "Medical Insurance"
+  },
+  {
+   "default": "0",
+   "fieldname": "leave_applicable",
+   "fieldtype": "Check",
+   "label": "Leave Applicable"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2026-09-21 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Pathways",
+ "name": "Compensation Table Row",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

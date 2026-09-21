@@ -1,0 +1,130 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "hash",
+ "creation": "2026-09-21 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "application",
+  "shortlisting_committee",
+  "rubric",
+  "column_break_1",
+  "total_score",
+  "is_shortlisted",
+  "remarks",
+  "criteria_section",
+  "criteria"
+ ],
+ "fields": [
+  {
+   "fieldname": "application",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Application",
+   "options": "Application",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "shortlisting_committee",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Shortlisting Committee",
+   "options": "Shortlisting Committee",
+   "reqd": 1
+  },
+  {
+   "fieldname": "rubric",
+   "fieldtype": "Link",
+   "label": "Scoring Rubric Template",
+   "options": "Scoring Rubric Template",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "total_score",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Total Score",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "is_shortlisted",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Is Shortlisted"
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Small Text",
+   "label": "Remarks (stating reason for shortlisting or not)",
+   "reqd": 1
+  },
+  {
+   "depends_on": "eval:doc.criteria && doc.criteria.length",
+   "fieldname": "criteria_section",
+   "fieldtype": "Section Break",
+   "label": "Scoring Criteria"
+  },
+  {
+   "fieldname": "criteria",
+   "fieldtype": "Table",
+   "label": "Criteria",
+   "options": "Score Criterion Value"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-09-21 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Pathways",
+ "name": "Shortlisting Score",
+ "naming_rule": "Random",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Pathways Admin",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "read": 1,
+   "role": "Pathways Recruiter"
+  },
+  {
+   "create": 1,
+   "read": 1,
+   "role": "Pathways Shortlisting Committee Member",
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}
