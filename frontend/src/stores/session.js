@@ -27,10 +27,18 @@ export const useSessionStore = defineStore('pathways-session', () => {
     },
   })
 
+  let rolesPromise = null
+
   function fetchRoles() {
-    if (isLoggedIn.value && !rolesLoaded.value) {
-      rolesResource.fetch()
+    if (!isLoggedIn.value || rolesLoaded.value) {
+      return Promise.resolve()
     }
+    if (!rolesPromise) {
+      rolesPromise = rolesResource.fetch().finally(() => {
+        rolesPromise = null
+      })
+    }
+    return rolesPromise
   }
 
   function hasRole(roleName) {

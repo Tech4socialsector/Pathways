@@ -206,3 +206,5 @@ def create_email_templates():
 		doc.use_html = 1
 		doc.insert(ignore_permissions=True)
 	frappe.db.commit()
+
+

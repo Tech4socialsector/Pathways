@@ -11,15 +11,40 @@ app_license = "mit"
 # required_apps = []
 
 # Each item in the list will be shown as an app in the apps page
-# add_to_apps_screen = [
-# 	{
-# 		"name": "pathways",
-# 		"logo": "/assets/pathways/logo.png",
-# 		"title": "Pathways",
-# 		"route": "/pathways",
-# 		"has_permission": "pathways.api.permission.has_app_permission"
-# 	}
-# ]
+add_to_apps_screen = [
+	{
+		"name": "pathways",
+		"logo": "/assets/pathways/images/pathways-logo.svg",
+		"title": "Pathways",
+		"route": "/pathways",
+		"has_permission": "pathways.permissions.has_app_permission",
+	}
+]
+
+# Desk settings-dropdown entry so staff who land on the Desk (a direct
+# bookmark, a shared link, etc.) have a one-click way back into the app
+# instead of hunting for the core "Apps" item. Synced into Navbar
+# Settings by frappe.core.doctype.navbar_settings on every bench migrate
+# — the documented extension point for this, not a one-off fixture.
+# Pathways Candidate is excluded: it's a Website User role and never
+# sees the Desk navbar at all.
+
+standard_navbar_items = [
+	{
+		"item_label": "Pathways",
+		"item_type": "Route",
+		"route": "/pathways",
+		"icon": "layout-grid",
+		"condition": (
+			'frappe.user.has_role(["Pathways Admin", "Pathways Recruiter", "Pathways PNCO", '
+			'"Pathways Director People Culture", "Pathways Dean Academics", "Pathways Dean Research", '
+			'"Pathways Senior Manager Research", "Pathways CFO", "Pathways Registrar", '
+			'"Pathways Vice Chancellor", "Pathways Shortlisting Committee Member", '
+			'"Pathways Selection Committee Member", "Pathways Communications", "Pathways IT Facilities"])'
+		),
+		"is_standard": 1,
+	}
+]
 
 # Includes in <head>
 # ------------------
@@ -64,14 +89,23 @@ website_route_rules = [
 
 # Home Pages
 # ----------
+#
+# Every Pathways role lands straight in the SPA at /pathways after
+# login — the same single-app pattern used by HRMS/CRM/Helpdesk (Frappe
+# auto-skips the /apps tile screen when only one non-framework app is
+# installed, see frappe.apps.get_default_path). The SPA's own router
+# (pathways/frontend/src/router.js) then routes staff vs. candidate to
+# their correct page client-side.
+#
+# get_website_user_home_page (a function, resolved before the static
+# role_home_page dict) is used instead of role_home_page directly:
+# frappe.get_roles("Administrator") returns every role in the system,
+# so a plain dict lookup could non-deterministically match "Pathways
+# Candidate" first and misroute the superuser into the candidate
+# portal. pathways.utils.home.get_home_page excludes Administrator
+# explicitly and only special-cases the real Candidate role.
 
-# application home page (will override Website Settings)
-# home_page = "login"
-
-# website user home page (by Role)
-# role_home_page = {
-# 	"Role": "home_page"
-# }
+get_website_user_home_page = "pathways.utils.home.get_home_page"
 
 # Generators
 # ----------
@@ -163,7 +197,7 @@ has_permission = {
 doc_events = {
 	"Application": {
 		"on_update": "pathways.utils.audit.log_application_status_change",
-	}
+	},
 }
 
 # Scheduled Tasks

@@ -48,6 +48,83 @@ def get_admin_summary(track=None, job_opening=None, department=None, from_date=N
 	}
 
 
+FUNNEL_STAGES = [
+	(
+		"Applied",
+		[
+			"Submitted",
+			"Under Review",
+			"Shortlisted",
+			"Interview Scheduled",
+			"Interview Completed",
+			"Selected",
+			"Offer Extended",
+			"Offer Accepted",
+			"Offer Declined",
+			"Documents Pending",
+			"Documents Verified",
+			"Joined",
+			"Not Selected",
+			"Withdrawn",
+		],
+	),
+	(
+		"Shortlisted",
+		[
+			"Shortlisted",
+			"Interview Scheduled",
+			"Interview Completed",
+			"Selected",
+			"Offer Extended",
+			"Offer Accepted",
+			"Offer Declined",
+			"Documents Pending",
+			"Documents Verified",
+			"Joined",
+		],
+	),
+	(
+		"Interviewed",
+		[
+			"Interview Completed",
+			"Selected",
+			"Offer Extended",
+			"Offer Accepted",
+			"Offer Declined",
+			"Documents Pending",
+			"Documents Verified",
+			"Joined",
+		],
+	),
+	(
+		"Selected",
+		["Selected", "Offer Extended", "Offer Accepted", "Offer Declined", "Documents Pending", "Documents Verified", "Joined"],
+	),
+	("Joined", ["Joined"]),
+]
+
+
+@frappe.whitelist()
+def get_pipeline_funnel(track=None, job_opening=None, department=None, from_date=None, to_date=None):
+	"""Cumulative recruitment funnel for the Admin Dashboard chart.
+
+	Each stage counts every Application that has REACHED that stage or
+	any later one — not just applications currently sitting in that
+	status — so the bars are naturally non-increasing and read as a
+	real funnel. (get_admin_summary's counts are point-in-time current
+	status instead, which answers a different question: "what needs
+	attention right now.")
+	"""
+	filters = _application_filters(track, job_opening, department, from_date, to_date)
+
+	stages = []
+	for label, statuses in FUNNEL_STAGES:
+		count = frappe.db.count("Application", {**filters, "status": ["in", statuses]})
+		stages.append({"label": label, "value": count})
+
+	return stages
+
+
 @frappe.whitelist()
 def get_recruiter_summary():
 	"""Recruiter-scoped operational dashboard — pending action items

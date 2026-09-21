@@ -11,6 +11,11 @@
           </div>
         </div>
 
+        <div v-if="adminDashboard.funnel.value.length" class="mb-8 rounded-lg border bg-white p-4">
+          <div class="mb-4 text-sm font-semibold text-gray-900">Recruitment Pipeline</div>
+          <PipelineFunnelChart :stages="adminDashboard.funnel.value" />
+        </div>
+
         <div v-if="recruiterSummary.summary" class="grid grid-cols-1 gap-6 md:grid-cols-2">
           <div class="rounded-lg border bg-white p-4">
             <div class="mb-3 text-sm font-semibold text-gray-900">Upcoming Interviews</div>
@@ -49,6 +54,7 @@ import { computed, onMounted } from 'vue'
 import StaffLayout from '@/layouts/StaffLayout.vue'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
+import PipelineFunnelChart from '@/components/common/PipelineFunnelChart.vue'
 import { useSessionStore } from '@/stores/session'
 import { useAdminDashboard, useRecruiterDashboard } from '@/composables/useRecruitmentDashboard'
 

@@ -19,6 +19,24 @@ PRIVILEGED_ROLES = {
 	"System Manager",
 }
 
+PATHWAYS_ROLES = {
+	"Pathways Admin",
+	"Pathways Recruiter",
+	"Pathways PNCO",
+	"Pathways Director People Culture",
+	"Pathways Dean Academics",
+	"Pathways Dean Research",
+	"Pathways Senior Manager Research",
+	"Pathways CFO",
+	"Pathways Registrar",
+	"Pathways Vice Chancellor",
+	"Pathways Shortlisting Committee Member",
+	"Pathways Selection Committee Member",
+	"Pathways Communications",
+	"Pathways IT Facilities",
+	"Pathways Candidate",
+}
+
 
 def _user_roles():
 	return set(frappe.get_roles(frappe.session.user))
@@ -26,6 +44,15 @@ def _user_roles():
 
 def _is_privileged():
 	return bool(_user_roles() & PRIVILEGED_ROLES)
+
+
+def has_app_permission():
+	"""Gate for the Pathways tile on the /apps screen (add_to_apps_screen hook).
+
+	Anyone holding a Pathways role may open the app; System Manager is
+	included so admins can always reach it to configure the app itself.
+	"""
+	return bool(_user_roles() & (PATHWAYS_ROLES | {"System Manager"}))
 
 
 def get_application_permission_query_conditions(user):

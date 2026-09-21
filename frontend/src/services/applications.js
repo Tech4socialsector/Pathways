@@ -27,4 +27,7 @@ export const applicationService = {
       application_name: applicationName,
     })
   },
+  deleteApplication(application) {
+    return callMethod('pathways.api.application.delete_application', { application })
+  },
 }

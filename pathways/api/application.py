@@ -170,6 +170,17 @@ def get_application_status(application_name):
 
 
 @frappe.whitelist()
+def delete_application(application):
+	"""Deletes an Application. delete_doc enforces delete permission on
+	its own — only Pathways Admin/System Manager hold delete on this
+	doctype (see application.json); Recruiter naturally gets a
+	PermissionError here without any extra check.
+	"""
+	frappe.delete_doc("Application", application)
+	return {"deleted": application}
+
+
+@frappe.whitelist()
 def withdraw_application(application_name):
 	app = frappe.get_doc("Application", application_name)  # permission-checked
 	candidate_email = frappe.db.get_value("Candidate", app.candidate, "email")

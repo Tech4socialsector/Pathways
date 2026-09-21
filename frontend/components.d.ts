@@ -10,10 +10,13 @@ declare module 'vue' {
   export interface GlobalComponents {
     EmptyState: typeof import('./src/components/common/EmptyState.vue')['default']
     PageHeader: typeof import('./src/components/layout/PageHeader.vue')['default']
+    PipelineFunnelChart: typeof import('./src/components/common/PipelineFunnelChart.vue')['default']
     RecruitmentTimeline: typeof import('./src/components/common/RecruitmentTimeline.vue')['default']
     RoleAwareSidebar: typeof import('./src/components/layout/RoleAwareSidebar.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
+    SettingsDialog: typeof import('./src/components/layout/SettingsDialog.vue')['default']
+    SidebarNavLink: typeof import('./src/components/layout/SidebarNavLink.vue')['default']
     StatusBadge: typeof import('./src/components/common/StatusBadge.vue')['default']
   }
 }

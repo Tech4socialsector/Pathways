@@ -9,9 +9,21 @@ def get_my_roles():
 	"""Roles for the current session user, filtered to Pathways-* roles
 	plus System Manager, so the frontend can drive role-aware navigation
 	without ever trusting a client-supplied role list.
+
+	"Pathways Candidate" is dropped for System Users: a real candidate
+	is always a Website User, so a System User carrying that role only
+	means frappe.get_roles() returned every role in the system (as it
+	does for Administrator) — surfacing it here would make the frontend
+	misclassify an admin/staff account as a candidate.
 	"""
-	all_roles = frappe.get_roles(frappe.session.user)
-	return [r for r in all_roles if r.startswith("Pathways") or r == "System Manager"]
+	user = frappe.session.user
+	all_roles = frappe.get_roles(user)
+	roles = [r for r in all_roles if r.startswith("Pathways") or r == "System Manager"]
+
+	if frappe.db.get_value("User", user, "user_type") == "System User":
+		roles = [r for r in roles if r != "Pathways Candidate"]
+
+	return roles
 
 
 @frappe.whitelist()
