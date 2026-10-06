@@ -115,6 +115,9 @@ const appMenuOptions = computed(() => {
 
 const ALL_ITEMS = [
   { to: '/', label: 'Dashboard', icon: 'home', roles: null },
+  // Shown from DocType permissions (write/create on any registered master),
+  // not role names — see pathways.utils.master_setup.
+  { to: '/master-setup', label: 'Master Setup', icon: 'sliders', visible: () => canAccessMasterSetup.value },
   {
     to: '/jobs',
     label: 'Job Openings',
@@ -167,9 +170,6 @@ const ALL_ITEMS = [
     icon: 'folder',
     roles: ['Pathways Recruiter', 'Pathways PNCO', 'Pathways Admin'],
   },
-  // Shown from DocType permissions (write/create on any registered master),
-  // not role names — see pathways.utils.master_setup.
-  { to: '/master-setup', label: 'Master Setup', icon: 'sliders', visible: () => canAccessMasterSetup.value },
   {
     to: '/reports',
     label: 'Reports',

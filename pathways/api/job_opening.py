@@ -14,6 +14,8 @@ duplicating that logic here would only risk drifting out of sync.
 
 import frappe
 
+from pathways.pathways.doctype.job_opening.job_opening import can_override_status
+
 
 @frappe.whitelist()
 def get_job_opening(job_opening):
@@ -110,4 +112,7 @@ def get_job_opening_permissions(job_opening):
 	return {
 		"can_write": frappe.has_permission("Job Opening", "write", doc=job_opening),
 		"can_delete": frappe.has_permission("Job Opening", "delete", doc=job_opening),
+		# System Managers may set any status without Green Sheet approval
+		# (see JobOpening.validate_status_transition).
+		"can_override_status": can_override_status(),
 	}

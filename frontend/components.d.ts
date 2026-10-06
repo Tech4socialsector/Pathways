@@ -9,6 +9,7 @@ export {}
 declare module 'vue' {
   export interface GlobalComponents {
     EmptyState: typeof import('./src/components/common/EmptyState.vue')['default']
+    GreenSheetPanel: typeof import('./src/components/jobs/GreenSheetPanel.vue')['default']
     PageHeader: typeof import('./src/components/layout/PageHeader.vue')['default']
     PipelineFunnelChart: typeof import('./src/components/common/PipelineFunnelChart.vue')['default']
     RecruitmentTimeline: typeof import('./src/components/common/RecruitmentTimeline.vue')['default']

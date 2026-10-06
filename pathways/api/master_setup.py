@@ -40,7 +40,7 @@ def _describe(master):
 	doctype = master["doctype"]
 	meta = frappe.get_meta(doctype)
 	active_field, active_value = get_active_field(meta)
-	route = "/app/" + doctype.lower().replace(" ", "-")
+	route = "/desk/" + doctype.lower().replace(" ", "-")
 
 	return {
 		"doctype": doctype,

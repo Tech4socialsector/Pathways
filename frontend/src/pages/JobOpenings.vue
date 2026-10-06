@@ -3,7 +3,7 @@
     <PageHeader title="Job Openings">
       <template #actions>
         <Button
-          v-if="session.hasAnyRole(['Pathways Admin', 'Pathways Recruiter'])"
+          v-if="session.hasAnyRole(['System Manager', 'Pathways Admin', 'Pathways Recruiter'])"
           variant="solid"
           @click="openCreateDialog"
         >
