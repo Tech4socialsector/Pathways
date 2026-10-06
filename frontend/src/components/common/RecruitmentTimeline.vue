@@ -31,7 +31,7 @@ defineProps({
 
 function dotClass(step) {
   if (step.state === 'completed') return 'bg-green-500 text-white'
-  if (step.state === 'current') return 'bg-indigo-500 text-white ring-4 ring-indigo-100'
+  if (step.state === 'current') return 'bg-brand-700 text-white ring-4 ring-brand-100'
   if (step.state === 'rejected') return 'bg-red-500 text-white'
   if (step.state === 'skipped') return 'bg-gray-200 text-gray-400'
   return 'bg-gray-200 text-gray-500'

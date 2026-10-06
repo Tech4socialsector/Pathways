@@ -1,26 +1,8 @@
 <template>
   <nav
-    class="flex h-full flex-col border-r bg-gray-50 p-2 transition-all duration-200 ease-in-out"
+    class="flex h-full flex-col border-r bg-white px-2 py-3 transition-all duration-200 ease-in-out"
     :class="isExpanded ? 'w-56' : 'w-14'"
   >
-    <Dropdown :options="appMenuOptions" placement="left">
-      <template #default="{ open }">
-        <button
-          class="mb-3 flex w-full items-center gap-2 rounded px-2 py-1.5 text-left hover:bg-gray-100"
-          :class="{ 'bg-gray-100': open }"
-        >
-          <Avatar :label="session.fullName" :image="session.userImage" size="lg" />
-          <template v-if="isExpanded">
-            <div class="flex-1 overflow-hidden">
-              <div class="truncate text-sm font-semibold text-gray-900">Pathways</div>
-              <div class="truncate text-xs text-gray-500">{{ session.fullName }}</div>
-            </div>
-            <FeatherIcon name="chevron-down" class="h-4 w-4 shrink-0 text-gray-500" />
-          </template>
-        </button>
-      </template>
-    </Dropdown>
-
     <div class="flex flex-1 flex-col gap-0.5 overflow-y-auto overflow-x-hidden">
       <SidebarNavLink
         v-for="item in visibleItems"
@@ -41,21 +23,15 @@
         @click="isExpanded = !isExpanded"
       />
     </div>
-
-    <SettingsDialog v-if="session.canManageSettings" v-model="showSettingsDialog" />
   </nav>
 </template>
 
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import { Dropdown, Avatar, FeatherIcon } from 'frappe-ui'
 import { useSessionStore } from '@/stores/session'
 import SidebarNavLink from './SidebarNavLink.vue'
-import SettingsDialog from './SettingsDialog.vue'
 
 const session = useSessionStore()
-const router = useRouter()
 
 const isExpanded = ref(localStorage.getItem('pathways-sidebar-expanded') !== 'false')
 
@@ -68,47 +44,6 @@ watch(isExpanded, (value) => {
 })
 
 onMounted(() => session.fetchRoles())
-
-const showSettingsDialog = ref(false)
-
-const appMenuOptions = computed(() => {
-  const items = []
-
-  if (session.canManageSettings) {
-    items.push({
-      label: 'Settings',
-      icon: 'settings',
-      onClick: () => {
-        showSettingsDialog.value = true
-      },
-    })
-  }
-
-  if (session.canManageAccess) {
-    items.push({
-      label: 'Roles & Permissions',
-      icon: 'shield',
-      onClick: () => router.push('/settings/access'),
-    })
-  }
-
-  items.push(
-    {
-      label: 'Desk',
-      icon: 'grid',
-      onClick: () => {
-        window.location.href = '/app'
-      },
-    },
-    {
-      label: 'Log out',
-      icon: 'log-out',
-      onClick: () => session.logout.submit(),
-    },
-  )
-
-  return [{ group: 'Pathways', hideLabel: true, items }]
-})
 
 // Which entries a user sees is decided server-side from Role Permissions
 // (pathways.api.access.get_my_access / MENU_ITEMS): granting a role read

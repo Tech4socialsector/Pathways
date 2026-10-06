@@ -12,21 +12,23 @@
         role="dialog"
         aria-modal="true"
         :aria-label="title"
-        class="flex h-full max-h-[92vh] w-full max-w-7xl flex-col overflow-hidden rounded-xl bg-[#1c1a33] text-white shadow-2xl outline-none"
+        class="flex h-full max-h-[92vh] w-full max-w-7xl flex-col overflow-hidden rounded-xl bg-white text-gray-900 shadow-2xl outline-none"
       >
         <!-- Header -->
-        <div class="flex items-center justify-between gap-3 border-b border-white/10 px-5 py-3.5">
-          <h2 class="truncate text-base font-bold">{{ title }}</h2>
+        <div class="flex items-center justify-between gap-3 bg-brand-700 px-5 py-3.5 text-white">
+          <h2 class="flex min-w-0 items-center gap-2 text-base font-bold">
+            <FeatherIcon name="folder" class="h-4 w-4 shrink-0" /><span class="truncate">{{ title }}</span>
+          </h2>
           <div class="flex shrink-0 items-center gap-2">
             <a
               v-if="downloadAllUrl && documents.length"
               :href="downloadAllUrl"
-              class="flex items-center gap-1.5 rounded-md bg-indigo-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-400"
+              class="flex items-center gap-1.5 rounded-md bg-white px-3 py-1.5 text-sm font-semibold text-brand-700 hover:bg-brand-50"
             >
               <FeatherIcon name="download" class="h-4 w-4" />
               <span class="hidden sm:inline">Download All (PDF)</span>
             </a>
-            <button class="rounded-md p-1.5 text-white/70 hover:bg-white/10 hover:text-white" aria-label="Close" @click="close">
+            <button class="rounded-md p-1.5 text-white/80 hover:bg-white/15 hover:text-white" aria-label="Close" @click="close">
               <FeatherIcon name="x" class="h-5 w-5" />
             </button>
           </div>
@@ -34,63 +36,63 @@
 
         <div class="flex min-h-0 flex-1 flex-col md:flex-row">
           <!-- Document list -->
-          <aside class="flex max-h-56 shrink-0 flex-col border-b border-white/10 md:max-h-none md:w-80 md:border-b-0 md:border-r">
+          <aside class="flex max-h-56 shrink-0 flex-col border-b border-gray-200 bg-white md:max-h-none md:w-80 md:border-b-0 md:border-r">
             <div class="flex items-center justify-between px-4 py-3">
               <div>
-                <div class="text-sm font-bold">Documents</div>
-                <div class="text-xs text-white/60">{{ documents.length }} document{{ documents.length === 1 ? '' : 's' }}</div>
+                <div class="text-sm font-bold text-gray-900">Documents</div>
+                <div class="text-xs text-gray-500">{{ documents.length }} document{{ documents.length === 1 ? '' : 's' }}</div>
               </div>
-              <span class="rounded-full bg-indigo-500/30 px-2 py-0.5 text-xs font-bold text-indigo-200">{{ documents.length }}</span>
+              <span class="rounded-full bg-brand-700 px-2 py-0.5 text-xs font-bold text-white">{{ documents.length }}</span>
             </div>
-            <div v-if="loading" class="px-4 py-3 text-sm text-white/60">Loading...</div>
-            <div v-else-if="!documents.length" class="px-4 py-3 text-sm text-white/60">No documents uploaded.</div>
+            <div v-if="loading" class="px-4 py-3 text-sm text-gray-500">Loading...</div>
+            <div v-else-if="!documents.length" class="px-4 py-3 text-sm text-gray-500">No documents uploaded.</div>
             <ul v-else class="flex-1 overflow-y-auto px-2 pb-3">
               <li v-for="(doc, idx) in documents" :key="doc.file_url + idx" class="mb-1.5">
                 <div
                   class="group flex cursor-pointer items-center gap-3 rounded-lg border px-3 py-2.5 transition"
                   :class="
                     idx === selected
-                      ? 'border-indigo-400 bg-indigo-500/25'
-                      : 'border-transparent hover:border-white/10 hover:bg-white/5'
+                      ? 'border-brand-200 bg-brand-50'
+                      : 'border-transparent hover:border-gray-200 hover:bg-gray-50'
                   "
                   @click="selected = idx"
                 >
                   <span
                     class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md"
-                    :class="idx === selected ? 'bg-indigo-500' : 'bg-red-500/20 text-red-300'"
+                    :class="idx === selected ? 'bg-brand-700 text-white' : 'bg-gray-100 text-gray-600'"
                   >
                     <FeatherIcon :name="doc.kind === 'image' ? 'image' : 'file-text'" class="h-4 w-4" />
                   </span>
                   <div class="min-w-0 flex-1">
-                    <div class="truncate text-sm font-bold" :title="doc.label">{{ doc.label }}</div>
-                    <div class="text-xs text-white/50">Document {{ idx + 1 }}</div>
+                    <div class="truncate text-sm font-bold" :class="idx === selected ? 'text-brand-700' : 'text-gray-900'" :title="doc.label">{{ doc.label }}</div>
+                    <div class="text-xs text-gray-500">Document {{ idx + 1 }}</div>
                   </div>
                   <a
                     :href="doc.file_url"
                     :download="doc.file_name"
-                    class="rounded-md border border-white/15 bg-white/10 p-1.5 text-white/80 hover:bg-white/20"
+                    class="rounded-md border border-gray-200 bg-white p-1.5 text-gray-600 hover:border-brand-200 hover:bg-brand-50 hover:text-brand-700"
                     :aria-label="`Download ${doc.label}`"
                     @click.stop
                   >
                     <FeatherIcon name="download" class="h-3.5 w-3.5" />
                   </a>
-                  <FeatherIcon name="chevron-right" class="h-4 w-4 text-white/40" />
+                  <FeatherIcon name="chevron-right" class="h-4 w-4 text-gray-400" />
                 </div>
               </li>
             </ul>
           </aside>
 
           <!-- Preview -->
-          <section class="flex min-h-0 flex-1 flex-col bg-[#2a2840]">
-            <div v-if="current" class="flex items-center gap-3 border-b border-white/10 px-4 py-2.5 text-sm">
-              <span class="text-[11px] font-bold uppercase tracking-wider text-white/50">Document preview</span>
-              <span class="truncate font-medium">{{ current.label }}</span>
-              <span class="ml-auto hidden truncate text-xs text-white/40 lg:inline">{{ current.file_name }}</span>
-              <a :href="current.file_url" target="_blank" rel="noopener" class="text-white/60 hover:text-white" aria-label="Open in new tab">
+          <section class="flex min-h-0 flex-1 flex-col bg-gray-50">
+            <div v-if="current" class="flex items-center gap-3 border-b border-gray-200 bg-white px-4 py-2.5 text-sm">
+              <span class="text-[11px] font-bold uppercase tracking-wider text-gray-500">Document preview</span>
+              <span class="truncate font-semibold text-gray-900">{{ current.label }}</span>
+              <span class="ml-auto hidden truncate text-xs text-gray-500 lg:inline">{{ current.file_name }}</span>
+              <a :href="current.file_url" target="_blank" rel="noopener" class="text-gray-500 hover:text-brand-700" aria-label="Open in new tab">
                 <FeatherIcon name="external-link" class="h-4 w-4" />
               </a>
             </div>
-            <div class="flex min-h-0 flex-1 items-center justify-center overflow-auto">
+            <div class="flex min-h-0 flex-1 items-center justify-center overflow-auto p-4">
               <iframe
                 v-if="current?.kind === 'pdf'"
                 :key="current.file_url"
@@ -103,12 +105,12 @@
                 :key="current.file_url"
                 :src="current.file_url"
                 :alt="current.label"
-                class="max-h-full max-w-full bg-white object-contain p-2"
+                class="max-h-full max-w-full rounded-lg border border-gray-200 bg-white object-contain p-2 shadow-sm"
               />
-              <div v-else-if="current" class="p-8 text-center text-sm text-white/70">
-                <FeatherIcon name="file" class="mx-auto mb-3 h-10 w-10 text-white/40" />
+              <div v-else-if="current" class="p-8 text-center text-sm text-gray-600">
+                <FeatherIcon name="file" class="mx-auto mb-3 h-10 w-10 text-gray-400" />
                 This file type cannot be previewed.
-                <a :href="current.file_url" :download="current.file_name" class="mt-3 block font-medium text-indigo-300 hover:underline">
+                <a :href="current.file_url" :download="current.file_name" class="mt-3 block font-medium text-brand-700 hover:underline">
                   Download {{ current.file_name }}
                 </a>
               </div>

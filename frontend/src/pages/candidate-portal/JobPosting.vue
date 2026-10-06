@@ -12,7 +12,7 @@
         </template>
       </EmptyState>
       <template v-else>
-        <router-link to="/portal/jobs" class="text-sm text-gray-500 hover:text-gray-800">&larr; All openings</router-link>
+        <BackButton fallback="/portal/jobs" label="All openings" />
         <div class="mt-3 flex flex-wrap items-start justify-between gap-4">
           <div>
             <h1 class="text-2xl font-semibold text-gray-900">{{ job.job_title }}</h1>
@@ -50,6 +50,7 @@
 </template>
 
 <script setup>
+import BackButton from '@/components/common/BackButton.vue'
 import { computed, onMounted } from 'vue'
 import CandidatePortalLayout from '@/layouts/CandidatePortalLayout.vue'
 import EmptyState from '@/components/common/EmptyState.vue'

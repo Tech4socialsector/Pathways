@@ -1,9 +1,8 @@
 <template>
-  <div class="rounded-lg border bg-white p-4">
-    <div class="mb-3 flex items-center justify-between gap-2">
-      <div class="text-sm font-semibold text-gray-900">Pre-Recruitment Green Sheet</div>
+  <SectionCard title="Pre-Recruitment Green Sheet" icon="check-square" subtitle="Leadership approval to advertise">
+    <template #actions>
       <StatusBadge v-if="current" :status="current.status" />
-    </div>
+    </template>
 
     <div v-if="loading && !data" class="text-sm text-gray-500">Loading...</div>
     <div v-else-if="loadError" class="text-sm text-red-600">{{ loadError }}</div>
@@ -13,6 +12,13 @@
         class="rounded border border-orange-200 bg-orange-50 px-3 py-2 text-sm text-orange-800"
       >
         Set a Recruitment Track on this job (Edit) before raising a Green Sheet.
+      </div>
+      <div
+        v-else-if="!current && publishedWithoutSheet"
+        class="flex items-start gap-2 rounded-lg bg-gray-50 px-3 py-2.5 text-sm text-gray-600"
+      >
+        <FeatherIcon name="info" class="mt-0.5 h-4 w-4 shrink-0 text-gray-500" />
+        No Green Sheet was raised. An administrator set this job's status ({{ job.status }}) directly.
       </div>
       <div
         v-else-if="!data.has_chain_template && (!current || current.docstatus === 0)"
@@ -32,7 +38,7 @@
       </div>
 
       <!-- No sheet yet -->
-      <template v-if="!current">
+      <template v-if="!current && !publishedWithoutSheet">
         <p class="text-sm text-gray-600">
           A Pre-Recruitment Green Sheet must be approved before this job can be advertised.
           <span v-if="perms.can_override_status">
@@ -233,14 +239,16 @@
         <Button variant="solid" theme="red" :loading="busy === 'discard'" @click="discard">Delete</Button>
       </template>
     </Dialog>
-  </div>
+  </SectionCard>
 </template>
 
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { toast } from '@/utils/notify'
 import dayjs from 'dayjs'
+import { FeatherIcon } from 'frappe-ui'
 import StatusBadge from '@/components/common/StatusBadge.vue'
+import SectionCard from '@/components/common/SectionCard.vue'
 import RecruitmentTimeline from '@/components/common/RecruitmentTimeline.vue'
 import { greenSheetService } from '@/services/greenSheets'
 import { approvalService } from '@/services/approvals'
@@ -250,6 +258,10 @@ const DOCTYPE = 'Pre-Recruitment Green Sheet'
 const props = defineProps({
   job: { type: Object, required: true },
 })
+
+// Past the approval stage with no sheet: an administrator set the status
+// directly, so raising a sheet now would only reset the job to Pending Approval.
+const publishedWithoutSheet = computed(() => ['Approved', 'Advertised', 'Closed', 'Filled'].includes(props.job.status))
 const emit = defineEmits(['changed', 'loaded'])
 
 const data = ref(null)

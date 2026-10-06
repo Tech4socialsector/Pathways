@@ -29,29 +29,72 @@ def get_advertisement_url(job_opening):
 	return frappe.utils.get_url(f"/pathways/portal/jobs/{job_opening}")
 
 
+def validate_form_rows(doc):
+	"""Screening questions and required documents, as configured on a Job
+	Opening or on the Position it starts from."""
+	for q in doc.screening_questions or []:
+		if q.answer_type == "Single Choice":
+			options = [o.strip() for o in (q.options or "").splitlines() if o.strip()]
+			if len(options) < 2:
+				frappe.throw(_("Screening question {0}: give at least two choices, one per line.").format(q.idx))
+			if len(options) != len(set(options)):
+				frappe.throw(_("Screening question {0}: choices must be unique.").format(q.idx))
+		if q.answer_type != "Yes/No":
+			q.ask_details_if_yes = 0
+
+	seen = set()
+	for row in doc.required_documents or []:
+		if row.document_type in seen:
+			frappe.throw(_("Required document {0} is listed twice.").format(row.document_type))
+		seen.add(row.document_type)
+
+
+# Position field -> Job Opening field, filled only where the job leaves it empty.
+POSITION_DEFAULTS = {
+	"position_title": "job_title",
+	"track": "track",
+	"department": "department",
+	"designation": "designation",
+	"employment_type": "employment_type",
+	"pay_level": "pay_level",
+	"tenure_description": "tenure_description",
+}
+POSITION_TABLES = ("screening_questions", "required_documents")
+TABLE_ROW_FIELDS = {
+	"screening_questions": ("question", "answer_type", "options", "is_mandatory", "ask_details_if_yes", "details_label"),
+	"required_documents": ("document_type", "is_mandatory"),
+}
+
+
 class JobOpening(Document):
 	def validate(self):
+		self.apply_position_defaults()
 		self.validate_green_sheet_link()
 		self.validate_status_transition()
 		self.validate_application_form()
 		self.set_advertisement_url()
 
-	def validate_application_form(self):
-		for q in self.screening_questions or []:
-			if q.answer_type == "Single Choice":
-				options = [o.strip() for o in (q.options or "").splitlines() if o.strip()]
-				if len(options) < 2:
-					frappe.throw(_("Screening question {0}: give at least two choices, one per line.").format(q.idx))
-				if len(options) != len(set(options)):
-					frappe.throw(_("Screening question {0}: choices must be unique.").format(q.idx))
-			if q.answer_type != "Yes/No":
-				q.ask_details_if_yes = 0
+	def apply_position_defaults(self):
+		"""When a Position is picked, start the job from it: empty fields and
+		empty form tables are filled in, anything HR has already set is kept."""
+		if not self.position or not (self.is_new() or self.has_value_changed("position")):
+			return
+		position = frappe.get_cached_doc("Position", self.position)
 
-		seen = set()
-		for row in self.required_documents or []:
-			if row.document_type in seen:
-				frappe.throw(_("Required document {0} is listed twice.").format(row.document_type))
-			seen.add(row.document_type)
+		for source, target in POSITION_DEFAULTS.items():
+			if not self.get(target) and position.get(source):
+				self.set(target, position.get(source))
+		if self.is_new() and position.require_postgraduate:
+			self.require_postgraduate = 1
+
+		for table in POSITION_TABLES:
+			if self.get(table):
+				continue
+			for row in position.get(table):
+				self.append(table, {field: row.get(field) for field in TABLE_ROW_FIELDS[table]})
+
+	def validate_application_form(self):
+		validate_form_rows(self)
 
 		if self.status == "Advertised" and self.has_value_changed("status"):
 			if not self.application_deadline:

@@ -44,9 +44,17 @@ MASTER_SETUP = [
 			{
 				"doctype": "Designation",
 				"label": "Designations",
-				"description": "Manage job designations and positions.",
+				"description": "Manage job designations.",
 				"icon": "user",
-				"keywords": ["position", "post", "role", "pay level", "employment type"],
+				"keywords": ["post", "pay level", "employment type"],
+			},
+			{
+				"doctype": "Position",
+				"label": "Positions",
+				"singular": "Position",
+				"description": "Manage posts by job code, with their default application form.",
+				"icon": "briefcase",
+				"keywords": ["job code", "post", "role", "hiring manager", "eligibility", "screening"],
 			},
 		],
 	},
@@ -141,7 +149,8 @@ MASTER_SETUP = [
 # upstream record (e.g. Employee.department from its Job Opening) are left
 # out so an in-flight recruitment never breaks when a master is retired.
 INACTIVE_LINK_GUARDS = {
-	"Job Opening": ["track", "department", "designation"],
+	"Job Opening": ["position", "track", "department", "designation"],
+	"Position": ["track", "department", "designation", "reports_to"],
 	"Application": ["source"],
 	"Department": ["parent_department"],
 	"Designation": ["track"],

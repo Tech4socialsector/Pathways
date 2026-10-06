@@ -1,7 +1,7 @@
 import { ref } from 'vue'
 import { createResource } from 'frappe-ui'
 
-function useActiveRecordOptions(doctype, labelField) {
+function useActiveRecordOptions(doctype, labelField, extraFields = [], format = (row) => row[labelField]) {
   const options = ref([])
 
   const resource = createResource({
@@ -9,13 +9,13 @@ function useActiveRecordOptions(doctype, labelField) {
     params: {
       doctype,
       filters: { is_active: 1 },
-      fields: ['name', labelField],
+      fields: ['name', labelField, ...extraFields],
       limit_page_length: 0,
       order_by: `${labelField} asc`,
     },
     auto: false,
     onSuccess(data) {
-      options.value = data.map((row) => ({ label: row[labelField], value: row.name }))
+      options.value = data.map((row) => ({ label: format(row), value: row.name }))
     },
   })
 
@@ -36,4 +36,8 @@ export function useDepartmentOptions() {
 
 export function useDesignationOptions() {
   return useActiveRecordOptions('Designation', 'designation_name')
+}
+
+export function usePositionOptions() {
+  return useActiveRecordOptions('Position', 'job_code', ['position_title'], (row) => `${row.job_code} · ${row.position_title}`)
 }

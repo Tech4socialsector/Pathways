@@ -1,5 +1,8 @@
 <template>
   <div class="flex flex-col gap-4">
+    <!-- Shown only when the full submission isn't available to this
+         reviewer; otherwise the page already shows all of this. -->
+    <template v-if="showSummary">
     <div class="rounded-lg border bg-white p-4">
       <div class="mb-3 text-sm font-semibold text-gray-900">Candidate</div>
       <dl class="grid grid-cols-2 gap-3 text-sm">
@@ -63,64 +66,85 @@
       </ul>
     </div>
 
-    <div class="rounded-lg border bg-white p-4">
-      <div class="mb-3 flex items-center justify-between">
-        <div class="text-sm font-semibold text-gray-900">Shortlisting Score</div>
+    </template>
+
+    <SectionCard title="Shortlisting Score" icon="clipboard" subtitle="Score each criterion, then shortlist or reject">
+      <template #actions>
         <StatusBadge v-if="alreadyScored" status="Scored" />
-      </div>
+        <span v-if="rubric" class="rounded-full bg-brand-50 px-2.5 py-0.5 text-sm font-bold text-brand-700">
+          {{ totalScore }} / {{ maxScore }}
+        </span>
+      </template>
 
       <div v-if="!rubric" class="text-sm text-gray-500">
         No active shortlisting rubric configured for this track.
       </div>
-      <div v-else class="flex flex-col gap-3">
-        <div v-for="(criterion, i) in form.criteria" :key="criterion.criterion_label" class="flex items-center gap-3">
-          <div class="flex-1 text-sm text-gray-700">
-            {{ criterion.criterion_label }}
-            <span class="text-gray-400">(max {{ criterion.max_score }})</span>
+      <div v-else class="flex flex-col gap-4">
+        <div class="flex flex-col divide-y divide-gray-100 rounded-lg border border-gray-200">
+          <div v-for="(criterion, i) in form.criteria" :key="criterion.criterion_label" class="flex items-center gap-3 px-3 py-2.5">
+            <div class="flex-1 text-sm">
+              <div class="font-medium text-gray-900">{{ criterion.criterion_label }}</div>
+              <div class="text-xs text-gray-500">Out of {{ criterion.max_score }}</div>
+            </div>
+            <input
+              type="number"
+              class="w-24 rounded-md border-gray-300 px-2 py-1.5 text-right text-sm font-semibold focus:border-brand-700 focus:ring-brand-700"
+              :min="0"
+              :max="criterion.max_score"
+              :aria-label="criterion.criterion_label"
+              v-model.number="form.criteria[i].score_given"
+            />
           </div>
-          <input
-            type="number"
-            class="w-24 rounded border px-2 py-1 text-sm"
-            :min="0"
-            :max="criterion.max_score"
-            v-model.number="form.criteria[i].score_given"
-          />
         </div>
 
-        <FormControl label="Remarks" type="textarea" v-model="form.remarks" />
+        <FormControl label="Remarks" type="textarea" v-model="form.remarks" placeholder="Optional notes for the committee" />
 
-        <div class="flex items-center gap-3">
+        <ErrorMessage :message="formError" />
+        <div class="flex flex-wrap items-center gap-3">
           <Button
             variant="solid"
-            theme="green"
+            icon-left="check"
+            :class="BTN_SUCCESS"
             :loading="submitting && form.is_shortlisted === 1"
             @click="submit(1)"
           >
             Shortlist
           </Button>
-          <Button variant="outline" theme="red" :loading="submitting && form.is_shortlisted === 0" @click="submit(0)">
+          <Button
+            variant="solid"
+            icon-left="x"
+            :class="BTN_DANGER"
+            :loading="submitting && form.is_shortlisted === 0"
+            @click="submit(0)"
+          >
             Reject
           </Button>
         </div>
-        <ErrorMessage :message="formError" />
       </div>
-    </div>
+    </SectionCard>
   </div>
 </template>
 
 <script setup>
-import { reactive, ref, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { Button, FormControl, ErrorMessage, FeatherIcon } from 'frappe-ui'
 import { toast } from '@/utils/notify'
 import StatusBadge from './StatusBadge.vue'
+import SectionCard from './SectionCard.vue'
+import { BTN_DANGER, BTN_SUCCESS } from '@/utils/buttonStyles'
 import { scoringService } from '@/services/scoring'
 
 const props = defineProps({
   review: { type: Object, required: true },
   rubric: { type: Object, default: null },
+  // Also show candidate, CV/SOP and qualifications (when the page can't).
+  showSummary: { type: Boolean, default: true },
 })
 
 const emit = defineEmits(['scored'])
+
+const totalScore = computed(() => form.criteria.reduce((sum, c) => sum + (Number(c.score_given) || 0), 0))
+const maxScore = computed(() => form.criteria.reduce((sum, c) => sum + (Number(c.max_score) || 0), 0))
 
 const submitting = ref(false)
 const formError = ref('')

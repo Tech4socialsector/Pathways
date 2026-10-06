@@ -56,6 +56,7 @@ const router = useRouter()
 const { jobs, loading, fetchJobs } = useStaffJobOpenings()
 
 const columns = [
+  { key: 'position', label: 'Job Code' },
   { key: 'job_title', label: 'Job Title' },
   { key: 'track', label: 'Track' },
   { key: 'department', label: 'Department' },

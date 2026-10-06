@@ -1,0 +1,311 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "field:job_code",
+ "creation": "2026-10-06 19:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "job_code",
+  "position_title",
+  "track",
+  "department",
+  "designation",
+  "column_break_1",
+  "employment_type",
+  "pay_level",
+  "tenure_description",
+  "is_active",
+  "reporting_section",
+  "reports_to",
+  "column_break_2",
+  "hiring_manager_role",
+  "application_form_section",
+  "require_postgraduate",
+  "institution_list",
+  "column_break_3",
+  "ask_specialization",
+  "specialization_discipline",
+  "ask_category_disability",
+  "ask_phd",
+  "ask_net",
+  "column_break_4",
+  "ask_experience_months",
+  "ask_admin_responsibilities",
+  "ask_publications",
+  "min_publications",
+  "max_publications",
+  "screening_section",
+  "screening_questions",
+  "documents_section",
+  "required_documents"
+ ],
+ "fields": [
+  {
+   "fieldname": "job_code",
+   "fieldtype": "Data",
+   "label": "Job Code",
+   "reqd": 1,
+   "unique": 1,
+   "in_list_view": 1,
+   "description": "Unique code for the post, e.g. ADM-FIN-CFO (Track-Department-Post)",
+   "set_only_once": 1
+  },
+  {
+   "fieldname": "position_title",
+   "fieldtype": "Data",
+   "label": "Position Title",
+   "reqd": 1,
+   "in_list_view": 1,
+   "description": "Used as the default Job Title of new Job Openings"
+  },
+  {
+   "fieldname": "track",
+   "fieldtype": "Link",
+   "label": "Recruitment Track",
+   "options": "Recruitment Track",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "department",
+   "fieldtype": "Link",
+   "label": "Department",
+   "options": "Department",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "designation",
+   "fieldtype": "Link",
+   "label": "Designation",
+   "options": "Designation",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "employment_type",
+   "fieldtype": "Select",
+   "label": "Employment Type",
+   "options": "\nPermanent\nConsultant\nGrant-funded\nContract",
+   "reqd": 1,
+   "fetch_from": "designation.employment_type",
+   "fetch_if_empty": 1
+  },
+  {
+   "fieldname": "pay_level",
+   "fieldtype": "Data",
+   "label": "Pay Level",
+   "fetch_from": "designation.pay_level_range",
+   "fetch_if_empty": 1
+  },
+  {
+   "fieldname": "tenure_description",
+   "fieldtype": "Small Text",
+   "label": "Tenure Description"
+  },
+  {
+   "fieldname": "is_active",
+   "fieldtype": "Check",
+   "label": "Is Active",
+   "default": "1",
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "reporting_section",
+   "fieldtype": "Section Break",
+   "label": "Reporting & Hiring"
+  },
+  {
+   "fieldname": "reports_to",
+   "fieldtype": "Link",
+   "label": "Reports To",
+   "options": "Designation"
+  },
+  {
+   "fieldname": "column_break_2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "hiring_manager_role",
+   "fieldtype": "Link",
+   "label": "Hiring Manager Role",
+   "options": "Role",
+   "description": "Role that owns hiring for this post"
+  },
+  {
+   "fieldname": "application_form_section",
+   "fieldtype": "Section Break",
+   "label": "Application Form Defaults",
+   "description": "Copied into each new Job Opening for this position; HR can still change them on the Job Opening."
+  },
+  {
+   "fieldname": "require_postgraduate",
+   "fieldtype": "Check",
+   "label": "Postgraduate Degree Mandatory",
+   "default": "0"
+  },
+  {
+   "fieldname": "institution_list",
+   "fieldtype": "Select",
+   "label": "Institution Dropdown",
+   "options": "Free Text\nLaw\nSocial Science",
+   "default": "Free Text",
+   "description": "Which Institution Master list candidates pick their college / university from"
+  },
+  {
+   "fieldname": "column_break_3",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "ask_specialization",
+   "fieldtype": "Check",
+   "label": "Ask Area of Specialization",
+   "default": "0"
+  },
+  {
+   "fieldname": "specialization_discipline",
+   "fieldtype": "Select",
+   "label": "Specialization Discipline",
+   "options": "\nLaw\nSocial Science",
+   "depends_on": "eval:doc.ask_specialization",
+   "mandatory_depends_on": "eval:doc.ask_specialization"
+  },
+  {
+   "fieldname": "ask_category_disability",
+   "fieldtype": "Check",
+   "label": "Ask Category & Disability",
+   "default": "0"
+  },
+  {
+   "fieldname": "ask_phd",
+   "fieldtype": "Check",
+   "label": "Ask PhD Details",
+   "default": "0"
+  },
+  {
+   "fieldname": "ask_net",
+   "fieldtype": "Check",
+   "label": "Ask NET / SLET / SET Details",
+   "default": "0"
+  },
+  {
+   "fieldname": "column_break_4",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "ask_experience_months",
+   "fieldtype": "Check",
+   "label": "Ask Teaching / Research Experience in Months",
+   "default": "0"
+  },
+  {
+   "fieldname": "ask_admin_responsibilities",
+   "fieldtype": "Check",
+   "label": "Ask Administrative Responsibilities",
+   "default": "0"
+  },
+  {
+   "fieldname": "ask_publications",
+   "fieldtype": "Check",
+   "label": "Ask Publications",
+   "default": "0"
+  },
+  {
+   "fieldname": "min_publications",
+   "fieldtype": "Int",
+   "label": "Minimum Publications",
+   "default": "1",
+   "depends_on": "eval:doc.ask_publications"
+  },
+  {
+   "fieldname": "max_publications",
+   "fieldtype": "Int",
+   "label": "Maximum Publications",
+   "default": "3",
+   "depends_on": "eval:doc.ask_publications"
+  },
+  {
+   "fieldname": "screening_section",
+   "fieldtype": "Section Break",
+   "label": "Eligibility Questions"
+  },
+  {
+   "fieldname": "screening_questions",
+   "fieldtype": "Table",
+   "label": "Screening Questions",
+   "options": "Job Screening Question"
+  },
+  {
+   "fieldname": "documents_section",
+   "fieldtype": "Section Break",
+   "label": "Required Documents"
+  },
+  {
+   "fieldname": "required_documents",
+   "fieldtype": "Table",
+   "label": "Required Documents",
+   "options": "Job Required Document",
+   "description": "Resume, SOP, degree certificates and transcripts are always asked on the form and are not listed here."
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "links": [
+  {
+   "link_doctype": "Job Opening",
+   "link_fieldname": "position"
+  }
+ ],
+ "modified": "2026-10-06 20:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Pathways",
+ "name": "Position",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "share": 1,
+   "write": 1,
+   "role": "System Manager"
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "share": 1,
+   "write": 1,
+   "role": "Pathways Admin"
+  },
+  {
+   "read": 1,
+   "role": "Pathways Recruiter"
+  },
+  {
+   "read": 1,
+   "role": "Pathways PNCO"
+  }
+ ],
+ "search_fields": "position_title,department",
+ "show_title_field_in_link": 1,
+ "title_field": "position_title",
+ "sort_field": "job_code",
+ "sort_order": "ASC",
+ "states": [],
+ "track_changes": 1
+}

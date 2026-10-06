@@ -2,9 +2,10 @@
   <component
     :is="as === 'button' ? 'button' : RouterLink"
     v-bind="linkProps"
-    class="flex h-8 items-center gap-2 rounded px-2 text-sm text-gray-700 transition-colors hover:bg-gray-100"
-    :class="isActive ? 'bg-gray-200 font-medium text-gray-900' : ''"
+    class="relative flex h-9 items-center gap-2.5 rounded-md px-2.5 text-sm transition-colors"
+    :class="isActive ? 'bg-brand-50 font-semibold text-brand-700' : 'text-gray-700 hover:bg-gray-100'"
   >
+    <span v-if="isActive" class="absolute inset-y-1.5 left-0 w-0.5 rounded-full bg-brand-700" />
     <Tooltip :text="label" placement="right" :disabled="isExpanded">
       <span class="flex h-4 w-4 shrink-0 items-center justify-center">
         <FeatherIcon :name="icon" class="h-4 w-4" />
@@ -31,5 +32,9 @@ const route = useRoute()
 
 const linkProps = computed(() => (props.as === 'button' ? {} : { to: props.to }))
 
-const isActive = computed(() => props.as !== 'button' && route.path === props.to)
+const isActive = computed(() => {
+  if (props.as === 'button') return false
+  if (props.to === '/') return route.path === '/'
+  return route.path === props.to || route.path.startsWith(`${props.to}/`)
+})
 </script>

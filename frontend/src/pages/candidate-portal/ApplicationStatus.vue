@@ -3,6 +3,7 @@
     <div class="mx-auto max-w-2xl px-6 py-10">
       <div v-if="loading" class="text-sm text-gray-500">Loading...</div>
       <template v-else-if="status">
+        <BackButton fallback="/portal/applications" label="My applications" class="mb-4" />
         <div class="mb-6 flex items-center justify-between">
           <div>
             <h1 class="text-2xl font-semibold text-gray-900">{{ status.job_title }}</h1>
@@ -53,6 +54,7 @@
 </template>
 
 <script setup>
+import BackButton from '@/components/common/BackButton.vue'
 import { computed, onMounted, ref, watch } from 'vue'
 import { Button, FormControl } from 'frappe-ui'
 import { toast } from '@/utils/notify'

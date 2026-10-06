@@ -21,7 +21,7 @@
           <div v-for="q in app.qualifications" :key="q.name" class="rounded-lg border border-gray-200 p-4 text-sm">
             <div class="flex flex-wrap items-center gap-2">
               <span class="font-bold text-gray-900">{{ q.degree_name }}</span>
-              <span class="rounded bg-indigo-50 px-2 py-0.5 text-xs text-indigo-700">{{ levelLabel(q.degree_level) }}</span>
+              <span class="rounded bg-brand-50 px-2 py-0.5 text-xs font-medium text-brand-700">{{ levelLabel(q.degree_level) }}</span>
             </div>
             <div class="mt-1 text-gray-600">{{ q.other_institution || q.institution }}</div>
             <dl class="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -46,7 +46,7 @@
         </dl>
         <ol v-if="app.employment_history?.length" class="relative ml-2 border-l border-gray-200 text-sm">
           <li v-for="e in app.employment_history" :key="e.name" class="mb-4 ml-5 last:mb-0">
-            <span class="absolute -left-[5px] mt-1.5 h-2.5 w-2.5 rounded-full bg-indigo-400" />
+            <span class="absolute -left-[5px] mt-1.5 h-2.5 w-2.5 rounded-full bg-brand-700" />
             <div class="font-bold text-gray-900">{{ e.designation }}</div>
             <div class="text-gray-700">{{ e.employer_name }}</div>
             <div class="text-xs text-gray-500">{{ formatDate(e.from_date) }} – {{ e.is_current ? 'Present' : formatDate(e.to_date) }}</div>
@@ -82,7 +82,7 @@
 
       <Card icon="paperclip" title="Documents & Compensation">
         <template #action>
-          <button class="flex items-center gap-1 text-sm font-medium text-indigo-600 hover:underline" @click="emit('view-documents')">
+          <button class="flex items-center gap-1 text-sm font-medium text-brand-700 hover:underline" @click="emit('view-documents')">
             <FeatherIcon name="eye" class="h-4 w-4" /> View documents
           </button>
         </template>
@@ -110,6 +110,7 @@
 import { computed, h } from 'vue'
 import dayjs from 'dayjs'
 import { FeatherIcon } from 'frappe-ui'
+import SectionCard from './SectionCard.vue'
 
 const props = defineProps({
   // pathways.api.application.get_application_detail, loaded by the page.
@@ -137,19 +138,8 @@ function levelLabel(level) {
   return level === 'Undergraduate' ? 'Graduate' : level === 'Postgraduate' ? 'Post Graduate' : level
 }
 
-const Card = (p, { slots }) =>
-  h('section', { class: 'rounded-xl border bg-white p-5 shadow-sm' }, [
-    h('div', { class: 'mb-4 flex items-center justify-between gap-2' }, [
-      h('div', { class: 'flex items-center gap-2' }, [
-        h('span', { class: 'flex h-7 w-7 items-center justify-center rounded-md bg-indigo-50 text-indigo-600' }, [
-          h(FeatherIcon, { name: p.icon, class: 'h-4 w-4' }),
-        ]),
-        h('h3', { class: 'text-sm font-bold text-gray-900' }, p.title),
-      ]),
-      slots.action?.(),
-    ]),
-    slots.default?.(),
-  ])
+// Same card as the rest of the staff pages.
+const Card = (p, { slots }) => h(SectionCard, { title: p.title, icon: p.icon }, { default: slots.default, actions: slots.action })
 Card.props = ['icon', 'title']
 
 const Field = (p) =>
@@ -168,7 +158,7 @@ const FileChip = (p) =>
           target: '_blank',
           rel: 'noopener',
           class:
-            'inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-medium text-gray-700 hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700',
+            'inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-medium text-gray-700 hover:border-brand-200 hover:bg-brand-50 hover:text-brand-700',
         },
         [h(FeatherIcon, { name: 'file-text', class: 'h-3.5 w-3.5' }), p.label],
       )

@@ -1,57 +1,99 @@
 <template>
-  <div class="rounded-lg border bg-white p-4">
-    <div class="mb-3 flex items-center justify-between gap-2">
-      <div class="text-sm font-semibold text-gray-900">Application Form</div>
-      <div class="flex items-center gap-2">
-        <a
-          v-if="job.status === 'Advertised'"
-          :href="`/pathways/portal/jobs/${job.name}/apply`"
-          target="_blank"
-          class="text-sm text-blue-600 hover:underline"
-        >
-          View public form
-        </a>
-        <Button v-if="canWrite && !editing" size="sm" @click="startEdit">Edit</Button>
-      </div>
-    </div>
+  <SectionCard title="Application Form" icon="edit-3" subtitle="What candidates are asked when they apply">
+    <template #actions>
+      <Button
+        v-if="job.status === 'Advertised'"
+        variant="outline"
+        icon-left="eye"
+        class="!border-brand-200 !bg-white !text-brand-700 hover:!bg-brand-50"
+        :link="`/pathways/portal/jobs/${job.name}/apply`"
+      >
+        Preview
+      </Button>
+      <Button
+        v-if="canWrite && !editing"
+        variant="solid"
+        icon-left="edit-2"
+        class="!bg-brand-700 !text-white hover:!bg-brand-800"
+        @click="startEdit"
+      >
+        Edit
+      </Button>
+    </template>
 
     <!-- Read view -->
-    <div v-if="!editing" class="flex flex-col gap-3 text-sm">
-      <div class="flex flex-wrap gap-x-6 gap-y-1">
-        <span class="text-gray-500">
-          Deadline:
-          <span class="text-gray-900">{{ job.application_deadline ? formatDateTime(job.application_deadline) : 'Not set' }}</span>
-        </span>
-        <span class="text-gray-500">
-          Post Graduate degree: <span class="text-gray-900">{{ job.require_postgraduate ? 'Required' : 'Optional' }}</span>
-        </span>
+    <div v-if="!editing" class="flex flex-col gap-5 text-sm">
+      <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div class="flex items-center gap-3 rounded-lg bg-brand-50 px-3 py-2.5">
+          <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-100 text-brand-700">
+            <FeatherIcon name="calendar" class="h-4 w-4" />
+          </div>
+          <div>
+            <div class="text-xs text-gray-600">Deadline</div>
+            <div class="font-semibold text-gray-900">
+              {{ job.application_deadline ? formatDateTime(job.application_deadline) : 'Not set' }}
+            </div>
+          </div>
+        </div>
+        <div class="flex items-center gap-3 rounded-lg bg-gray-50 px-3 py-2.5">
+          <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gray-200 text-gray-700">
+            <FeatherIcon name="book-open" class="h-4 w-4" />
+          </div>
+          <div>
+            <div class="text-xs text-gray-600">Postgraduate degree</div>
+            <div class="font-semibold text-gray-900">{{ job.require_postgraduate ? 'Mandatory' : 'Optional' }}</div>
+          </div>
+        </div>
       </div>
-      <div v-if="!job.application_deadline" class="rounded border border-orange-200 bg-orange-50 px-3 py-2 text-orange-800">
+      <div v-if="!job.application_deadline" class="rounded-lg border border-orange-200 bg-orange-50 px-3 py-2 text-orange-800">
         Set an application deadline before advertising this job.
       </div>
+
       <div>
-        <div class="mb-1 text-gray-500">Screening questions</div>
-        <ol v-if="job.screening_questions?.length" class="list-decimal pl-5 text-gray-900">
-          <li v-for="q in job.screening_questions" :key="q.name">
-            {{ q.question }}
-            <span class="text-xs text-gray-500">
-              ({{ q.answer_type }}<template v-if="q.is_mandatory">, required</template><template v-if="q.ask_details_if_yes">, details if Yes</template>)
+        <div class="mb-2 flex items-center gap-2 font-semibold text-gray-900">
+          Eligibility questions
+          <span class="rounded-full bg-gray-100 px-2 text-xs font-normal text-gray-600">{{ job.screening_questions?.length || 0 }}</span>
+        </div>
+        <ol v-if="job.screening_questions?.length" class="flex flex-col gap-2">
+          <li v-for="(q, idx) in job.screening_questions" :key="q.name" class="flex gap-3 rounded-lg border border-gray-100 px-3 py-2.5">
+            <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-700 text-xs font-bold text-white">
+              {{ idx + 1 }}
             </span>
+            <div class="min-w-0">
+              <div class="text-gray-900">{{ q.question }}</div>
+              <div class="mt-1.5 flex flex-wrap gap-1.5 text-xs">
+                <span class="rounded bg-gray-100 px-1.5 py-0.5 text-gray-600">{{ q.answer_type }}</span>
+                <span v-if="q.is_mandatory" class="rounded bg-brand-100 px-1.5 py-0.5 font-medium text-brand-800">Required</span>
+                <span v-if="q.ask_details_if_yes" class="rounded px-1.5 py-0.5 font-medium text-brand-700">Details if Yes</span>
+              </div>
+            </div>
           </li>
         </ol>
-        <div v-else class="text-gray-500">None.</div>
+        <div v-else class="text-gray-500">No eligibility questions.</div>
       </div>
+
       <div>
-        <div class="mb-1 text-gray-500">Supporting documents</div>
-        <div v-if="job.required_documents?.length" class="flex flex-wrap gap-1.5">
-          <span v-for="d in job.required_documents" :key="d.name" class="rounded bg-gray-100 px-2 py-0.5 text-gray-700">
-            {{ d.document_type }}<template v-if="!d.is_mandatory"> (optional)</template>
-          </span>
+        <div class="mb-2 font-semibold text-gray-900">Supporting documents</div>
+        <div v-if="job.required_documents?.length" class="flex flex-col gap-3">
+          <div v-for="group in documentGroups" :key="group.label">
+            <div class="mb-1.5 text-xs font-medium uppercase tracking-wide text-gray-500">{{ group.label }} · {{ group.items.length }}</div>
+            <div class="flex flex-wrap gap-1.5">
+              <span
+                v-for="d in group.items"
+                :key="d.name"
+                class="inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs"
+                :class="group.required ? 'border-gray-300 bg-white text-gray-800' : 'border-dashed border-gray-300 text-gray-600'"
+              >
+                <FeatherIcon name="file" class="h-3 w-3 text-brand-700" />{{ d.document_type }}
+              </span>
+            </div>
+          </div>
         </div>
-        <div v-else class="text-gray-500">
-          Default — active Document Types marked for Application. Resume, SOP, transcripts and degree certificates are always
-          asked for.
-        </div>
+        <div v-else class="text-gray-500">Default list — active Document Types marked for Application.</div>
+        <p class="mt-3 flex items-center gap-1.5 text-xs text-gray-500">
+          <FeatherIcon name="info" class="h-3.5 w-3.5" />
+          Resume, SOP, degree certificates and transcripts are always asked for.
+        </p>
       </div>
     </div>
 
@@ -149,15 +191,16 @@
         <Button variant="solid" :loading="saving" @click="save">Save</Button>
       </div>
     </div>
-  </div>
+  </SectionCard>
 </template>
 
 <script setup>
-import { reactive, ref } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import { Button, ErrorMessage, FeatherIcon, FormControl, call } from 'frappe-ui'
 import { toast } from '@/utils/notify'
 import dayjs from 'dayjs'
 import { jobOpeningService } from '@/services/jobOpenings'
+import SectionCard from '@/components/common/SectionCard.vue'
 
 const props = defineProps({
   job: { type: Object, required: true },
@@ -170,6 +213,14 @@ const saving = ref(false)
 const error = ref('')
 const documentTypes = ref([])
 const form = reactive({ application_deadline: '', require_postgraduate: false, screening_questions: [], required_documents: [] })
+
+const documentGroups = computed(() => {
+  const docs = props.job.required_documents || []
+  return [
+    { label: 'Required', required: true, items: docs.filter((d) => d.is_mandatory) },
+    { label: 'Optional', required: false, items: docs.filter((d) => !d.is_mandatory) },
+  ].filter((group) => group.items.length)
+})
 
 function formatDateTime(value) {
   return dayjs(value).format('DD MMM YYYY, h:mm A')

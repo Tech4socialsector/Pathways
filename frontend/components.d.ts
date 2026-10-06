@@ -10,6 +10,7 @@ declare module 'vue' {
   export interface GlobalComponents {
     ApplicationFormPanel: typeof import('./src/components/jobs/ApplicationFormPanel.vue')['default']
     ApplicationSubmissionPanel: typeof import('./src/components/common/ApplicationSubmissionPanel.vue')['default']
+    BackButton: typeof import('./src/components/common/BackButton.vue')['default']
     DataTable: typeof import('./src/components/common/DataTable.vue')['default']
     DocumentViewer: typeof import('./src/components/common/DocumentViewer.vue')['default']
     EmptyState: typeof import('./src/components/common/EmptyState.vue')['default']
@@ -22,10 +23,12 @@ declare module 'vue' {
     RoleAwareSidebar: typeof import('./src/components/layout/RoleAwareSidebar.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
+    SectionCard: typeof import('./src/components/common/SectionCard.vue')['default']
     SettingsDialog: typeof import('./src/components/layout/SettingsDialog.vue')['default']
     ShortlistingReviewPanel: typeof import('./src/components/common/ShortlistingReviewPanel.vue')['default']
     SidebarNavLink: typeof import('./src/components/layout/SidebarNavLink.vue')['default']
     StatusBadge: typeof import('./src/components/common/StatusBadge.vue')['default']
+    TopBar: typeof import('./src/components/layout/TopBar.vue')['default']
     UploadField: typeof import('./src/components/candidate/UploadField.vue')['default']
   }
 }

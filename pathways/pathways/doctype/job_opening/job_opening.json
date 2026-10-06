@@ -7,6 +7,7 @@
  "engine": "InnoDB",
  "field_order": [
   "naming_series",
+  "position",
   "job_title",
   "track",
   "department",
@@ -38,6 +39,15 @@
    "fieldtype": "Select",
    "label": "Series",
    "options": "PWY-JOB-.YYYY.-"
+  },
+  {
+   "fieldname": "position",
+   "fieldtype": "Link",
+   "label": "Position (Job Code)",
+   "options": "Position",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "description": "Picking a position fills in the title, track, department, designation, pay, tenure, eligibility questions and documents."
   },
   {
    "fieldname": "job_title",
@@ -75,12 +85,13 @@
    "fieldtype": "Column Break"
   },
   {
-   "fetch_from": "designation.employment_type",
+   "fetch_from": "position.employment_type",
    "fieldname": "employment_type",
    "fieldtype": "Select",
    "label": "Employment Type",
-   "options": "Permanent\nConsultant\nGrant-funded\nContract",
-   "reqd": 1
+   "options": "\nPermanent\nConsultant\nGrant-funded\nContract",
+   "reqd": 1,
+   "fetch_if_empty": 1
   },
   {
    "default": "1",
@@ -95,10 +106,11 @@
    "label": "Tenure Description"
   },
   {
-   "fetch_from": "designation.pay_level_range",
+   "fetch_from": "position.pay_level",
    "fieldname": "pay_level",
    "fieldtype": "Data",
-   "label": "Pay Level"
+   "label": "Pay Level",
+   "fetch_if_empty": 1
   },
   {
    "default": "Draft",
@@ -196,7 +208,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-10-06 17:00:00.000000",
+ "modified": "2026-10-06 20:00:00.000000",
  "modified_by": "Administrator",
  "module": "Pathways",
  "name": "Job Opening",

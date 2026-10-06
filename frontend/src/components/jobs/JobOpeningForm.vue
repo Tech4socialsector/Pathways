@@ -3,6 +3,18 @@
        dialog so the Job Description editor never pushes Save off-screen. -->
   <div class="-mx-1 flex max-h-[70vh] flex-col gap-4 overflow-y-auto px-1 pb-1">
     <ErrorMessage :message="error" />
+    <div>
+      <span class="mb-1.5 block text-sm text-gray-700">Position (Job Code)</span>
+      <Autocomplete
+        placeholder="Select a position"
+        :options="positionOptions.options.value"
+        :model-value="form.position"
+        @update:model-value="(opt) => selectPosition(opt?.value ?? '')"
+      />
+      <p class="mt-1 text-xs text-gray-500">
+        Fills in the details below and, on save, the position's eligibility questions and documents.
+      </p>
+    </div>
     <FormControl label="Job Title" v-model="form.job_title" required />
     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
       <div>
@@ -128,12 +140,13 @@
 </template>
 
 <script>
-export const EMPLOYMENT_TYPES = ['Permanent', 'Consultant', 'Grant-funded', 'Contract']
+export const EMPLOYMENT_TYPES = ['', 'Permanent', 'Consultant', 'Grant-funded', 'Contract']
 // Options of Reservation Category Row.category.
 export const RESERVATION_CATEGORIES = ['', 'General', 'SC', 'ST', 'OBC', 'EWS', 'PWD']
 
 export function emptyJobForm() {
   return {
+    position: '',
     job_title: '',
     track: '',
     department: '',
@@ -152,7 +165,13 @@ export function emptyJobForm() {
 <script setup>
 import { computed, onMounted } from 'vue'
 import { Autocomplete, Button, ErrorMessage, FileUploader, FormControl, TextEditor } from 'frappe-ui'
-import { useRecruitmentTrackOptions, useDepartmentOptions, useDesignationOptions } from '@/composables/useMasterData'
+import {
+  useRecruitmentTrackOptions,
+  useDepartmentOptions,
+  useDesignationOptions,
+  usePositionOptions,
+} from '@/composables/useMasterData'
+import { masterSetupService } from '@/services/masterSetup'
 
 const props = defineProps({
   // Reactive object owned by the parent; fields are edited in place.
@@ -169,8 +188,32 @@ const reservedTotal = computed(() =>
 const trackOptions = useRecruitmentTrackOptions()
 const departmentOptions = useDepartmentOptions()
 const designationOptions = useDesignationOptions()
+const positionOptions = usePositionOptions()
+
+// Position field -> form field. Picking a position overwrites these, so
+// switching positions never leaves the previous post's values behind.
+const POSITION_FIELDS = {
+  position_title: 'job_title',
+  track: 'track',
+  department: 'department',
+  designation: 'designation',
+  employment_type: 'employment_type',
+  pay_level: 'pay_level',
+  tenure_description: 'tenure_description',
+}
+
+async function selectPosition(name) {
+  props.form.position = name
+  if (!name) return
+  const position = await masterSetupService.getPosition(name)
+  if (props.form.position !== name) return
+  for (const [source, target] of Object.entries(POSITION_FIELDS)) {
+    if (position[source]) props.form[target] = position[source]
+  }
+}
 
 onMounted(() => {
+  positionOptions.fetch()
   trackOptions.fetch()
   departmentOptions.fetch()
   designationOptions.fetch()

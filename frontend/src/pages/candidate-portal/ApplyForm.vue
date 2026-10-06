@@ -11,6 +11,7 @@
       </EmptyState>
 
       <template v-else>
+        <BackButton :fallback="`/portal/jobs/${props.id}`" class="mb-4" />
         <header class="overflow-hidden rounded-xl border bg-white shadow-sm">
           <div class="border-b bg-gradient-to-r from-indigo-50 to-white px-5 py-5 sm:px-6">
             <div class="text-xs font-bold uppercase tracking-wider text-indigo-600">Application Form</div>
@@ -419,6 +420,7 @@
 </template>
 
 <script setup>
+import BackButton from '@/components/common/BackButton.vue'
 import { computed, h, nextTick, onMounted, provide, reactive, ref, watch } from 'vue'
 import { Button, FeatherIcon, FormControl } from 'frappe-ui'
 import dayjs from 'dayjs'

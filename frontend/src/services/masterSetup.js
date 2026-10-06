@@ -7,4 +7,7 @@ export const masterSetupService = {
   getMasterSetup() {
     return callMethod('pathways.api.master_setup.get_master_setup')
   },
+  getPosition(name) {
+    return callMethod('frappe.client.get', { doctype: 'Position', name })
+  },
 }

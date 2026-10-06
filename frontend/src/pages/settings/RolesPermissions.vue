@@ -37,7 +37,7 @@
       </aside>
 
       <!-- Selected role -->
-      <section v-if="selected" class="flex min-w-0 flex-1 flex-col">
+      <section v-if="selected" class="flex min-h-0 min-w-0 flex-1 flex-col">
         <div class="flex flex-wrap items-center justify-between gap-3 border-b px-6 py-3">
           <div class="min-w-0">
             <div class="truncate text-base font-semibold text-gray-900">{{ selected.role }}</div>
@@ -65,8 +65,10 @@
         </div>
 
         <!-- Permissions tab -->
-        <div v-if="tab === 'permissions'" class="flex-1 overflow-y-auto p-6">
-          <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
+        <!-- Only the table scrolls, so its header can stay pinned (sticky
+             sticks to the nearest scrolling box, which is the table's). -->
+        <div v-if="tab === 'permissions'" class="flex min-h-0 flex-1 flex-col p-6">
+          <div class="mb-3 flex shrink-0 flex-wrap items-center justify-between gap-3">
             <div class="w-72">
               <TextInput v-model="doctypeQuery" placeholder="Search document types...">
                 <template #prefix><FeatherIcon name="search" class="h-4 w-4 text-gray-500" /></template>
@@ -78,19 +80,19 @@
             </label>
           </div>
 
-          <div class="mb-3 rounded border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-800">
+          <div class="mb-3 shrink-0 rounded border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-800">
             <b>Read</b> on a document type also shows its menu in the sidebar. Turning a permission on adds what
             it depends on (e.g. Amend → Cancel → Submit → Write → Read); turning one off removes what depends on it.
             Who approves Green Sheets is set in Master Setup &rsaquo; Approval Chains, not here.
           </div>
 
-          <div class="overflow-x-auto rounded-lg border bg-white">
+          <div class="min-h-0 flex-1 overflow-auto rounded-lg border bg-white">
             <table class="w-full text-sm">
-              <thead class="border-b bg-gray-50 text-left text-xs uppercase text-gray-500">
+              <thead class="sticky top-0 z-10 bg-gray-50 text-left text-xs uppercase text-gray-500 shadow-[inset_0_-1px_0_theme(colors.gray.200)]">
                 <tr>
-                  <th class="px-4 py-2">Document Type</th>
-                  <th v-for="p in ptypes" :key="p" class="px-2 py-2 text-center">{{ ptypeLabel(p) }}</th>
-                  <th class="px-2 py-2"></th>
+                  <th class="bg-gray-50 px-4 py-2.5">Document Type</th>
+                  <th v-for="p in ptypes" :key="p" class="bg-gray-50 px-2 py-2.5 text-center">{{ ptypeLabel(p) }}</th>
+                  <th class="bg-gray-50 px-2 py-2.5"></th>
                 </tr>
               </thead>
               <tbody>

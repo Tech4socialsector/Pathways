@@ -12,6 +12,8 @@ frappe.get_doc/get_all/new_doc/delete_doc already enforce them, so
 duplicating that logic here would only risk drifting out of sync.
 """
 
+from collections import Counter
+
 import frappe
 
 from pathways.pathways.doctype.job_opening.job_opening import can_override_status
@@ -29,7 +31,22 @@ def get_job_opening(job_opening):
 	"""
 	doc = frappe.get_doc("Job Opening", job_opening)
 	doc.check_permission("read")
-	return doc.as_dict()
+	detail = doc.as_dict()
+
+	# Summary only: counts are shown to anyone who can read the job; the
+	# applications themselves stay behind Application permissions.
+	statuses = frappe.get_all(
+		"Application", filters={"job_opening": doc.name}, pluck="status", ignore_permissions=True
+	)
+	detail["application_counts"] = dict(Counter(statuses))
+	detail["position_detail"] = (
+		frappe.db.get_value(
+			"Position", doc.position, ["job_code", "position_title", "reports_to", "hiring_manager_role"], as_dict=True
+		)
+		if doc.position
+		else None
+	)
+	return detail
 
 
 @frappe.whitelist()
@@ -47,6 +64,7 @@ def list_job_openings(filters=None, limit_start=0, limit_page_length=20):
 		filters=filters,
 		fields=[
 			"name",
+			"position",
 			"job_title",
 			"track",
 			"department",
