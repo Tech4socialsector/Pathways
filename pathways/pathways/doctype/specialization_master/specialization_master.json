@@ -1,16 +1,26 @@
 {
  "actions": [],
  "allow_rename": 0,
- "autoname": "hash",
+ "autoname": "naming_series:",
  "creation": "2026-09-21 00:00:00.000000",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
+  "naming_series",
   "specialization_name",
   "discipline",
   "is_active"
  ],
  "fields": [
+  {
+   "default": "PWY-SPEC-.####",
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "hidden": 1,
+   "label": "Series",
+   "options": "PWY-SPEC-.####",
+   "reqd": 1
+  },
   {
    "fieldname": "specialization_name",
    "fieldtype": "Data",
@@ -37,11 +47,11 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-09-21 00:00:00.000000",
+ "modified": "2026-10-06 15:30:00.000000",
  "modified_by": "Administrator",
  "module": "Pathways",
  "name": "Specialization Master",
- "naming_rule": "Random",
+ "naming_rule": "By \"Naming Series\" field",
  "owner": "Administrator",
  "permissions": [
   {
@@ -73,8 +83,11 @@
    "role": "Pathways Recruiter"
   }
  ],
+ "search_fields": "specialization_name",
+ "show_title_field_in_link": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],
+ "title_field": "specialization_name",
  "track_changes": 0
 }
