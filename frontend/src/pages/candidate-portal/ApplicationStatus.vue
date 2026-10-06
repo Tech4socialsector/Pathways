@@ -54,7 +54,8 @@
 
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
-import { Button, FormControl, toast } from 'frappe-ui'
+import { Button, FormControl } from 'frappe-ui'
+import { toast } from '@/utils/notify'
 import CandidatePortalLayout from '@/layouts/CandidatePortalLayout.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
 import RecruitmentTimeline from '@/components/common/RecruitmentTimeline.vue'

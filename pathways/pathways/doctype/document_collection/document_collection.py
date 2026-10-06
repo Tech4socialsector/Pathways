@@ -86,8 +86,10 @@ def verify_document(document_collection_name, document_type, verified=True, reje
 	Document Collection (to submit documents) but must never be able to
 	verify them.
 	"""
-	if "Pathways Admin" not in frappe.get_roles() and "Pathways PNCO" not in frappe.get_roles():
-		frappe.throw("You are not authorised to verify documents.")
+	from pathways.permissions import has_duty
+
+	if not has_duty("document_verifier_roles"):
+		frappe.throw("You are not authorised to verify documents.", frappe.PermissionError)
 
 	doc = frappe.get_doc("Document Collection", document_collection_name)
 	row = next((r for r in doc.checklist if r.document_type == document_type), None)

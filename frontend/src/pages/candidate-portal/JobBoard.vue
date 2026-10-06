@@ -17,6 +17,9 @@
           <div class="mt-1 text-sm text-gray-500">
             {{ job.department }} &middot; {{ job.employment_type }} &middot; {{ job.vacancies }} vacancy(ies)
           </div>
+          <div v-if="job.application_deadline" class="mt-1 text-xs text-gray-500">
+            Apply by {{ dayjs(job.application_deadline).format('DD MMM YYYY, h:mm A') }}
+          </div>
         </div>
       </div>
     </div>
@@ -25,6 +28,7 @@
 
 <script setup>
 import { onMounted } from 'vue'
+import dayjs from 'dayjs'
 import CandidatePortalLayout from '@/layouts/CandidatePortalLayout.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import { useJobOpenings } from '@/composables/useJobOpenings'

@@ -11,9 +11,14 @@ class Corrigendum(Document):
 		self.apply_to_notification()
 
 	def enforce_registrar_signoff(self):
-		user_roles = frappe.get_roles(frappe.session.user)
-		if "Pathways Registrar" not in user_roles and "Pathways Admin" not in user_roles:
-			frappe.throw("Only the Registrar can create or sign a Corrigendum.")
+		from pathways.permissions import has_duty
+
+		if not has_duty("corrigendum_signer_roles"):
+			frappe.throw(
+				"You are not authorised to create or sign a Corrigendum "
+				"(see Pathways Settings > Corrigendum Signer Roles).",
+				frappe.PermissionError,
+			)
 		self.signed_by = frappe.session.user
 
 	def apply_to_notification(self):

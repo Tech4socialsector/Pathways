@@ -19,21 +19,30 @@
   "current_salary",
   "expected_salary",
   "earliest_doj",
+  "overall_experience_years",
+  "relevant_experience_years",
+  "notice_period",
   "column_break_2",
   "resume_attachment",
   "sop_attachment",
+  "additional_attachment",
   "qualifications_tab",
   "qualifications",
   "employment_tab",
   "employment_history",
   "references_tab",
   "references",
+  "screening_tab",
+  "screening_answers",
   "publications_tab",
   "publications",
   "admin_responsibility_tab",
   "administrative_responsibilities",
   "documents_tab",
-  "documents"
+  "documents",
+  "declaration_section",
+  "declaration_accepted",
+  "declaration_accepted_on"
  ],
  "fields": [
   {
@@ -125,6 +134,21 @@
    "label": "Earliest Date of Joining"
   },
   {
+   "fieldname": "overall_experience_years",
+   "fieldtype": "Float",
+   "label": "Overall Work Experience (Years)"
+  },
+  {
+   "fieldname": "relevant_experience_years",
+   "fieldtype": "Float",
+   "label": "Relevant Work Experience (Years)"
+  },
+  {
+   "fieldname": "notice_period",
+   "fieldtype": "Data",
+   "label": "Current Notice Period"
+  },
+  {
    "fieldname": "column_break_2",
    "fieldtype": "Column Break"
   },
@@ -137,6 +161,11 @@
    "fieldname": "sop_attachment",
    "fieldtype": "Attach",
    "label": "Statement of Purpose"
+  },
+  {
+   "fieldname": "additional_attachment",
+   "fieldtype": "Attach",
+   "label": "Additional Documents"
   },
   {
    "fieldname": "qualifications_tab",
@@ -172,6 +201,17 @@
    "options": "Application Reference"
   },
   {
+   "fieldname": "screening_tab",
+   "fieldtype": "Tab Break",
+   "label": "Screening"
+  },
+  {
+   "fieldname": "screening_answers",
+   "fieldtype": "Table",
+   "label": "Screening Answers",
+   "options": "Application Screening Answer"
+  },
+  {
    "depends_on": "eval:doc.track",
    "fieldname": "publications_tab",
    "fieldtype": "Tab Break",
@@ -205,11 +245,29 @@
    "fieldtype": "Table",
    "label": "Supporting Documents",
    "options": "Application Document"
+  },
+  {
+   "fieldname": "declaration_section",
+   "fieldtype": "Section Break",
+   "label": "Declaration"
+  },
+  {
+   "default": "0",
+   "fieldname": "declaration_accepted",
+   "fieldtype": "Check",
+   "label": "Declaration Accepted",
+   "read_only": 1
+  },
+  {
+   "fieldname": "declaration_accepted_on",
+   "fieldtype": "Datetime",
+   "label": "Declaration Accepted On",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-09-21 00:00:00.000000",
+ "modified": "2026-10-06 15:44:09.371312",
  "modified_by": "Administrator",
  "module": "Pathways",
  "name": "Application",

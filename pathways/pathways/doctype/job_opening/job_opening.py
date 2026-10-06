@@ -2,7 +2,9 @@
 # For license information, please see license.txt
 
 import frappe
+from frappe import _
 from frappe.model.document import Document
+from frappe.utils import get_datetime, now_datetime
 
 # Statuses that may only be reached once the linked Pre-Recruitment Green
 # Sheet has been fully approved (unless the user can override, see below).
@@ -10,16 +12,42 @@ STATUSES_REQUIRING_APPROVED_GREEN_SHEET = ("Approved", "Advertised")
 
 
 def can_override_status(user=None):
-	"""System Managers may set any Job Opening status directly, without
+	"""Holders of Pathways Settings > Job Status Override Role (System
+	Manager by default) may set any Job Opening status directly, without
 	going through the Pre-Recruitment Green Sheet approval chain.
 	"""
-	return "System Manager" in frappe.get_roles(user or frappe.session.user)
+	role = frappe.get_cached_doc("Pathways Settings").get("status_override_role")
+	return bool(role) and role in frappe.get_roles(user or frappe.session.user)
 
 
 class JobOpening(Document):
 	def validate(self):
 		self.validate_green_sheet_link()
 		self.validate_status_transition()
+		self.validate_application_form()
+
+	def validate_application_form(self):
+		for q in self.screening_questions or []:
+			if q.answer_type == "Single Choice":
+				options = [o.strip() for o in (q.options or "").splitlines() if o.strip()]
+				if len(options) < 2:
+					frappe.throw(_("Screening question {0}: give at least two choices, one per line.").format(q.idx))
+				if len(options) != len(set(options)):
+					frappe.throw(_("Screening question {0}: choices must be unique.").format(q.idx))
+			if q.answer_type != "Yes/No":
+				q.ask_details_if_yes = 0
+
+		seen = set()
+		for row in self.required_documents or []:
+			if row.document_type in seen:
+				frappe.throw(_("Required document {0} is listed twice.").format(row.document_type))
+			seen.add(row.document_type)
+
+		if self.status == "Advertised" and self.has_value_changed("status"):
+			if not self.application_deadline:
+				frappe.throw(_("Set an Application Deadline before advertising this job."))
+			if get_datetime(self.application_deadline) <= now_datetime():
+				frappe.throw(_("The Application Deadline must be in the future to advertise this job."))
 
 	def validate_green_sheet_link(self):
 		if not self.pre_recruitment_green_sheet or self.is_new():

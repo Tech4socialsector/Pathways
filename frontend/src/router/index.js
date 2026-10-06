@@ -65,6 +65,12 @@ const routes = [
     meta: { requiresStaff: true },
   },
   {
+    path: '/settings/access',
+    name: 'RolesPermissions',
+    component: () => import('@/pages/settings/RolesPermissions.vue'),
+    meta: { requiresStaff: true, requiresAccessManager: true },
+  },
+  {
     path: '/reports',
     name: 'Reports',
     component: () => import('@/pages/Reports.vue'),
@@ -128,6 +134,11 @@ router.beforeEach(async (to) => {
 
   if (to.meta.requiresStaff && !session.isStaff) {
     return { path: '/portal/applications' }
+  }
+
+  // UX only — every Roles & Permissions endpoint is System Manager-only server-side.
+  if (to.meta.requiresAccessManager && !session.canManageAccess) {
+    return { path: '/' }
   }
 
   return true

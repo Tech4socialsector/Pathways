@@ -110,7 +110,8 @@
 
 <script setup>
 import { reactive, ref, watch } from 'vue'
-import { Button, FormControl, ErrorMessage, FeatherIcon, toast } from 'frappe-ui'
+import { Button, FormControl, ErrorMessage, FeatherIcon } from 'frappe-ui'
+import { toast } from '@/utils/notify'
 import StatusBadge from './StatusBadge.vue'
 import { scoringService } from '@/services/scoring'
 

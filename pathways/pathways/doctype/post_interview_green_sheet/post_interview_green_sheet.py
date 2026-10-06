@@ -2,14 +2,17 @@
 # For license information, please see license.txt
 
 import frappe
+from frappe import _
 from frappe.model.document import Document
 
+from pathways.utils.approval import freeze_steps, set_approval_chain_template
 from pathways.utils.approval import record_approval_action as _record_approval_action
-from pathways.utils.approval import set_approval_chain_template
 
 
 class PostInterviewGreenSheet(Document):
 	def validate(self):
+		# Also copies the track from the Job Opening — without it no
+		# template could ever be matched.
 		set_approval_chain_template(self, "Post-Interview Green Sheet")
 		self.validate_recommended_application()
 
@@ -18,29 +21,30 @@ class PostInterviewGreenSheet(Document):
 			return
 		app_job_opening = frappe.db.get_value("Application", self.recommended_application, "job_opening")
 		if app_job_opening != self.job_opening:
-			frappe.throw("Recommended Application does not belong to this Job Opening.")
+			frappe.throw(_("Recommended Application does not belong to this Job Opening."))
 
 		if self.waitlist_application:
+			if self.waitlist_application == self.recommended_application:
+				frappe.throw(_("The waitlisted candidate must differ from the recommended candidate."))
 			wl_job_opening = frappe.db.get_value("Application", self.waitlist_application, "job_opening")
 			if wl_job_opening != self.job_opening:
-				frappe.throw("Waitlist Application does not belong to this Job Opening.")
+				frappe.throw(_("Waitlist Application does not belong to this Job Opening."))
 
 	def before_submit(self):
-		if not self.approval_chain_template:
-			frappe.throw(
-				"No active Approval Chain Template found for this track. "
-				"Configure one before submitting for approval."
-			)
-		self.status = "Under Approval"
-		self.current_approval_level = 1
+		freeze_steps(self)
+
+	def on_submit(self):
+		from pathways.utils.approval import get_current_step, notify_approvers
+
+		step = get_current_step(self)
+		if step:
+			notify_approvers(self, step)
 
 	def on_cancel(self):
-		self.status = "Draft"
-		self.current_approval_level = 0
+		# Changes to self are not persisted after on_cancel, hence db_set.
+		self.db_set({"status": "Draft", "current_approval_level": 0})
 
 
 @frappe.whitelist()
 def record_approval_action(green_sheet_name, action, remarks=None, channel="Digital"):
-	return _record_approval_action(
-		"Post-Interview Green Sheet", green_sheet_name, action, remarks, channel
-	)
+	return _record_approval_action("Post-Interview Green Sheet", green_sheet_name, action, remarks, channel)

@@ -14,7 +14,8 @@
   "percentage_or_cgpa",
   "division_grade",
   "specialization",
-  "transcript_attachment"
+  "transcript_attachment",
+  "certificate_attachment"
  ],
  "fields": [
   {
@@ -71,12 +72,17 @@
    "fieldname": "transcript_attachment",
    "fieldtype": "Attach",
    "label": "Transcript"
+  },
+  {
+   "fieldname": "certificate_attachment",
+   "fieldtype": "Attach",
+   "label": "Degree Certificate"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2026-09-21 00:00:00.000000",
+ "modified": "2026-10-06 15:44:09.371312",
  "modified_by": "Administrator",
  "module": "Pathways",
  "name": "Application Qualification",

@@ -3,7 +3,7 @@
     <PageHeader title="Job Openings">
       <template #actions>
         <Button
-          v-if="session.hasAnyRole(['System Manager', 'Pathways Admin', 'Pathways Recruiter'])"
+          v-if="session.can('Job Opening', 'create')"
           variant="solid"
           @click="openCreateDialog"
         >
@@ -103,7 +103,8 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { toast, Autocomplete } from 'frappe-ui'
+import { Autocomplete } from 'frappe-ui'
+import { toast } from '@/utils/notify'
 import StaffLayout from '@/layouts/StaffLayout.vue'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import EmptyState from '@/components/common/EmptyState.vue'

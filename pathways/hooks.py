@@ -26,8 +26,7 @@ add_to_apps_screen = [
 # instead of hunting for the core "Apps" item. Synced into Navbar
 # Settings by frappe.core.doctype.navbar_settings on every bench migrate
 # — the documented extension point for this, not a one-off fixture.
-# Pathways Candidate is excluded: it's a Website User role and never
-# sees the Desk navbar at all.
+# Website Users (candidates) never see the Desk navbar at all.
 
 standard_navbar_items = [
 	{
@@ -35,16 +34,13 @@ standard_navbar_items = [
 		"item_type": "Route",
 		"route": "/pathways",
 		"icon": "layout-grid",
-		"condition": (
-			'frappe.user.has_role(["Pathways Admin", "Pathways Recruiter", "Pathways PNCO", '
-			'"Pathways Director People Culture", "Pathways Dean Academics", "Pathways Dean Research", '
-			'"Pathways Senior Manager Research", "Pathways CFO", "Pathways Registrar", '
-			'"Pathways Vice Chancellor", "Pathways Shortlisting Committee Member", '
-			'"Pathways Selection Committee Member", "Pathways Communications", "Pathways IT Facilities"])'
-		),
+		# Set by extend_bootinfo from the configurable Pathways role list.
+		"condition": "frappe.boot.pathways_has_access",
 		"is_standard": 1,
 	}
 ]
+
+extend_bootinfo = "pathways.permissions.extend_bootinfo"
 
 # Includes in <head>
 # ------------------
@@ -214,6 +210,9 @@ doc_events = {
 # ---------------
 
 scheduler_events = {
+	"hourly": [
+		"pathways.tasks.hourly",
+	],
 	"daily": [
 		"pathways.tasks.daily",
 	],

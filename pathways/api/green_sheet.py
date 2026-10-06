@@ -14,6 +14,7 @@ import frappe
 
 from pathways.api.approval import get_approval_chain_status
 from pathways.pathways.doctype.job_opening.job_opening import can_override_status
+from pathways.utils.approval import check_can_act, find_template, reset_for_amendment
 
 DOCTYPE = "Pre-Recruitment Green Sheet"
 # Sheets that block raising another one for the same job.
@@ -71,28 +72,18 @@ def get_job_green_sheets(job_opening):
 	current = next((s for s in sheets if s.docstatus != 2), None)
 	chain = None
 	can_act = False
+	act_blocked_reason = None
 	if current and current.docstatus == 1:
 		chain = get_approval_chain_status(DOCTYPE, current.name)
 		if current.status == "Under Approval":
-			step = next(
-				(s for s in chain["steps"] if s["sequence"] == current.current_approval_level), None
-			)
-			roles = frappe.get_roles()
-			can_act = bool(step) and (
-				step["approver_role"] in roles or "Pathways Admin" in roles
-			)
+			can_act, _is_override, act_blocked_reason = check_can_act(frappe.get_doc(DOCTYPE, current.name))
 
 	return {
 		"sheets": sheets,
 		"current": current,
 		"chain": chain,
-		"has_chain_template": bool(
-			job.track
-			and frappe.db.exists(
-				"Approval Chain Template",
-				{"track": job.track, "applies_to": DOCTYPE, "is_active": 1},
-			)
-		),
+		"has_chain_template": bool(find_template(job.track, DOCTYPE, job.employment_type)),
+		"act_blocked_reason": act_blocked_reason,
 		"permissions": {
 			"can_create": frappe.has_permission(DOCTYPE, "create"),
 			"can_submit": frappe.has_permission(DOCTYPE, "submit"),
@@ -169,10 +160,7 @@ def revise_green_sheet(name):
 
 	amended = frappe.copy_doc(doc)
 	amended.amended_from = doc.name
-	amended.status = "Draft"
-	amended.current_approval_level = 0
-	amended.approval_chain_template = None
-	amended.set("approval_log", [])
+	reset_for_amendment(amended)
 	amended.insert()
 	return amended.name
 

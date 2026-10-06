@@ -20,6 +20,8 @@
             :rubric="rubric"
             @scored="fetchStatus(props.id)"
           />
+
+          <ApplicationSubmissionPanel :application-name="props.id" />
         </div>
 
         <div class="flex flex-col gap-4">
@@ -64,6 +66,7 @@ import EmptyState from '@/components/common/EmptyState.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
 import RecruitmentTimeline from '@/components/common/RecruitmentTimeline.vue'
 import ShortlistingReviewPanel from '@/components/common/ShortlistingReviewPanel.vue'
+import ApplicationSubmissionPanel from '@/components/common/ApplicationSubmissionPanel.vue'
 import { useApplicationStatus } from '@/composables/useApplications'
 import { useApplicationReview } from '@/composables/useScoring'
 import { useSessionStore } from '@/stores/session'
@@ -74,8 +77,10 @@ const session = useSessionStore()
 const { status, loading, fetchStatus } = useApplicationStatus()
 const { review, rubric, fetchReview } = useApplicationReview()
 
-const canReview = computed(() =>
-  session.hasAnyRole(['Pathways Shortlisting Committee Member', 'Pathways Admin']),
+// Committee membership is a behavioural role; staff who can see the whole
+// pipeline may review too. Scoring itself is permission-checked server-side.
+const canReview = computed(
+  () => session.hasRole('Pathways Shortlisting Committee Member') || session.canViewPipeline,
 )
 
 const PIPELINE = [

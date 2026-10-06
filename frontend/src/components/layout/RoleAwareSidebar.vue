@@ -9,11 +9,11 @@
           class="mb-3 flex w-full items-center gap-2 rounded px-2 py-1.5 text-left hover:bg-gray-100"
           :class="{ 'bg-gray-100': open }"
         >
-          <Avatar :label="profile.full_name" :image="profile.user_image" size="lg" />
+          <Avatar :label="session.fullName" :image="session.userImage" size="lg" />
           <template v-if="isExpanded">
             <div class="flex-1 overflow-hidden">
               <div class="truncate text-sm font-semibold text-gray-900">Pathways</div>
-              <div class="truncate text-xs text-gray-500">{{ profile.full_name }}</div>
+              <div class="truncate text-xs text-gray-500">{{ session.fullName }}</div>
             </div>
             <FeatherIcon name="chevron-down" class="h-4 w-4 shrink-0 text-gray-500" />
           </template>
@@ -42,20 +42,20 @@
       />
     </div>
 
-    <SettingsDialog v-if="session.hasRole('Pathways Admin')" v-model="showSettingsDialog" />
+    <SettingsDialog v-if="session.canManageSettings" v-model="showSettingsDialog" />
   </nav>
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { Dropdown, Avatar, FeatherIcon } from 'frappe-ui'
 import { useSessionStore } from '@/stores/session'
-import { useMasterSetupAccess } from '@/composables/useMasterSetup'
-import { callMethod } from '@/services/api'
 import SidebarNavLink from './SidebarNavLink.vue'
 import SettingsDialog from './SettingsDialog.vue'
 
 const session = useSessionStore()
+const router = useRouter()
 
 const isExpanded = ref(localStorage.getItem('pathways-sidebar-expanded') !== 'false')
 
@@ -67,31 +67,28 @@ watch(isExpanded, (value) => {
   }
 })
 
-const profile = reactive({ full_name: session.user, user_image: null })
-
-const { canAccess: canAccessMasterSetup, fetchAccess: fetchMasterSetupAccess } = useMasterSetupAccess()
-
-onMounted(async () => {
-  fetchMasterSetupAccess()
-  const data = await callMethod('pathways.api.auth.get_my_profile')
-  if (data) {
-    profile.full_name = data.full_name
-    profile.user_image = data.user_image
-  }
-})
+onMounted(() => session.fetchRoles())
 
 const showSettingsDialog = ref(false)
 
 const appMenuOptions = computed(() => {
   const items = []
 
-  if (session.hasRole('Pathways Admin')) {
+  if (session.canManageSettings) {
     items.push({
       label: 'Settings',
       icon: 'settings',
       onClick: () => {
         showSettingsDialog.value = true
       },
+    })
+  }
+
+  if (session.canManageAccess) {
+    items.push({
+      label: 'Roles & Permissions',
+      icon: 'shield',
+      onClick: () => router.push('/settings/access'),
     })
   }
 
@@ -113,76 +110,22 @@ const appMenuOptions = computed(() => {
   return [{ group: 'Pathways', hideLabel: true, items }]
 })
 
+// Which entries a user sees is decided server-side from Role Permissions
+// (pathways.api.access.get_my_access / MENU_ITEMS): granting a role read
+// on a DocType in Roles & Permissions is what reveals its menu.
 const ALL_ITEMS = [
-  { to: '/', label: 'Dashboard', icon: 'home', roles: null },
-  // Shown from DocType permissions (write/create on any registered master),
-  // not role names — see pathways.utils.master_setup.
-  { to: '/master-setup', label: 'Master Setup', icon: 'sliders', visible: () => canAccessMasterSetup.value },
-  {
-    to: '/jobs',
-    label: 'Job Openings',
-    icon: 'briefcase',
-    roles: ['Pathways Recruiter', 'Pathways PNCO', 'Pathways Admin'],
-  },
-  {
-    to: '/applications',
-    label: 'Applications',
-    icon: 'file-text',
-    roles: [
-      'Pathways Recruiter',
-      'Pathways PNCO',
-      'Pathways Admin',
-      'Pathways Shortlisting Committee Member',
-      'Pathways Selection Committee Member',
-    ],
-  },
-  {
-    to: '/interviews',
-    label: 'Interviews',
-    icon: 'calendar',
-    roles: ['Pathways Recruiter', 'Pathways PNCO', 'Pathways Admin', 'Pathways Selection Committee Member'],
-  },
-  {
-    to: '/approvals',
-    label: 'My Approvals',
-    icon: 'check-square',
-    roles: [
-      'Pathways PNCO',
-      'Pathways Registrar',
-      'Pathways Vice Chancellor',
-      'Pathways CFO',
-      'Pathways Dean Academics',
-      'Pathways Dean Research',
-      'Pathways Senior Manager Research',
-      'Pathways Director People Culture',
-      'Pathways Admin',
-    ],
-  },
-  {
-    to: '/offers',
-    label: 'Offers',
-    icon: 'award',
-    roles: ['Pathways Recruiter', 'Pathways PNCO', 'Pathways Registrar', 'Pathways Admin'],
-  },
-  {
-    to: '/documents',
-    label: 'Documents',
-    icon: 'folder',
-    roles: ['Pathways Recruiter', 'Pathways PNCO', 'Pathways Admin'],
-  },
-  {
-    to: '/reports',
-    label: 'Reports',
-    icon: 'bar-chart-2',
-    roles: ['Pathways Recruiter', 'Pathways PNCO', 'Pathways Admin'],
-  },
+  { key: 'dashboard', to: '/', label: 'Dashboard', icon: 'home' },
+  { key: 'master_setup', to: '/master-setup', label: 'Master Setup', icon: 'sliders' },
+  { key: 'jobs', to: '/jobs', label: 'Job Openings', icon: 'briefcase' },
+  { key: 'applications', to: '/applications', label: 'Applications', icon: 'file-text' },
+  { key: 'interviews', to: '/interviews', label: 'Interviews', icon: 'calendar' },
+  { key: 'approvals', to: '/approvals', label: 'My Approvals', icon: 'check-square' },
+  { key: 'offers', to: '/offers', label: 'Offers', icon: 'award' },
+  { key: 'documents', to: '/documents', label: 'Documents', icon: 'folder' },
+  { key: 'reports', to: '/reports', label: 'Reports', icon: 'bar-chart-2' },
 ]
 
 const visibleItems = computed(() =>
-  ALL_ITEMS.filter((item) =>
-    item.visible
-      ? item.visible()
-      : !item.roles || session.hasAnyRole(item.roles) || session.hasRole('Pathways Admin'),
-  ),
+  ALL_ITEMS.filter((item) => item.key === 'dashboard' || session.hasMenu(item.key)),
 )
 </script>

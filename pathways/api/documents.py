@@ -3,6 +3,7 @@
 
 import frappe
 
+from pathways.permissions import has_full_access
 from pathways.pathways.doctype.document_collection.document_collection import (
 	upload_document as _upload_document,
 	verify_document as _verify_document,
@@ -11,10 +12,11 @@ from pathways.pathways.doctype.document_collection.document_collection import (
 
 @frappe.whitelist()
 def get_my_document_checklist(application_name):
-	app = frappe.get_doc("Application", application_name)  # permission-checked
+	app = frappe.get_doc("Application", application_name)
+	app.check_permission("read")
 	candidate_email = frappe.db.get_value("Candidate", app.candidate, "email")
-	if frappe.session.user != candidate_email and "Pathways Admin" not in frappe.get_roles():
-		frappe.throw("You are not authorised to view this document checklist.")
+	if frappe.session.user != candidate_email and not has_full_access("Document Collection"):
+		frappe.throw("You are not authorised to view this document checklist.", frappe.PermissionError)
 
 	doc_collection_name = frappe.db.get_value(
 		"Document Collection", {"application": application_name}, "name"
@@ -46,6 +48,4 @@ def upload_document(document_collection_name, document_type, attachment):
 
 @frappe.whitelist()
 def verify_document(document_collection_name, document_type, verified=True, rejection_reason=None):
-	if "Pathways Admin" not in frappe.get_roles() and "Pathways PNCO" not in frappe.get_roles():
-		frappe.throw("You are not authorised to verify documents.")
 	return _verify_document(document_collection_name, document_type, verified, rejection_reason)

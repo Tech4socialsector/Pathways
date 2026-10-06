@@ -35,11 +35,10 @@ class Application(Document):
 			self.application_id = make_autoname("PWY-APP-.YYYY.-.######")
 
 
-@frappe.whitelist()
 def check_duplicate(email, mobile_number, job_opening):
-	"""Server-side duplicate check used by the public Candidate Application
-	web form, ahead of insert. Frontend validation is UX-only per policy;
-	this is the authoritative check.
+	"""Internal duplicate lookup by email (falling back to mobile). Not an
+	endpoint: exposing it let anyone probe who had applied where. The
+	authoritative check for submissions is in api.application.submit_application.
 	"""
 	candidate_name = frappe.db.get_value(
 		"Candidate", {"email": (email or "").strip().lower()}, "name"

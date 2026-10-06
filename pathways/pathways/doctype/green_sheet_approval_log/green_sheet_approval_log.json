@@ -12,7 +12,8 @@
   "action",
   "channel",
   "remarks",
-  "acted_on"
+  "acted_on",
+  "is_override"
  ],
  "fields": [
   {
@@ -64,12 +65,19 @@
    "in_list_view": 1,
    "label": "Acted On",
    "read_only": 1
+  },
+  {
+   "default": "0",
+   "description": "Set when the action was recorded by the approval override role on the approver's behalf (e.g. a signed paper copy).",
+   "fieldname": "is_override",
+   "fieldtype": "Check",
+   "label": "Recorded via Override"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2026-09-21 00:00:00.000000",
+ "modified": "2026-10-06 15:42:11.892849",
  "modified_by": "Administrator",
  "module": "Pathways",
  "name": "Green Sheet Approval Log",

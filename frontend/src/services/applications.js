@@ -1,18 +1,18 @@
 import { callMethod } from './api'
 
 export const applicationService = {
-  checkDuplicate(email, mobileNumber, jobOpening) {
-    return callMethod('pathways.api.application.check_duplicate', {
+  submitApplication(jobOpening, data) {
+    return callMethod('pathways.api.application.submit_application', { job_opening: jobOpening, data })
+  },
+  registerCandidate(email, fullName, redirectTo) {
+    return callMethod('pathways.api.auth.register_candidate', {
       email,
-      mobile_number: mobileNumber,
-      job_opening: jobOpening,
+      full_name: fullName,
+      redirect_to: redirectTo,
     })
   },
-  submitApplication(candidateData, applicationData) {
-    return callMethod('pathways.api.application.submit_application', {
-      candidate_data: candidateData,
-      application_data: applicationData,
-    })
+  getApplicationDetail(applicationName) {
+    return callMethod('pathways.api.application.get_application_detail', { application_name: applicationName })
   },
   getMyApplications() {
     return callMethod('pathways.api.application.get_my_applications')

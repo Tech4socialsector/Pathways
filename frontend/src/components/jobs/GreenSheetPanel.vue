@@ -18,11 +18,11 @@
         v-else-if="!data.has_chain_template && (!current || current.docstatus === 0)"
         class="rounded border border-orange-200 bg-orange-50 px-3 py-2 text-sm text-orange-800"
       >
-        No active Approval Chain Template exists for the '{{ job.track }}' track, so a Green Sheet
-        cannot be submitted yet.
+        No active Approval Chain matches the '{{ job.track }}' track ({{ job.employment_type }}), so a Green
+        Sheet cannot be submitted yet.
         <a
           v-if="perms.can_override_status"
-          href="/app/approval-chain-template/new"
+          href="/desk/approval-chain-template/new"
           target="_blank"
           class="font-medium underline"
         >
@@ -36,7 +36,7 @@
         <p class="text-sm text-gray-600">
           A Pre-Recruitment Green Sheet must be approved before this job can be advertised.
           <span v-if="perms.can_override_status">
-            As a System Manager you can also change the job status directly.
+            Your role may also change the job status directly.
           </span>
         </p>
         <div v-if="perms.can_create && job.track">
@@ -65,6 +65,13 @@
         </div>
         <div v-if="current.status === 'Approved'" class="rounded border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
           Approved. This job can now be advertised.
+        </div>
+
+        <div
+          v-if="current.status === 'Under Approval' && !perms.can_act && data.act_blocked_reason"
+          class="text-sm text-gray-500"
+        >
+          {{ data.act_blocked_reason }}
         </div>
 
         <div v-if="timelineSteps.length">
@@ -125,7 +132,12 @@
             <div class="flex flex-wrap items-center gap-2">
               <StatusBadge :status="row.action" />
               <span class="text-gray-900">{{ row.approver_role || row.approver }}</span>
-              <span class="text-xs text-gray-500">{{ row.approver }} &middot; {{ formatDate(row.acted_on) }}</span>
+              <span class="text-xs text-gray-500">
+                {{ row.approver_name || row.approver }} &middot; {{ row.channel }} &middot; {{ formatDate(row.acted_on) }}
+              </span>
+              <span v-if="row.is_override" class="rounded bg-amber-50 px-1.5 py-0.5 text-xs text-amber-700">
+                recorded on behalf
+              </span>
             </div>
             <div v-if="row.remarks" class="mt-1 text-gray-600">{{ row.remarks }}</div>
           </li>
@@ -226,7 +238,7 @@
 
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { toast } from 'frappe-ui'
+import { toast } from '@/utils/notify'
 import dayjs from 'dayjs'
 import StatusBadge from '@/components/common/StatusBadge.vue'
 import RecruitmentTimeline from '@/components/common/RecruitmentTimeline.vue'
@@ -268,8 +280,9 @@ const timelineSteps = computed(() => {
     )
       state = 'rejected'
     let detail = step.approver_role
-    if (state === 'completed' && entry) detail = `Approved by ${entry.approver} · ${formatDate(entry.acted_on)}`
-    else if (state === 'rejected' && entry) detail = `Returned by ${entry.approver} · ${formatDate(entry.acted_on)}`
+    const who = entry?.approver_name || entry?.approver
+    if (state === 'completed' && entry) detail = `Approved by ${who} · ${formatDate(entry.acted_on)}`
+    else if (state === 'rejected' && entry) detail = `Returned by ${who} · ${formatDate(entry.acted_on)}`
     else if (state === 'current') detail = `Awaiting ${step.approver_role}`
     return { key: step.sequence, label: step.approver_label || step.approver_role, detail, state }
   })

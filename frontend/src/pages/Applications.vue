@@ -28,7 +28,7 @@
               <td class="px-4 py-2.5 text-gray-600">{{ app.application_date }}</td>
               <td class="px-4 py-2.5 text-right" @click.stop>
                 <Button
-                  v-if="session.hasRole('Pathways Admin')"
+                  v-if="session.can('Application', 'delete')"
                   variant="ghost"
                   theme="red"
                   icon="trash-2"
@@ -61,7 +61,8 @@
 
 <script setup>
 import { ref } from 'vue'
-import { Button, toast } from 'frappe-ui'
+import { Button } from 'frappe-ui'
+import { toast } from '@/utils/notify'
 import StaffLayout from '@/layouts/StaffLayout.vue'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import EmptyState from '@/components/common/EmptyState.vue'

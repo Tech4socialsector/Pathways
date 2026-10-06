@@ -31,6 +31,7 @@
             <div v-if="job.jd_text" class="prose prose-sm max-w-none" v-html="job.jd_text" />
             <div v-else class="text-sm text-gray-500">No description provided.</div>
           </div>
+          <ApplicationFormPanel :job="job" :can-write="!!permissions.can_write" @saved="fetchJob(props.id)" />
           <GreenSheetPanel
             ref="greenSheetPanel"
             :job="job"
@@ -71,6 +72,10 @@
             <div v-if="job.tenure_description">
               <dt class="text-gray-500">Tenure</dt>
               <dd class="font-medium text-gray-900">{{ job.tenure_description }}</dd>
+            </div>
+            <div v-if="job.application_deadline">
+              <dt class="text-gray-500">Applications close</dt>
+              <dd class="font-medium text-gray-900">{{ dayjs(job.application_deadline).format('DD MMM YYYY, h:mm A') }}</dd>
             </div>
             <div v-if="job.pre_recruitment_green_sheet">
               <dt class="text-gray-500">Green Sheet</dt>
@@ -144,7 +149,7 @@
             v-if="permissions.can_override_status"
             class="rounded border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-800"
           >
-            As a System Manager you can set any status directly, without Green Sheet approval.
+            Your role may set any status directly, without Green Sheet approval.
           </div>
           <div v-else-if="!greenSheetApproved" class="rounded border border-orange-200 bg-orange-50 px-3 py-2 text-sm text-orange-800">
             Approved and Advertised become available once the Pre-Recruitment Green Sheet is approved.
@@ -182,11 +187,14 @@
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { toast, Autocomplete } from 'frappe-ui'
+import dayjs from 'dayjs'
+import { Autocomplete } from 'frappe-ui'
+import { toast } from '@/utils/notify'
 import StaffLayout from '@/layouts/StaffLayout.vue'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
 import GreenSheetPanel from '@/components/jobs/GreenSheetPanel.vue'
+import ApplicationFormPanel from '@/components/jobs/ApplicationFormPanel.vue'
 import { useStaffJobOpeningDetail } from '@/composables/useJobOpenings'
 import { jobOpeningService } from '@/services/jobOpenings'
 import { useRecruitmentTrackOptions, useDepartmentOptions, useDesignationOptions } from '@/composables/useMasterData'

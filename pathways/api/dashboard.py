@@ -2,6 +2,18 @@
 # For license information, please see license.txt
 
 import frappe
+from frappe import _
+
+from pathways.permissions import has_full_access
+
+
+def require_pipeline_access():
+	"""These endpoints aggregate with frappe.db.count/get_all, which skip
+	permission checks — so gate them explicitly: only users who can see
+	every Application (granted read via a non-scoped role) get pipeline
+	numbers."""
+	if not has_full_access("Application"):
+		frappe.throw(_("You do not have access to recruitment pipeline data."), frappe.PermissionError)
 
 
 def _application_filters(track=None, job_opening=None, department=None, from_date=None, to_date=None):
@@ -28,6 +40,7 @@ def get_admin_summary(track=None, job_opening=None, department=None, from_date=N
 	"""Server-side aggregated counts for the Admin Dashboard — never
 	returns raw Application records, per brief §26/§41.
 	"""
+	require_pipeline_access()
 	filters = _application_filters(track, job_opening, department, from_date, to_date)
 
 	def count(**extra):
@@ -115,6 +128,7 @@ def get_pipeline_funnel(track=None, job_opening=None, department=None, from_date
 	status instead, which answers a different question: "what needs
 	attention right now.")
 	"""
+	require_pipeline_access()
 	filters = _application_filters(track, job_opening, department, from_date, to_date)
 
 	stages = []
@@ -130,6 +144,7 @@ def get_recruiter_summary():
 	"""Recruiter-scoped operational dashboard — pending action items
 	across the pipeline for the logged-in recruiter's view.
 	"""
+	require_pipeline_access()
 	open_jobs = frappe.db.count("Job Opening", {"status": "Advertised"})
 	pending_screening = frappe.db.count("Application", {"status": ["in", ["Submitted", "Under Review"]]})
 

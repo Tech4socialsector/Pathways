@@ -51,15 +51,11 @@ export function useApplicationForm() {
   const error = ref(null)
   const result = ref(null)
 
-  async function checkDuplicate(email, mobileNumber, jobOpening) {
-    return applicationService.checkDuplicate(email, mobileNumber, jobOpening)
-  }
-
-  async function submit(candidateData, applicationData) {
+  async function submit(jobOpening, data) {
     submitting.value = true
     error.value = null
     try {
-      result.value = await applicationService.submitApplication(candidateData, applicationData)
+      result.value = await applicationService.submitApplication(jobOpening, data)
       return result.value
     } catch (e) {
       error.value = e
@@ -69,5 +65,5 @@ export function useApplicationForm() {
     }
   }
 
-  return { submitting, error, result, checkDuplicate, submit }
+  return { submitting, error, result, submit }
 }

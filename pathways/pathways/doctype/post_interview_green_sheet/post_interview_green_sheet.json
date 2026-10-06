@@ -20,6 +20,7 @@
   "compensation_narrative",
   "compensation_table",
   "approval_section",
+  "approval_steps",
   "approval_log"
  ],
  "fields": [
@@ -118,6 +119,14 @@
    "label": "Approval Log"
   },
   {
+   "description": "Copied from the Approval Chain Template at submission, so later template edits never change an approval already in progress.",
+   "fieldname": "approval_steps",
+   "fieldtype": "Table",
+   "label": "Approval Steps",
+   "options": "Approval Chain Step",
+   "read_only": 1
+  },
+  {
    "allow_on_submit": 1,
    "fieldname": "approval_log",
    "fieldtype": "Table",
@@ -126,10 +135,10 @@
    "read_only": 1
   }
  ],
- "is_submittable": 1,
  "index_web_pages_for_search": 1,
+ "is_submittable": 1,
  "links": [],
- "modified": "2026-09-21 00:00:00.000000",
+ "modified": "2026-10-06 15:42:11.892849",
  "modified_by": "Administrator",
  "module": "Pathways",
  "name": "Post-Interview Green Sheet",

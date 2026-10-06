@@ -5,6 +5,31 @@ import frappe
 from frappe.utils import add_days, getdate, now_datetime, today
 
 
+def hourly():
+	close_expired_job_openings()
+
+
+def close_expired_job_openings():
+	"""Advertised jobs whose Application Deadline has passed move to Closed.
+	(Submissions are already refused at the deadline itself; this keeps the
+	status honest for staff.)"""
+	expired = frappe.get_all(
+		"Job Opening",
+		# "is set" matters: Frappe compares IFNULL(field, '0001-01-01'), so a
+		# job without a deadline would otherwise count as expired.
+		filters=[
+			["status", "=", "Advertised"],
+			["application_deadline", "is", "set"],
+			["application_deadline", "<", now_datetime()],
+		],
+		pluck="name",
+	)
+	for name in expired:
+		frappe.db.set_value("Job Opening", name, "status", "Closed")
+	if expired:
+		frappe.db.commit()
+
+
 def daily():
 	flag_ads_closing_soon()
 	expire_overdue_offers()
@@ -41,7 +66,11 @@ def flag_ads_closing_soon():
 def expire_overdue_offers():
 	overdue = frappe.get_all(
 		"Offer Appointment Order",
-		filters={"status": "Sent", "acceptance_deadline": ["<", today()]},
+		filters=[
+			["status", "=", "Sent"],
+			["acceptance_deadline", "is", "set"],
+			["acceptance_deadline", "<", today()],
+		],
 		pluck="name",
 	)
 	for offer_name in overdue:

@@ -10,6 +10,7 @@
   "employer_name",
   "from_date",
   "to_date",
+  "is_current",
   "key_responsibilities",
   "notice_period"
  ],
@@ -41,6 +42,12 @@
    "label": "To Date"
   },
   {
+   "default": "0",
+   "fieldname": "is_current",
+   "fieldtype": "Check",
+   "label": "Currently Working Here"
+  },
+  {
    "fieldname": "key_responsibilities",
    "fieldtype": "Small Text",
    "label": "Key Responsibilities"
@@ -54,7 +61,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2026-09-21 00:00:00.000000",
+ "modified": "2026-10-06 15:44:09.371312",
  "modified_by": "Administrator",
  "module": "Pathways",
  "name": "Application Employment History",

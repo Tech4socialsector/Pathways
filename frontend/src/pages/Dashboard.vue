@@ -1,8 +1,20 @@
 <template>
   <StaffLayout>
-    <PageHeader title="Dashboard" :subtitle="`Welcome, ${session.user}`" />
+    <PageHeader title="Dashboard" :subtitle="`Welcome, ${session.fullName}`" />
     <div class="flex-1 overflow-y-auto p-6">
-      <div v-if="loading" class="text-sm text-gray-500">Loading...</div>
+      <div v-if="!session.rolesLoaded || loading" class="text-sm text-gray-500">Loading...</div>
+      <div v-else-if="!session.canViewPipeline" class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <router-link
+          v-for="link in shortcuts"
+          :key="link.to"
+          :to="link.to"
+          class="rounded-lg border bg-white p-4 hover:border-gray-400"
+        >
+          <div class="text-sm font-semibold text-gray-900">{{ link.label }}</div>
+          <div class="mt-0.5 text-sm text-gray-500">{{ link.description }}</div>
+        </router-link>
+        <EmptyState v-if="!shortcuts.length" class="col-span-full" title="Nothing assigned to you yet" />
+      </div>
       <template v-else>
         <div class="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
           <div v-for="card in adminCards" :key="card.label" class="rounded-lg border bg-white p-4">
@@ -16,16 +28,16 @@
           <PipelineFunnelChart :stages="adminDashboard.funnel.value" />
         </div>
 
-        <div v-if="recruiterSummary.summary" class="grid grid-cols-1 gap-6 md:grid-cols-2">
+        <div v-if="recruiterSummary.summary.value" class="grid grid-cols-1 gap-6 md:grid-cols-2">
           <div class="rounded-lg border bg-white p-4">
             <div class="mb-3 text-sm font-semibold text-gray-900">Upcoming Interviews</div>
             <EmptyState
-              v-if="!recruiterSummary.summary.upcoming_interviews?.length"
+              v-if="!recruiterSummary.summary.value.upcoming_interviews?.length"
               title="No upcoming interviews"
             />
             <ul v-else class="flex flex-col gap-2">
               <li
-                v-for="iv in recruiterSummary.summary.upcoming_interviews"
+                v-for="iv in recruiterSummary.summary.value.upcoming_interviews"
                 :key="iv.name"
                 class="flex items-center justify-between text-sm"
               >
@@ -38,9 +50,9 @@
           <div class="rounded-lg border bg-white p-4">
             <div class="mb-3 text-sm font-semibold text-gray-900">Needs Attention</div>
             <ul class="flex flex-col gap-2 text-sm text-gray-700">
-              <li>{{ recruiterSummary.summary.feedback_pending_count }} interview(s) awaiting feedback</li>
-              <li>{{ recruiterSummary.summary.documents_pending }} document checklist(s) pending</li>
-              <li>{{ recruiterSummary.summary.offers_pending }} offer(s) awaiting candidate response</li>
+              <li>{{ recruiterSummary.summary.value.feedback_pending_count }} interview(s) awaiting feedback</li>
+              <li>{{ recruiterSummary.summary.value.documents_pending }} document checklist(s) pending</li>
+              <li>{{ recruiterSummary.summary.value.offers_pending }} offer(s) awaiting candidate response</li>
             </ul>
           </div>
         </div>
@@ -86,8 +98,21 @@ function formatDate(value) {
   return new Date(value).toLocaleString()
 }
 
-onMounted(() => {
-  adminDashboard.fetchSummary()
-  recruiterSummary.fetchSummary()
+const SHORTCUTS = [
+  { key: 'approvals', to: '/approvals', label: 'My Approvals', description: 'Green Sheets waiting for your decision.' },
+  { key: 'applications', to: '/applications', label: 'Applications', description: 'Applications assigned to your committee.' },
+  { key: 'interviews', to: '/interviews', label: 'Interviews', description: 'Interviews you are part of.' },
+  { key: 'jobs', to: '/jobs', label: 'Job Openings', description: 'Positions and their approval status.' },
+  { key: 'offers', to: '/offers', label: 'Offers', description: 'Offer and appointment orders.' },
+]
+const shortcuts = computed(() => SHORTCUTS.filter((s) => session.hasMenu(s.key)))
+
+onMounted(async () => {
+  await session.fetchRoles()
+  // Pipeline numbers are only served to users who can see every application.
+  if (session.canViewPipeline) {
+    adminDashboard.fetchSummary()
+    recruiterSummary.fetchSummary()
+  }
 })
 </script>

@@ -8,6 +8,8 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
+    ApplicationFormPanel: typeof import('./src/components/jobs/ApplicationFormPanel.vue')['default']
+    ApplicationSubmissionPanel: typeof import('./src/components/common/ApplicationSubmissionPanel.vue')['default']
     EmptyState: typeof import('./src/components/common/EmptyState.vue')['default']
     GreenSheetPanel: typeof import('./src/components/jobs/GreenSheetPanel.vue')['default']
     PageHeader: typeof import('./src/components/layout/PageHeader.vue')['default']
@@ -20,5 +22,6 @@ declare module 'vue' {
     ShortlistingReviewPanel: typeof import('./src/components/common/ShortlistingReviewPanel.vue')['default']
     SidebarNavLink: typeof import('./src/components/layout/SidebarNavLink.vue')['default']
     StatusBadge: typeof import('./src/components/common/StatusBadge.vue')['default']
+    UploadField: typeof import('./src/components/candidate/UploadField.vue')['default']
   }
 }

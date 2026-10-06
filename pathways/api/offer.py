@@ -3,6 +3,7 @@
 
 import frappe
 
+from pathways.permissions import has_full_access
 from pathways.pathways.doctype.offer_appointment_order.offer_appointment_order import (
 	respond_to_offer as _respond_to_offer,
 )
@@ -10,10 +11,11 @@ from pathways.pathways.doctype.offer_appointment_order.offer_appointment_order i
 
 @frappe.whitelist()
 def get_my_offer(application_name):
-	app = frappe.get_doc("Application", application_name)  # permission-checked
+	app = frappe.get_doc("Application", application_name)
+	app.check_permission("read")
 	candidate_email = frappe.db.get_value("Candidate", app.candidate, "email")
-	if frappe.session.user != candidate_email and "Pathways Admin" not in frappe.get_roles():
-		frappe.throw("You are not authorised to view this offer.")
+	if frappe.session.user != candidate_email and not has_full_access("Offer Appointment Order"):
+		frappe.throw("You are not authorised to view this offer.", frappe.PermissionError)
 
 	offer_name = frappe.db.get_value("Offer Appointment Order", {"application": application_name}, "name")
 	if not offer_name:

@@ -12,18 +12,19 @@ the superuser account into the candidate portal.
 
 import frappe
 
-from pathways.permissions import PATHWAYS_ROLES
+from pathways.permissions import CANDIDATE_ROLE, get_pathways_roles
 
 
 def get_home_page(user):
 	if user == "Administrator":
 		return None
 
+	pathways_roles = get_pathways_roles()
 	roles = set(frappe.get_roles(user))
-	if not roles & PATHWAYS_ROLES:
+	if not roles & pathways_roles:
 		return None
 
-	if "Pathways Candidate" in roles and len(roles & PATHWAYS_ROLES) == 1:
+	if CANDIDATE_ROLE in roles and len(roles & pathways_roles) == 1:
 		return "pathways/portal/jobs"
 
 	return "pathways"

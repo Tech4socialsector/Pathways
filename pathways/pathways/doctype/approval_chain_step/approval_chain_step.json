@@ -7,7 +7,9 @@
  "engine": "InnoDB",
  "field_order": [
   "sequence",
+  "approver_type",
   "approver_role",
+  "approver_user",
   "approver_label"
  ],
  "fields": [
@@ -19,12 +21,32 @@
    "reqd": 1
   },
   {
+   "default": "Role",
+   "description": "Role: anyone holding the role may act. User: only this named person may act.",
+   "fieldname": "approver_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Approver Type",
+   "options": "Role\nUser",
+   "reqd": 1
+  },
+  {
+   "depends_on": "eval:doc.approver_type!='User'",
    "fieldname": "approver_role",
    "fieldtype": "Link",
    "in_list_view": 1,
    "label": "Approver Role",
-   "options": "Role",
-   "reqd": 1
+   "mandatory_depends_on": "eval:doc.approver_type!='User'",
+   "options": "Role"
+  },
+  {
+   "depends_on": "eval:doc.approver_type=='User'",
+   "fieldname": "approver_user",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Approver User",
+   "mandatory_depends_on": "eval:doc.approver_type=='User'",
+   "options": "User"
   },
   {
    "description": "Human-readable designation label as used in NLSIU documents, e.g. \"Executive PNC\"",
@@ -38,7 +60,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2026-09-21 00:00:00.000000",
+ "modified": "2026-10-06 15:42:11.892849",
  "modified_by": "Administrator",
  "module": "Pathways",
  "name": "Approval Chain Step",

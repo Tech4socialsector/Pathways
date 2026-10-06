@@ -18,7 +18,22 @@
   "min_selection_committee_size",
   "max_selection_committee_size",
   "general_conditions_section",
-  "default_general_conditions"
+  "default_general_conditions",
+  "approval_section",
+  "approval_override_role",
+  "allow_same_approver_multiple_steps",
+  "column_break_approval",
+  "status_override_role",
+  "duty_roles_section",
+  "document_verifier_roles",
+  "column_break_duty",
+  "corrigendum_signer_roles",
+  "application_section",
+  "application_max_file_size_mb",
+  "application_allowed_formats",
+  "application_declaration",
+  "roles_section",
+  "pathways_roles"
  ],
  "fields": [
   {
@@ -104,12 +119,104 @@
    "fieldname": "default_general_conditions",
    "fieldtype": "Text Editor",
    "label": "Default General Conditions"
+  },
+  {
+   "fieldname": "approval_section",
+   "fieldtype": "Section Break",
+   "label": "Approvals"
+  },
+  {
+   "default": "Pathways Admin",
+   "description": "Users with this role may record an approval on any step (e.g. a signed paper copy). Leave blank to disable overrides.",
+   "fieldname": "approval_override_role",
+   "fieldtype": "Link",
+   "label": "Approval Override Role",
+   "options": "Role"
+  },
+  {
+   "default": "0",
+   "description": "When unchecked, a person who approved one step of a Green Sheet cannot approve a later step of the same sheet.",
+   "fieldname": "allow_same_approver_multiple_steps",
+   "fieldtype": "Check",
+   "label": "Allow One Person to Approve Multiple Steps"
+  },
+  {
+   "fieldname": "column_break_approval",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "System Manager",
+   "description": "Users with this role may set any Job Opening status without an approved Green Sheet. Leave blank to disable.",
+   "fieldname": "status_override_role",
+   "fieldtype": "Link",
+   "label": "Job Status Override Role",
+   "options": "Role"
+  },
+  {
+   "description": "Duties that go beyond read/write on a document type.",
+   "fieldname": "duty_roles_section",
+   "fieldtype": "Section Break",
+   "label": "Duty Roles"
+  },
+  {
+   "description": "May verify or reject candidates' onboarding documents.",
+   "fieldname": "document_verifier_roles",
+   "fieldtype": "Table MultiSelect",
+   "label": "Document Verifier Roles",
+   "options": "Pathways Role"
+  },
+  {
+   "fieldname": "column_break_duty",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "May create and sign a Corrigendum.",
+   "fieldname": "corrigendum_signer_roles",
+   "fieldtype": "Table MultiSelect",
+   "label": "Corrigendum Signer Roles",
+   "options": "Pathways Role"
+  },
+  {
+   "fieldname": "application_section",
+   "fieldtype": "Section Break",
+   "label": "Candidate Applications"
+  },
+  {
+   "default": "5",
+   "description": "Limit for resume, SOP, transcripts and certificates. Document Types set their own limit.",
+   "fieldname": "application_max_file_size_mb",
+   "fieldtype": "Float",
+   "label": "Max Upload Size (MB)"
+  },
+  {
+   "default": "PDF, JPG, JPEG, PNG",
+   "fieldname": "application_allowed_formats",
+   "fieldtype": "Data",
+   "label": "Allowed Upload Formats"
+  },
+  {
+   "description": "Shown on every application form; the candidate must accept it to submit.",
+   "fieldname": "application_declaration",
+   "fieldtype": "Small Text",
+   "label": "Application Declaration"
+  },
+  {
+   "fieldname": "roles_section",
+   "fieldtype": "Section Break",
+   "label": "Pathways Roles"
+  },
+  {
+   "description": "Roles managed from Pathways > Roles & Permissions. Holding any of these gives access to the Pathways app.",
+   "fieldname": "pathways_roles",
+   "fieldtype": "Table",
+   "label": "Pathways Roles",
+   "options": "Pathways Role"
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-09-21 00:00:00.000000",
+ "modified": "2026-10-06 15:45:45.099542",
  "modified_by": "Administrator",
  "module": "Pathways",
  "name": "Pathways Settings",

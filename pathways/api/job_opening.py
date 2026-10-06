@@ -56,6 +56,7 @@ def list_job_openings(filters=None, limit_start=0, limit_page_length=20):
 			"tenure_description",
 			"pay_level",
 			"status",
+			"application_deadline",
 			"modified",
 		],
 		order_by="creation desc",

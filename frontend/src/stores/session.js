@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { createResource } from 'frappe-ui'
 import { ref, computed } from 'vue'
+import { accessService } from '@/services/access'
 
 export const useSessionStore = defineStore('pathways-session', () => {
   function sessionUser() {
@@ -15,30 +16,35 @@ export const useSessionStore = defineStore('pathways-session', () => {
   const user = ref(sessionUser())
   const isLoggedIn = computed(() => !!user.value)
 
-  const roles = ref([])
+  // Everything below comes from pathways.api.access.get_my_access, which
+  // derives it from Role Permissions — the UI never decides access from
+  // hardcoded role names.
+  const access = ref({})
   const rolesLoaded = ref(false)
+  const roles = computed(() => access.value.roles || [])
 
-  const rolesResource = createResource({
-    url: 'pathways.api.auth.get_my_roles',
-    auto: false,
-    onSuccess(data) {
-      roles.value = data || []
-      rolesLoaded.value = true
-    },
-  })
+  let accessPromise = null
 
-  let rolesPromise = null
-
-  function fetchRoles() {
-    if (!isLoggedIn.value || rolesLoaded.value) {
+  function fetchRoles(force = false) {
+    if (!isLoggedIn.value || (rolesLoaded.value && !force)) {
       return Promise.resolve()
     }
-    if (!rolesPromise) {
-      rolesPromise = rolesResource.fetch().finally(() => {
-        rolesPromise = null
-      })
+    if (!accessPromise) {
+      accessPromise = accessService
+        .getMyAccess()
+        .then((data) => {
+          access.value = data || {}
+          rolesLoaded.value = true
+        })
+        .catch(() => {
+          access.value = {}
+          rolesLoaded.value = true
+        })
+        .finally(() => {
+          accessPromise = null
+        })
     }
-    return rolesPromise
+    return accessPromise
   }
 
   function hasRole(roleName) {
@@ -49,15 +55,28 @@ export const useSessionStore = defineStore('pathways-session', () => {
     return roleNames.some((r) => roles.value.includes(r))
   }
 
-  const isStaff = computed(() => !hasRole('Pathways Candidate') && roles.value.length > 0)
-  const isCandidate = computed(() => hasRole('Pathways Candidate'))
-  const isAdmin = computed(() => hasRole('Pathways Admin'))
+  // can('Job Opening', 'create')
+  function can(doctype, ptype = 'read') {
+    return !!access.value.doctypes?.[doctype]?.[ptype]
+  }
+
+  function hasMenu(key) {
+    return (access.value.menu || []).includes(key)
+  }
+
+  const isStaff = computed(() => !!access.value.is_staff)
+  const isCandidate = computed(() => !!access.value.is_candidate)
+  const canManageAccess = computed(() => !!access.value.can_manage_access)
+  const canManageSettings = computed(() => !!access.value.can_manage_settings)
+  const canViewPipeline = computed(() => !!access.value.can_view_pipeline)
+  const fullName = computed(() => access.value.full_name || user.value)
+  const userImage = computed(() => access.value.user_image || null)
 
   const logout = createResource({
     url: 'logout',
     onSuccess() {
       user.value = null
-      roles.value = []
+      access.value = {}
       rolesLoaded.value = false
       window.location.href = '/login?redirect-to=/pathways'
     },
@@ -66,14 +85,21 @@ export const useSessionStore = defineStore('pathways-session', () => {
   return {
     user,
     isLoggedIn,
+    access,
     roles,
     rolesLoaded,
     fetchRoles,
     hasRole,
     hasAnyRole,
+    can,
+    hasMenu,
     isStaff,
     isCandidate,
-    isAdmin,
+    canManageAccess,
+    canManageSettings,
+    canViewPipeline,
+    fullName,
+    userImage,
     logout,
   }
 })
