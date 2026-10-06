@@ -586,4 +586,134 @@ def get_application_detail(application_name):
 		# Committee members review merit, not pay.
 		for field in ("current_salary", "expected_salary"):
 			out.pop(field, None)
+	# The same person's applications to other openings (one Candidate per
+	# email). get_list, not get_all: a committee member sees only the
+	# applications their permissions allow.
+	others = frappe.get_list(
+		"Application",
+		filters={"candidate": app.candidate, "name": ["!=", app.name]},
+		fields=["name", "application_id", "job_opening", "status", "application_date"],
+		order_by="creation desc",
+	)
+	titles = dict(
+		frappe.get_all(
+			"Job Opening",
+			filters={"name": ["in", [o.job_opening for o in others]]},
+			fields=["name", "job_title"],
+			as_list=True,
+		)
+	) if others else {}
+	for other in others:
+		other["job_title"] = titles.get(other.job_opening)
+	out["other_applications"] = others
+	out["activity"] = _application_activity(app)
+
+	out["layout"] = form_layout("Application", visible=set(out))
+	out["candidate_fields"] = [_field_def(df) for df in _data_fields("Candidate")]
 	return out
+
+
+def _application_activity(app):
+	"""Newest-first timeline: status changes and the notes recorded on the
+	application (e.g. shortlisting decisions, manual status remarks)."""
+	events = [
+		{
+			"kind": "status",
+			"at": h.changed_on,
+			"by": frappe.utils.get_fullname(h.changed_by),
+			"from_status": h.previous_status,
+			"to_status": h.new_status,
+		}
+		for h in frappe.get_all(
+			"Application Status History",
+			filters={"application": app.name},
+			fields=["previous_status", "new_status", "changed_by", "changed_on"],
+		)
+	]
+	events += [
+		{
+			"kind": "note",
+			"at": c.creation,
+			"by": frappe.utils.get_fullname(c.owner),
+			"text": frappe.utils.strip_html(c.content or ""),
+		}
+		for c in frappe.get_all(
+			"Comment",
+			filters={"reference_doctype": "Application", "reference_name": app.name, "comment_type": ["in", ["Info", "Comment"]]},
+			fields=["content", "owner", "creation"],
+		)
+	]
+	events.append({"kind": "created", "at": app.creation, "by": frappe.utils.get_fullname(app.owner)})
+
+	# A note written with a status change (same save) describes it: show it
+	# on that change instead of as a second entry.
+	changes = [e for e in events if e["kind"] == "status"]
+	merged = []
+	for event in events:
+		if event["kind"] == "note":
+			at = frappe.utils.get_datetime(event["at"])
+			match = next(
+				(c for c in changes if "note" not in c and abs((frappe.utils.get_datetime(c["at"]) - at).total_seconds()) < 5),
+				None,
+			)
+			if match:
+				match["note"] = event["text"]
+				continue
+		merged.append(event)
+	return sorted(merged, key=lambda e: e["at"], reverse=True)
+
+
+LAYOUT_SKIP = {"naming_series", "candidate"}  # candidate: shown as its own fields
+
+
+def _data_fields(doctype):
+	from frappe.model import no_value_fields
+
+	return [
+		df
+		for df in frappe.get_meta(doctype).fields
+		if df.fieldtype not in no_value_fields and not df.hidden and df.fieldname not in LAYOUT_SKIP
+	]
+
+
+def _field_def(df):
+	field = {"fieldname": df.fieldname, "label": _(df.label or df.fieldname), "fieldtype": df.fieldtype}
+	if df.fieldtype == "Table":
+		field["columns"] = [_field_def(child) for child in _data_fields(df.options)]
+	return field
+
+
+def form_layout(doctype, visible=None):
+	"""The DocType's own form layout — tabs > sections > columns > fields —
+	so the Vue page shows every field, filled or not, in the same places as
+	Desk. Fields not in `visible` (removed for this user) are left out."""
+	tabs = [{"key": "details", "label": _("Details"), "sections": []}]
+	section = None
+
+	def new_section(label=None):
+		nonlocal section
+		section = {"label": _(label) if label else None, "columns": [[]]}
+		tabs[-1]["sections"].append(section)
+
+	new_section()
+	for df in frappe.get_meta(doctype).fields:
+		if df.hidden or df.fieldname in LAYOUT_SKIP:
+			continue
+		if df.fieldtype == "Tab Break":
+			tabs.append({"key": df.fieldname, "label": _(df.label or df.fieldname), "sections": []})
+			new_section()
+		elif df.fieldtype == "Section Break":
+			new_section(df.label)
+		elif df.fieldtype == "Column Break":
+			section["columns"].append([])
+		elif visible is None or df.fieldname in visible:
+			from frappe.model import no_value_fields
+
+			if df.fieldtype == "Table" or df.fieldtype not in no_value_fields:
+				section["columns"][-1].append(_field_def(df))
+
+	for tab in tabs:
+		for sec in tab["sections"]:
+			sec["columns"] = [col for col in sec["columns"] if col]
+		tab["sections"] = [sec for sec in tab["sections"] if sec["columns"]]
+	return [tab for tab in tabs if tab["sections"]]

@@ -1,167 +1,217 @@
 <template>
-  <div class="flex flex-col gap-6">
-    <div v-if="loading && !app" class="text-sm text-gray-500">Loading application...</div>
+  <div>
+    <div v-if="loading && !app" class="rounded-xl border bg-white p-5 text-sm text-gray-500 shadow-sm">Loading application...</div>
     <div v-else-if="error" class="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">{{ error }}</div>
-    <template v-else-if="app">
-      <Card icon="user" title="Personal Details">
-        <dl class="grid grid-cols-1 gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
-          <Field label="Name" :value="c.full_name" />
-          <Field label="Email" :value="c.email" />
-          <Field label="Mobile" :value="c.mobile_number" />
-          <Field label="Date of Birth" :value="c.date_of_birth ? `${formatDate(c.date_of_birth)} (age ${age(c.date_of_birth)})` : ''" />
-          <Field label="Gender" :value="c.gender" />
-          <Field label="Heard via" :value="app.source" />
-          <Field class="sm:col-span-2" label="Address" :value="c.address" />
-        </dl>
-      </Card>
+    <section v-else-if="app" class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+      <!-- Tabs: the Application DocType's own tabs, as in Desk -->
+      <!-- Scrolls sideways on narrow screens without showing a scrollbar. -->
+      <nav
+        class="flex overflow-x-auto border-b border-gray-200 bg-gray-50/60 px-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        role="tablist"
+        aria-label="Application sections"
+      >
+        <button
+          v-for="t in tabs"
+          :key="t.key"
+          role="tab"
+          :aria-selected="tab === t.key"
+          class="relative flex shrink-0 items-center gap-1.5 whitespace-nowrap px-3 py-3 text-sm transition-colors"
+          :class="tab === t.key ? 'font-semibold text-brand-700' : 'text-gray-600 hover:text-gray-900'"
+          @click="selectTab(t.key)"
+        >
+          {{ t.label }}
+          <span
+            v-if="t.count != null"
+            class="rounded-full px-1.5 text-xs"
+            :class="tab === t.key ? 'bg-brand-100 text-brand-700' : 'bg-gray-100 text-gray-600'"
+          >{{ t.count }}</span>
+          <span v-if="tab === t.key" class="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-brand-700" />
+        </button>
+      </nav>
 
-      <Card icon="book-open" title="Academic Qualifications">
-        <div v-if="!app.qualifications?.length" class="text-sm text-gray-500">None provided.</div>
-        <div class="flex flex-col gap-3">
-          <div v-for="q in app.qualifications" :key="q.name" class="rounded-lg border border-gray-200 p-4 text-sm">
-            <div class="flex flex-wrap items-center gap-2">
-              <span class="font-bold text-gray-900">{{ q.degree_name }}</span>
-              <span class="rounded bg-brand-50 px-2 py-0.5 text-xs font-medium text-brand-700">{{ levelLabel(q.degree_level) }}</span>
-            </div>
-            <div class="mt-1 text-gray-600">{{ q.other_institution || q.institution }}</div>
-            <dl class="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <Field label="Year" :value="q.year_of_graduation" />
-              <Field label="Percentage" :value="q.percentage_or_cgpa ? `${q.percentage_or_cgpa}%` : ''" />
-              <Field label="Division / Grade" :value="q.division_grade" />
-              <Field label="Specialization" :value="q.specialization" />
-            </dl>
-            <div class="mt-3 flex flex-wrap gap-2">
-              <FileChip :url="q.transcript_attachment" label="Transcript" />
-              <FileChip :url="q.certificate_attachment" label="Degree Certificate" />
+      <div v-if="currentTab" class="flex flex-col divide-y divide-gray-100" role="tabpanel">
+        <div v-for="(section, sIdx) in currentTab.sections" :key="sIdx" class="p-5">
+          <h3 v-if="section.label" class="mb-4 text-xs font-bold uppercase tracking-wide text-brand-700">{{ section.label }}</h3>
+          <div class="grid grid-cols-1 gap-x-8 gap-y-4" :class="section.columns.length > 1 && 'md:grid-cols-2'">
+            <div v-for="(column, cIdx) in section.columns" :key="cIdx" class="flex min-w-0 flex-col gap-4">
+              <template v-for="field in column" :key="field.fieldname">
+                <!-- Child table: one card per row, every field shown -->
+                <div v-if="field.fieldtype === 'Table'" class="min-w-0">
+                  <div class="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-900">
+                    {{ field.label }}
+                    <span class="rounded-full bg-gray-100 px-1.5 text-xs font-normal text-gray-600">{{ rowsOf(field).length }}</span>
+                  </div>
+                  <div class="flex flex-col gap-3">
+                    <article
+                      v-for="(row, rIdx) in rowsOrPlaceholder(field)"
+                      :key="row.name || rIdx"
+                      class="rounded-lg border p-4"
+                      :class="row.__placeholder ? 'border-dashed border-gray-300 bg-gray-50/60' : 'border-gray-200'"
+                    >
+                      <header class="mb-3 flex items-center gap-2.5">
+                        <span
+                          class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold"
+                          :class="row.__placeholder ? 'bg-gray-200 text-gray-500' : 'bg-brand-700 text-white'"
+                        >{{ row.__placeholder ? '–' : rIdx + 1 }}</span>
+                        <span class="min-w-0 truncate font-semibold" :class="row.__placeholder ? 'text-gray-400' : 'text-gray-900'">
+                          {{ row.__placeholder ? 'Nothing provided' : rowTitle(field, row) }}
+                        </span>
+                      </header>
+                      <dl class="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2 xl:grid-cols-3">
+                        <div
+                          v-for="col in field.columns"
+                          :key="col.fieldname"
+                          class="min-w-0"
+                          :class="LONG_TEXT.includes(col.fieldtype) && 'sm:col-span-2 xl:col-span-3'"
+                        >
+                          <dt class="text-xs text-gray-500">{{ col.label }}</dt>
+                          <dd class="mt-0.5 break-words text-sm font-medium text-gray-900">
+                            <FieldValue :field="col" :value="row[col.fieldname]" />
+                          </dd>
+                        </div>
+                      </dl>
+                    </article>
+                  </div>
+                </div>
+
+                <!-- Plain field -->
+                <div v-else class="min-w-0">
+                  <div class="text-xs text-gray-500">{{ field.label }}</div>
+                  <div class="mt-0.5 min-h-[1.25rem] text-sm font-medium text-gray-900">
+                    <FieldValue :field="field" :value="valueOf(field)" />
+                  </div>
+                </div>
+              </template>
             </div>
           </div>
         </div>
-      </Card>
-
-      <Card icon="briefcase" title="Professional Experience">
-        <dl class="mb-4 grid grid-cols-2 gap-3 text-sm sm:grid-cols-3">
-          <Field label="Overall (years)" :value="app.overall_experience_years" />
-          <Field label="Relevant (years)" :value="app.relevant_experience_years" />
-          <Field label="Notice period" :value="app.notice_period" />
-        </dl>
-        <ol v-if="app.employment_history?.length" class="relative ml-2 border-l border-gray-200 text-sm">
-          <li v-for="e in app.employment_history" :key="e.name" class="mb-4 ml-5 last:mb-0">
-            <span class="absolute -left-[5px] mt-1.5 h-2.5 w-2.5 rounded-full bg-brand-700" />
-            <div class="font-bold text-gray-900">{{ e.designation }}</div>
-            <div class="text-gray-700">{{ e.employer_name }}</div>
-            <div class="text-xs text-gray-500">{{ formatDate(e.from_date) }} – {{ e.is_current ? 'Present' : formatDate(e.to_date) }}</div>
-            <div v-if="e.key_responsibilities" class="mt-1 whitespace-pre-line text-gray-700">{{ e.key_responsibilities }}</div>
-          </li>
-        </ol>
-        <div v-else class="text-sm text-gray-500">No employment history.</div>
-      </Card>
-
-      <Card v-if="app.screening_answers?.length" icon="help-circle" title="Screening Questions">
-        <div class="flex flex-col divide-y">
-          <div v-for="a in app.screening_answers" :key="a.name" class="py-3 text-sm first:pt-0 last:pb-0">
-            <div class="text-gray-600">{{ a.question }}</div>
-            <div class="mt-0.5 font-bold text-gray-900">{{ a.answer || '—' }}</div>
-            <div v-if="a.details" class="mt-1 whitespace-pre-line text-gray-700">{{ a.details }}</div>
-          </div>
-        </div>
-      </Card>
-
-      <Card icon="users" title="References">
-        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <div v-for="r in app.references" :key="r.name" class="rounded-lg border border-gray-200 p-4 text-sm">
-            <div class="font-bold text-gray-900">{{ r.referee_name }}</div>
-            <div class="text-gray-600">{{ r.current_designation_org }}</div>
-            <div class="mt-1 text-xs text-gray-500">{{ r.relationship }}</div>
-            <div class="mt-2 flex flex-col gap-1 text-gray-700">
-              <span class="flex items-center gap-1.5"><FeatherIcon name="mail" class="h-3.5 w-3.5 text-gray-400" />{{ r.email }}</span>
-              <span class="flex items-center gap-1.5"><FeatherIcon name="phone" class="h-3.5 w-3.5 text-gray-400" />{{ r.mobile }}</span>
-            </div>
-          </div>
-        </div>
-      </Card>
-
-      <Card icon="paperclip" title="Documents & Compensation">
-        <template #action>
-          <button class="flex items-center gap-1 text-sm font-medium text-brand-700 hover:underline" @click="emit('view-documents')">
-            <FeatherIcon name="eye" class="h-4 w-4" /> View documents
-          </button>
-        </template>
-        <div class="mb-4 flex flex-wrap gap-2">
-          <FileChip :url="app.resume_attachment" label="Resume / CV" />
-          <FileChip :url="app.sop_attachment" label="Statement of Purpose" />
-          <FileChip v-for="d in app.documents" :key="d.name" :url="d.attachment" :label="d.document_type" />
-          <FileChip :url="app.additional_attachment" label="Additional Documents" />
-        </div>
-        <dl class="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
-          <Field v-if="'current_salary' in app" label="Current salary / month" :value="money(app.current_salary)" />
-          <Field v-if="'expected_salary' in app" label="Expected salary / month" :value="money(app.expected_salary)" />
-          <Field label="Earliest joining" :value="formatDate(app.earliest_doj)" />
-          <Field
-            label="Declaration"
-            :value="app.declaration_accepted ? `Accepted ${formatDate(app.declaration_accepted_on)}` : 'Not recorded'"
-          />
-        </dl>
-      </Card>
-    </template>
+      </div>
+    </section>
   </div>
 </template>
 
 <script setup>
-import { computed, h } from 'vue'
+import { computed, h, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import dayjs from 'dayjs'
 import { FeatherIcon } from 'frappe-ui'
-import SectionCard from './SectionCard.vue'
 
 const props = defineProps({
-  // pathways.api.application.get_application_detail, loaded by the page.
+  // pathways.api.application.get_application_detail, loaded by the page:
+  // the document, candidate_details, and its form layout.
   app: { type: Object, default: null },
   loading: { type: Boolean, default: false },
   error: { type: String, default: '' },
 })
-const emit = defineEmits(['view-documents'])
 
-const c = computed(() => props.app?.candidate_details || {})
+const LONG_TEXT = ['Small Text', 'Text', 'Long Text', 'Text Editor']
 
-function formatDate(value) {
-  return value ? dayjs(value).format('DD MMM YYYY') : ''
+// The Details tab starts with the candidate's own fields (they live on the
+// Candidate record, not the Application).
+const tabs = computed(() => {
+  const app = props.app
+  if (!app?.layout) return []
+  return app.layout.map((t, idx) => {
+    const sections = [...t.sections]
+    if (idx === 0 && app.candidate_fields?.length) {
+      sections.unshift({
+        label: 'Candidate',
+        columns: splitInTwo(app.candidate_fields.map((f) => ({ ...f, source: 'candidate' }))),
+      })
+    }
+    const fields = sections.flatMap((s) => s.columns.flat())
+    const only = fields.length === 1 && fields[0].fieldtype === 'Table' ? fields[0] : null
+    return { ...t, sections, count: only ? (app[only.fieldname] || []).length : null }
+  })
+})
+
+function splitInTwo(fields) {
+  const half = Math.ceil(fields.length / 2)
+  return [fields.slice(0, half), fields.slice(half)].filter((c) => c.length)
 }
 
-function age(dob) {
-  return dayjs().diff(dayjs(dob), 'year')
+function valueOf(field) {
+  return field.source === 'candidate' ? props.app.candidate_details?.[field.fieldname] : props.app[field.fieldname]
 }
 
-function money(value) {
-  return value == null ? '' : `₹ ${Number(value).toLocaleString('en-IN')}`
+function rowsOf(field) {
+  return props.app[field.fieldname] || []
 }
 
-function levelLabel(level) {
-  return level === 'Undergraduate' ? 'Graduate' : level === 'Postgraduate' ? 'Post Graduate' : level
+// An empty table still shows its fields, blank, in one placeholder card.
+function rowsOrPlaceholder(field) {
+  const rows = rowsOf(field)
+  return rows.length ? rows : [{ __placeholder: true }]
 }
 
-// Same card as the rest of the staff pages.
-const Card = (p, { slots }) => h(SectionCard, { title: p.title, icon: p.icon }, { default: slots.default, actions: slots.action })
-Card.props = ['icon', 'title']
+// Card heading: the row's first filled text value (degree, designation, referee...).
+function rowTitle(field, row) {
+  const col = field.columns.find((c) => !['Attach', 'Attach Image', 'Check'].includes(c.fieldtype) && row[c.fieldname])
+  return col ? String(row[col.fieldname]) : `Row ${row.idx || ''}`
+}
 
-const Field = (p) =>
-  h('div', { class: p.class }, [
-    h('dt', { class: 'text-xs text-gray-500' }, p.label),
-    h('dd', { class: 'mt-0.5 font-medium text-gray-900 whitespace-pre-line break-words' }, p.value === 0 ? '0' : p.value || '—'),
-  ])
-Field.props = ['label', 'value', 'class']
+// The open tab lives in the URL hash (as in Desk), so reloads and shared
+// links keep it.
+const route = useRoute()
+const router = useRouter()
+const tab = ref('details')
+const currentTab = computed(() => tabs.value.find((t) => t.key === tab.value) || tabs.value[0])
 
-const FileChip = (p) =>
-  p.url
-    ? h(
+watch(
+  [() => route.hash, tabs],
+  ([hash]) => {
+    const key = (hash || '').replace('#', '')
+    tab.value = tabs.value.some((t) => t.key === key) ? key : tabs.value[0]?.key || 'details'
+  },
+  { immediate: true },
+)
+
+function selectTab(key) {
+  tab.value = key
+  router.replace({ hash: key === tabs.value[0]?.key ? '' : `#${key}` })
+}
+
+// ----- one value, formatted by field type; empty shows a dash
+function isEmpty(value) {
+  return value === null || value === undefined || value === ''
+}
+
+function fileName(url) {
+  return decodeURIComponent(String(url).split('/').pop())
+}
+
+const FieldValue = (p) => {
+  const { field, value } = p
+  if (field.fieldtype === 'Check') {
+    return h('span', { class: value ? 'text-green-700' : 'text-gray-500' }, value ? 'Yes' : 'No')
+  }
+  if (isEmpty(value)) return h('span', { class: 'font-normal text-gray-300' }, '—')
+
+  switch (field.fieldtype) {
+    case 'Attach':
+    case 'Attach Image':
+      return h(
         'a',
         {
-          href: p.url,
+          href: value,
           target: '_blank',
           rel: 'noopener',
+          title: fileName(value),
           class:
-            'inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-medium text-gray-700 hover:border-brand-200 hover:bg-brand-50 hover:text-brand-700',
+            'inline-flex max-w-full items-center gap-1.5 rounded-md border border-gray-200 bg-white px-2 py-0.5 text-xs font-medium text-gray-700 hover:border-brand-200 hover:bg-brand-50 hover:text-brand-700',
         },
-        [h(FeatherIcon, { name: 'file-text', class: 'h-3.5 w-3.5' }), p.label],
+        [h(FeatherIcon, { name: 'file-text', class: 'h-3.5 w-3.5 shrink-0' }), h('span', { class: 'truncate' }, fileName(value))],
       )
-    : null
-FileChip.props = ['url', 'label']
+    case 'Date':
+      return dayjs(value).format('DD MMM YYYY')
+    case 'Datetime':
+      return dayjs(value).format('DD MMM YYYY, h:mm A')
+    case 'Currency':
+      return `₹ ${Number(value).toLocaleString('en-IN')}`
+    default:
+      if (LONG_TEXT.includes(field.fieldtype)) return h('span', { class: 'whitespace-pre-line font-normal' }, String(value))
+      return String(value)
+  }
+}
+FieldValue.props = ['field', 'value']
 </script>

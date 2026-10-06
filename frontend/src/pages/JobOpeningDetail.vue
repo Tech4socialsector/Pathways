@@ -38,7 +38,7 @@
     </PageHeader>
     <div class="flex-1 overflow-y-auto bg-gray-50">
       <div v-if="loading && !job" class="p-6 text-sm text-gray-500">Loading...</div>
-      <div v-else-if="job" class="mx-auto flex max-w-7xl flex-col gap-6 p-6">
+      <div v-else-if="job" class="flex flex-col gap-6 p-6">
         <!-- Key facts -->
         <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <div

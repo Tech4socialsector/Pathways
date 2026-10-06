@@ -80,6 +80,22 @@
         No active shortlisting rubric configured for this track.
       </div>
       <div v-else class="flex flex-col gap-4">
+        <div v-if="!review.shortlisting_committee" class="rounded-lg border border-orange-200 bg-orange-50 px-3 py-2.5 text-sm text-orange-800">
+          <div class="font-semibold">No shortlisting committee yet</div>
+          <p class="mt-0.5">
+            Scores are recorded against this job's Shortlisting Committee. Set one up, with its members, to start scoring.
+          </p>
+          <a
+            v-if="session.can('Shortlisting Committee', 'create')"
+            :href="`/desk/shortlisting-committee/new?job_opening=${encodeURIComponent(review.job_opening)}`"
+            target="_blank"
+            rel="noopener"
+            class="mt-2 inline-flex items-center gap-1 font-semibold text-brand-700 hover:underline"
+          >
+            Set up committee <FeatherIcon name="external-link" class="h-3.5 w-3.5" />
+          </a>
+          <p v-else class="mt-1 text-xs">Ask the recruiter or an administrator to set it up.</p>
+        </div>
         <div class="flex flex-col divide-y divide-gray-100 rounded-lg border border-gray-200">
           <div v-for="(criterion, i) in form.criteria" :key="criterion.criterion_label" class="flex items-center gap-3 px-3 py-2.5">
             <div class="flex-1 text-sm">
@@ -92,6 +108,8 @@
               :min="0"
               :max="criterion.max_score"
               :aria-label="criterion.criterion_label"
+              :disabled="!canScore"
+              :class="overMax(criterion) && 'border-red-500 text-red-700'"
               v-model.number="form.criteria[i].score_given"
             />
           </div>
@@ -105,6 +123,7 @@
             variant="solid"
             icon-left="check"
             :class="BTN_SUCCESS"
+            :disabled="!canScore"
             :loading="submitting && form.is_shortlisted === 1"
             @click="submit(1)"
           >
@@ -114,6 +133,7 @@
             variant="solid"
             icon-left="x"
             :class="BTN_DANGER"
+            :disabled="!canScore"
             :loading="submitting && form.is_shortlisted === 0"
             @click="submit(0)"
           >
@@ -133,6 +153,7 @@ import StatusBadge from './StatusBadge.vue'
 import SectionCard from './SectionCard.vue'
 import { BTN_DANGER, BTN_SUCCESS } from '@/utils/buttonStyles'
 import { scoringService } from '@/services/scoring'
+import { useSessionStore } from '@/stores/session'
 
 const props = defineProps({
   review: { type: Object, required: true },
@@ -142,6 +163,14 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['scored'])
+
+const session = useSessionStore()
+const canScore = computed(() => !!props.review.shortlisting_committee)
+
+function overMax(c) {
+  const score = Number(c.score_given)
+  return Number.isNaN(score) || score < 0 || score > Number(c.max_score)
+}
 
 const totalScore = computed(() => form.criteria.reduce((sum, c) => sum + (Number(c.score_given) || 0), 0))
 const maxScore = computed(() => form.criteria.reduce((sum, c) => sum + (Number(c.max_score) || 0), 0))
@@ -173,10 +202,15 @@ watch(() => [props.review, props.rubric], resetForm, { immediate: true })
 
 async function submit(isShortlisted) {
   formError.value = ''
+  const bad = form.criteria.find(overMax)
+  if (bad) {
+    formError.value = `${bad.criterion_label}: enter a score between 0 and ${bad.max_score}.`
+    return
+  }
   form.is_shortlisted = isShortlisted
   submitting.value = true
   try {
-    await scoringService.submitShortlistingScore({
+    const result = await scoringService.submitShortlistingScore({
       application: props.review.name,
       shortlisting_committee: props.review.shortlisting_committee,
       is_shortlisted: isShortlisted,
@@ -184,7 +218,11 @@ async function submit(isShortlisted) {
       criteria: form.criteria,
     })
     alreadyScored.value = true
-    toast({ title: 'Score submitted.', icon: 'check', iconClasses: 'text-green-500' })
+    toast({
+      title: result?.status ? `Score saved. Application is now ${result.status}.` : 'Score saved.',
+      icon: 'check',
+      iconClasses: 'text-green-500',
+    })
     emit('scored')
   } catch (e) {
     formError.value = e?.messages?.[0] || 'Could not submit the score.'

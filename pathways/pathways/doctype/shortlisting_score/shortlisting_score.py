@@ -2,6 +2,8 @@
 # For license information, please see license.txt
 
 import frappe
+from frappe import _
+from frappe.utils import flt
 from frappe.model.document import Document
 
 
@@ -9,7 +11,17 @@ class ShortlistingScore(Document):
 	def validate(self):
 		self.validate_committee_matches_application()
 		self.populate_rubric_criteria()
+		self.validate_scores()
 		self.compute_total_score()
+
+	def validate_scores(self):
+		for row in self.criteria or []:
+			score, maximum = flt(row.score_given), flt(row.max_score)
+			if score < 0 or (maximum and score > maximum):
+				frappe.throw(
+					_("{0}: enter a score between 0 and {1}.").format(row.criterion_label, frappe.format(maximum)),
+					title=_("Invalid Score"),
+				)
 
 	def validate_committee_matches_application(self):
 		if not (self.application and self.shortlisting_committee):

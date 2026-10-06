@@ -2,6 +2,7 @@
 # For license information, please see license.txt
 
 import frappe
+from frappe import _
 
 
 @frappe.whitelist()
@@ -122,6 +123,18 @@ def submit_shortlisting_score(application, shortlisting_committee, is_shortliste
 	if isinstance(criteria, str):
 		criteria = frappe.parse_json(criteria)
 
+	job_opening = frappe.db.get_value("Application", application, "job_opening")
+	if not shortlisting_committee:
+		shortlisting_committee = frappe.db.get_value("Shortlisting Committee", {"job_opening": job_opening}, "name")
+	if not shortlisting_committee:
+		frappe.throw(
+			_(
+				"No Shortlisting Committee has been set up for Job Opening {0}. "
+				"Create one (with its members) before recording shortlisting scores."
+			).format(job_opening),
+			title=_("Shortlisting Committee Missing"),
+		)
+
 	existing = frappe.db.exists("Shortlisting Score", {"application": application})
 	score = frappe.get_doc("Shortlisting Score", existing) if existing else frappe.new_doc("Shortlisting Score")
 
@@ -153,8 +166,41 @@ def submit_shortlisting_score(application, shortlisting_committee, is_shortliste
 	else:
 		score.insert(ignore_permissions=True)
 
+	status = apply_shortlisting_decision(score)
 	frappe.db.commit()
-	return score.name
+	return {"name": score.name, "status": status}
+
+
+# Statuses a shortlisting decision may move an application out of: once a
+# candidate is past shortlisting (interview, offer...), re-scoring never
+# pulls them back.
+SHORTLISTING_STAGE = ("Submitted", "Under Review", "Shortlisted", "Not Selected")
+
+
+def apply_shortlisting_decision(score):
+	"""The committee's decision sets the application's status:
+	Shortlist -> Shortlisted, Reject -> Not Selected. Returns the status."""
+	app = frappe.get_doc("Application", score.application)
+	decision = "Shortlisted" if frappe.utils.cint(score.is_shortlisted) else "Not Selected"
+	if app.status not in SHORTLISTING_STAGE or app.status == decision:
+		return app.status
+
+	previous = app.status
+	app.status = decision
+	# The committee member deciding may not have write access to the
+	# Application itself; the decision is theirs to make.
+	app.save(ignore_permissions=True)
+	app.add_comment(
+		"Info",
+		_("Shortlisting decision by {0}: {1} (score {2}). Status changed from {3} to {4}.").format(
+			frappe.utils.get_fullname(frappe.session.user),
+			_("Shortlisted") if decision == "Shortlisted" else _("Rejected"),
+			frappe.format(score.get("total_score")),
+			previous,
+			decision,
+		),
+	)
+	return app.status
 
 
 @frappe.whitelist()
