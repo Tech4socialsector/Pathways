@@ -88,6 +88,12 @@ const routes = [
     component: () => import('@/pages/candidate-portal/JobBoard.vue'),
   },
   {
+    path: '/portal/jobs/:id',
+    name: 'JobPosting',
+    component: () => import('@/pages/candidate-portal/JobPosting.vue'),
+    props: true,
+  },
+  {
     path: '/portal/jobs/:id/apply',
     name: 'ApplyForm',
     component: () => import('@/pages/candidate-portal/ApplyForm.vue'),

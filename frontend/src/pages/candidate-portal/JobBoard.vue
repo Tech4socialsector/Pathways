@@ -11,7 +11,7 @@
           v-for="job in jobs"
           :key="job.name"
           class="cursor-pointer rounded-lg border bg-white p-4 hover:border-gray-300"
-          @click="$router.push(`/portal/jobs/${job.name}/apply`)"
+          @click="$router.push(`/portal/jobs/${job.name}`)"
         >
           <div class="font-medium text-gray-900">{{ job.job_title }}</div>
           <div class="mt-1 text-sm text-gray-500">

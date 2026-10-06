@@ -25,7 +25,9 @@ def close_expired_job_openings():
 		pluck="name",
 	)
 	for name in expired:
-		frappe.db.set_value("Job Opening", name, "status", "Closed")
+		# The public posting only serves Advertised jobs, so drop its link too
+		# (JobOpening.set_advertisement_url does this on a normal save).
+		frappe.db.set_value("Job Opening", name, {"status": "Closed", "advertisement_url": None})
 	if expired:
 		frappe.db.commit()
 

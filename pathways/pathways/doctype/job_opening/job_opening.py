@@ -12,12 +12,21 @@ STATUSES_REQUIRING_APPROVED_GREEN_SHEET = ("Approved", "Advertised")
 
 
 def can_override_status(user=None):
-	"""Holders of Pathways Settings > Job Status Override Role (System
-	Manager by default) may set any Job Opening status directly, without
-	going through the Pre-Recruitment Green Sheet approval chain.
+	"""Holders of Pathways Settings > Job Status Override Role may set any
+	Job Opening status directly, without going through the Pre-Recruitment
+	Green Sheet approval chain. System Manager always may, so setting the
+	role to e.g. Pathways Admin adds admins rather than locking out the
+	site's superusers.
 	"""
+	roles = frappe.get_roles(user or frappe.session.user)
 	role = frappe.get_cached_doc("Pathways Settings").get("status_override_role")
-	return bool(role) and role in frappe.get_roles(user or frappe.session.user)
+	return "System Manager" in roles or (bool(role) and role in roles)
+
+
+def get_advertisement_url(job_opening):
+	"""Public job posting page in the candidate portal (served to guests
+	by pathways.api.application.get_job_opening_detail while Advertised)."""
+	return frappe.utils.get_url(f"/pathways/portal/jobs/{job_opening}")
 
 
 class JobOpening(Document):
@@ -25,6 +34,7 @@ class JobOpening(Document):
 		self.validate_green_sheet_link()
 		self.validate_status_transition()
 		self.validate_application_form()
+		self.set_advertisement_url()
 
 	def validate_application_form(self):
 		for q in self.screening_questions or []:
@@ -48,6 +58,14 @@ class JobOpening(Document):
 				frappe.throw(_("Set an Application Deadline before advertising this job."))
 			if get_datetime(self.application_deadline) <= now_datetime():
 				frappe.throw(_("The Application Deadline must be in the future to advertise this job."))
+
+	def set_advertisement_url(self):
+		# The posting page only serves Advertised jobs, so the link is kept
+		# only while that is true. name is unset before the first insert.
+		if self.status == "Advertised" and self.name:
+			self.advertisement_url = get_advertisement_url(self.name)
+		else:
+			self.advertisement_url = None
 
 	def validate_green_sheet_link(self):
 		if not self.pre_recruitment_green_sheet or self.is_new():

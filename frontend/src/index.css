@@ -7,3 +7,16 @@ body,
 #app {
   height: 100%;
 }
+
+/* frappe-ui sets html to InterVar in its base layer; Pathways uses
+   Merriweather everywhere (font loaded in index.html). */
+html {
+  font-family: 'Merriweather', Georgia, serif;
+}
+
+/* Apply form: outline the control of a field with an error (FormField.vue). */
+.field-invalid input:not([type='checkbox']):not([type='radio']),
+.field-invalid select,
+.field-invalid textarea {
+  @apply border border-red-500 ring-1 ring-red-500;
+}

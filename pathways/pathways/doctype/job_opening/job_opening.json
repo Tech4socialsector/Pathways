@@ -29,7 +29,8 @@
   "screening_questions",
   "required_documents",
   "links_section",
-  "pre_recruitment_green_sheet"
+  "pre_recruitment_green_sheet",
+  "advertisement_url"
  ],
  "fields": [
   {
@@ -182,11 +183,20 @@
    "label": "Pre-Recruitment Green Sheet",
    "options": "Pre-Recruitment Green Sheet",
    "read_only": 1
+  },
+  {
+   "description": "Public link to the job posting. Generated when the Job Opening is Advertised.",
+   "fieldname": "advertisement_url",
+   "fieldtype": "Data",
+   "label": "Advertisement URL",
+   "no_copy": 1,
+   "options": "URL",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-10-06 15:44:09.371312",
+ "modified": "2026-10-06 17:00:00.000000",
  "modified_by": "Administrator",
  "module": "Pathways",
  "name": "Job Opening",

@@ -12,7 +12,12 @@ export default {
   ],
   safelist: [{ pattern: /!(text|bg)-/, variants: ['hover', 'active'] }],
   theme: {
-    extend: {},
+    extend: {
+      // Merriweather everywhere in Pathways (loaded in index.html).
+      fontFamily: {
+        sans: ['Merriweather', 'Georgia', 'serif'],
+      },
+    },
   },
   plugins: [],
 }

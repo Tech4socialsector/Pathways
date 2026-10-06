@@ -1,6 +1,8 @@
 <template>
-  <div class="flex h-full flex-col">
-    <header class="flex items-center justify-between border-b bg-white px-6 py-3">
+  <!-- The page itself scrolls (no inner scroll area), so the browser has one
+       scrollbar and scrollIntoView / window.scrollTo behave. -->
+  <div class="flex min-h-full flex-col bg-gray-50">
+    <header class="sticky top-0 z-10 flex items-center justify-between border-b bg-white px-6 py-3">
       <div class="text-lg font-semibold text-gray-900">NLSIU Careers</div>
       <div class="flex items-center gap-4 text-sm">
         <router-link to="/portal/jobs" class="text-gray-600 hover:text-gray-900">Openings</router-link>
@@ -21,7 +23,7 @@
         <a v-else :href="loginUrl" class="text-gray-600 hover:text-gray-900">Log in</a>
       </div>
     </header>
-    <main class="flex-1 overflow-y-auto bg-gray-50">
+    <main class="flex-1">
       <slot />
     </main>
   </div>

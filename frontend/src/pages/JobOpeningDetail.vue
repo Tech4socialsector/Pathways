@@ -26,10 +26,31 @@
       <div v-if="loading && !job" class="text-sm text-gray-500">Loading...</div>
       <div v-else-if="job" class="grid grid-cols-1 gap-6 md:grid-cols-3">
         <div class="flex flex-col gap-6 md:col-span-2">
+          <div v-if="job.advertisement_url" class="rounded-lg border border-green-200 bg-green-50 p-4">
+            <div class="mb-1 text-sm font-semibold text-gray-900">Advertisement Link</div>
+            <p class="mb-3 text-sm text-gray-600">Share this link to post the job description publicly. Candidates can read it and apply.</p>
+            <div class="flex flex-wrap items-center gap-2">
+              <a
+                :href="job.advertisement_url"
+                target="_blank"
+                rel="noopener"
+                class="min-w-0 flex-1 truncate rounded border bg-white px-3 py-1.5 font-mono text-sm text-gray-800 hover:underline"
+              >{{ job.advertisement_url }}</a>
+              <Button icon-left="copy" @click="copyAdvertisementUrl">Copy</Button>
+              <Button icon-left="external-link" :link="job.advertisement_url">Open</Button>
+            </div>
+          </div>
           <div class="rounded-lg border bg-white p-4">
             <div class="mb-3 text-sm font-semibold text-gray-900">Job Description</div>
             <div v-if="job.jd_text" class="prose prose-sm max-w-none" v-html="job.jd_text" />
             <div v-else class="text-sm text-gray-500">No description provided.</div>
+            <a
+              v-if="job.jd_attachment"
+              :href="job.jd_attachment"
+              target="_blank"
+              rel="noopener"
+              class="mt-3 inline-block text-sm font-medium text-blue-600 hover:underline"
+            >JD Attachment: {{ job.jd_attachment.split('/').pop() }}</a>
           </div>
           <ApplicationFormPanel :job="job" :can-write="!!permissions.can_write" @saved="fetchJob(props.id)" />
           <GreenSheetPanel
@@ -77,6 +98,14 @@
               <dt class="text-gray-500">Applications close</dt>
               <dd class="font-medium text-gray-900">{{ dayjs(job.application_deadline).format('DD MMM YYYY, h:mm A') }}</dd>
             </div>
+            <div v-if="job.reservation_breakdown?.length">
+              <dt class="text-gray-500">Reservation Breakdown</dt>
+              <dd class="font-medium text-gray-900">
+                <div v-for="row in job.reservation_breakdown" :key="row.name">
+                  {{ row.category }}: {{ row.vacancy_count }}
+                </div>
+              </dd>
+            </div>
             <div v-if="job.pre_recruitment_green_sheet">
               <dt class="text-gray-500">Green Sheet</dt>
               <dd class="font-medium text-gray-900">{{ job.pre_recruitment_green_sheet }}</dd>
@@ -86,55 +115,9 @@
       </div>
     </div>
 
-    <Dialog v-model="showEditDialog" :options="{ title: 'Edit Job Opening', size: 'xl' }">
+    <Dialog v-model="showEditDialog" :options="{ title: 'Edit Job Opening', size: '4xl' }">
       <template #body-content>
-        <div class="flex flex-col gap-4">
-          <ErrorMessage :message="formError" />
-          <FormControl label="Job Title" v-model="form.job_title" required />
-          <div class="grid grid-cols-2 gap-4">
-            <div>
-              <span class="mb-1.5 block text-sm text-gray-700">Recruitment Track<span class="text-red-500">*</span></span>
-              <Autocomplete
-                placeholder="Select a track"
-                :options="trackOptions.options.value"
-                :model-value="form.track"
-                @update:model-value="(opt) => (form.track = opt?.value ?? '')"
-              />
-            </div>
-            <div>
-              <span class="mb-1.5 block text-sm text-gray-700">Department<span class="text-red-500">*</span></span>
-              <Autocomplete
-                placeholder="Select a department"
-                :options="departmentOptions.options.value"
-                :model-value="form.department"
-                @update:model-value="(opt) => (form.department = opt?.value ?? '')"
-              />
-            </div>
-          </div>
-          <div class="grid grid-cols-2 gap-4">
-            <div>
-              <span class="mb-1.5 block text-sm text-gray-700">Designation</span>
-              <Autocomplete
-                placeholder="Select a designation"
-                :options="designationOptions.options.value"
-                :model-value="form.designation"
-                @update:model-value="(opt) => (form.designation = opt?.value ?? '')"
-              />
-            </div>
-            <FormControl
-              label="Employment Type"
-              type="select"
-              v-model="form.employment_type"
-              :options="employmentTypeOptions"
-              required
-            />
-          </div>
-          <div class="grid grid-cols-2 gap-4">
-            <FormControl label="Vacancies" type="number" v-model="form.vacancies" required />
-            <FormControl label="Pay Level" v-model="form.pay_level" />
-          </div>
-          <FormControl label="Tenure Description" type="textarea" v-model="form.tenure_description" />
-        </div>
+        <JobOpeningForm :form="form" :error="formError" :docname="props.id" />
       </template>
       <template #actions>
         <Button variant="solid" :loading="submitting" @click="submitEdit">Save</Button>
@@ -188,24 +171,20 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import dayjs from 'dayjs'
-import { Autocomplete } from 'frappe-ui'
 import { toast } from '@/utils/notify'
 import StaffLayout from '@/layouts/StaffLayout.vue'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
 import GreenSheetPanel from '@/components/jobs/GreenSheetPanel.vue'
+import JobOpeningForm, { emptyJobForm } from '@/components/jobs/JobOpeningForm.vue'
 import ApplicationFormPanel from '@/components/jobs/ApplicationFormPanel.vue'
 import { useStaffJobOpeningDetail } from '@/composables/useJobOpenings'
 import { jobOpeningService } from '@/services/jobOpenings'
-import { useRecruitmentTrackOptions, useDepartmentOptions, useDesignationOptions } from '@/composables/useMasterData'
 
 const props = defineProps({ id: { type: String, required: true } })
 const router = useRouter()
 
 const { job, loading, permissions, fetchJob, fetchPermissions } = useStaffJobOpeningDetail()
-const trackOptions = useRecruitmentTrackOptions()
-const departmentOptions = useDepartmentOptions()
-const designationOptions = useDesignationOptions()
 
 const greenSheetPanel = ref(null)
 const greenSheet = ref(null)
@@ -217,36 +196,19 @@ async function loadAll(id) {
 onMounted(() => loadAll(props.id))
 watch(() => props.id, (id) => loadAll(id))
 
-const employmentTypeOptions = ['Permanent', 'Consultant', 'Grant-funded', 'Contract']
-
 const showEditDialog = ref(false)
 const submitting = ref(false)
 const formError = ref('')
-const form = reactive({
-  job_title: '',
-  track: '',
-  department: '',
-  designation: '',
-  employment_type: '',
-  vacancies: 1,
-  tenure_description: '',
-  pay_level: '',
-})
+const form = reactive(emptyJobForm())
 
 function openEditDialog() {
-  trackOptions.fetch()
-  departmentOptions.fetch()
-  designationOptions.fetch()
-  Object.assign(form, {
-    job_title: job.value.job_title,
-    track: job.value.track,
-    department: job.value.department,
-    designation: job.value.designation,
-    employment_type: job.value.employment_type,
-    vacancies: job.value.vacancies,
-    tenure_description: job.value.tenure_description,
-    pay_level: job.value.pay_level,
-  })
+  for (const key of Object.keys(emptyJobForm())) form[key] = job.value[key] ?? ''
+  // Copy rows so cancelling the dialog doesn't change the page. Only the
+  // editable fields are sent; saving replaces the child table.
+  form.reservation_breakdown = (job.value.reservation_breakdown || []).map((r) => ({
+    category: r.category,
+    vacancy_count: r.vacancy_count,
+  }))
   formError.value = ''
   showEditDialog.value = true
 }
@@ -305,7 +267,14 @@ async function changeStatus(status) {
   statusError.value = ''
   try {
     await jobOpeningService.updateJob(props.id, { status })
-    toast({ title: `Status changed to ${status}.`, icon: 'check', iconClasses: 'text-green-500' })
+    toast({
+      title:
+        status === 'Advertised'
+          ? 'Job advertised. The public advertisement link is ready to share.'
+          : `Status changed to ${status}.`,
+      icon: 'check',
+      iconClasses: 'text-green-500',
+    })
     return true
   } catch (e) {
     const message = e?.messages?.[0] || 'Could not change the status.'
@@ -317,6 +286,15 @@ async function changeStatus(status) {
   } finally {
     changingStatus.value = false
     await fetchJob(props.id)
+  }
+}
+
+async function copyAdvertisementUrl() {
+  try {
+    await navigator.clipboard.writeText(job.value.advertisement_url)
+    toast({ title: 'Advertisement link copied.', icon: 'check', iconClasses: 'text-green-500' })
+  } catch {
+    toast({ title: 'Could not copy. Select the link and copy it manually.', icon: 'alert-triangle', iconClasses: 'text-red-500' })
   }
 }
 

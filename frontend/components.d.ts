@@ -10,8 +10,12 @@ declare module 'vue' {
   export interface GlobalComponents {
     ApplicationFormPanel: typeof import('./src/components/jobs/ApplicationFormPanel.vue')['default']
     ApplicationSubmissionPanel: typeof import('./src/components/common/ApplicationSubmissionPanel.vue')['default']
+    DataTable: typeof import('./src/components/common/DataTable.vue')['default']
+    DocumentViewer: typeof import('./src/components/common/DocumentViewer.vue')['default']
     EmptyState: typeof import('./src/components/common/EmptyState.vue')['default']
+    FormField: typeof import('./src/components/candidate/FormField.vue')['default']
     GreenSheetPanel: typeof import('./src/components/jobs/GreenSheetPanel.vue')['default']
+    JobOpeningForm: typeof import('./src/components/jobs/JobOpeningForm.vue')['default']
     PageHeader: typeof import('./src/components/layout/PageHeader.vue')['default']
     PipelineFunnelChart: typeof import('./src/components/common/PipelineFunnelChart.vue')['default']
     RecruitmentTimeline: typeof import('./src/components/common/RecruitmentTimeline.vue')['default']

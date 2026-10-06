@@ -6,9 +6,9 @@
     <p v-if="hint" class="mb-1.5 text-xs text-gray-500">{{ hint }}</p>
     <FileUploader
       :file-types="accept"
-      :upload-args="{ private: true }"
+      :upload-args="uploadArgs"
       :validate-file="validate"
-      @success="(file) => emit('update:modelValue', file.file_url)"
+      @success="onUploaded"
     >
       <template #default="{ uploading, progress, error, openFileSelector }">
         <div class="flex flex-wrap items-center gap-2">
@@ -33,7 +33,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, inject } from 'vue'
 import { Button, FeatherIcon, FileUploader } from 'frappe-ui'
 
 const props = defineProps({
@@ -44,6 +44,18 @@ const props = defineProps({
   rule: { type: Object, default: () => ({ formats: ['pdf', 'jpg', 'jpeg', 'png'], max_size_mb: 5 }) },
 })
 const emit = defineEmits(['update:modelValue'])
+
+// Provided by the apply page for guests: uploads go to the application's
+// own endpoint, which returns a token proving who uploaded the file.
+const guestUpload = inject('guestUpload', null)
+const uploadArgs = computed(() =>
+  guestUpload?.enabled.value ? { private: true, upload_endpoint: guestUpload.endpoint.value } : { private: true },
+)
+
+function onUploaded(file) {
+  if (file.upload_token) guestUpload?.tokens.set(file.file_url, file.upload_token)
+  emit('update:modelValue', file.file_url)
+}
 
 const accept = computed(() => (props.rule.formats || []).map((f) => `.${f}`).join(','))
 const ruleText = computed(

@@ -12,86 +12,23 @@
       </template>
     </PageHeader>
     <div class="flex-1 overflow-y-auto p-6">
-      <div v-if="loading" class="text-sm text-gray-500">Loading...</div>
-      <EmptyState v-else-if="!jobs.length" title="No job openings" />
-      <div v-else class="overflow-hidden rounded-lg border bg-white">
-        <table class="w-full text-sm">
-          <thead class="border-b bg-gray-50 text-left text-xs uppercase text-gray-500">
-            <tr>
-              <th class="px-4 py-2">Job Title</th>
-              <th class="px-4 py-2">Track</th>
-              <th class="px-4 py-2">Department</th>
-              <th class="px-4 py-2">Vacancies</th>
-              <th class="px-4 py-2">Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              v-for="job in jobs"
-              :key="job.name"
-              class="cursor-pointer border-b last:border-0 hover:bg-gray-50"
-              @click="$router.push(`/jobs/${job.name}`)"
-            >
-              <td class="px-4 py-2.5 font-medium text-gray-900">{{ job.job_title }}</td>
-              <td class="px-4 py-2.5 text-gray-600">{{ job.track }}</td>
-              <td class="px-4 py-2.5 text-gray-600">{{ job.department }}</td>
-              <td class="px-4 py-2.5 text-gray-600">{{ job.vacancies }}</td>
-              <td class="px-4 py-2.5"><StatusBadge :status="job.status" /></td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+      <DataTable
+        :columns="columns"
+        :rows="jobs"
+        :loading="loading"
+        :filters="filters"
+        clickable
+        empty-title="No job openings"
+        search-placeholder="Search job openings..."
+        @row-click="(job) => router.push(`/jobs/${job.name}`)"
+      >
+        <template #cell-status="{ value }"><StatusBadge :status="value" /></template>
+      </DataTable>
     </div>
 
-    <Dialog v-model="showCreateDialog" :options="{ title: 'New Job Opening', size: 'xl' }">
+    <Dialog v-model="showCreateDialog" :options="{ title: 'New Job Opening', size: '4xl' }">
       <template #body-content>
-        <div class="flex flex-col gap-4">
-          <ErrorMessage :message="formError" />
-          <FormControl label="Job Title" v-model="form.job_title" required />
-          <div class="grid grid-cols-2 gap-4">
-            <div>
-              <span class="mb-1.5 block text-sm text-gray-700">Recruitment Track<span class="text-red-500">*</span></span>
-              <Autocomplete
-                placeholder="Select a track"
-                :options="trackOptions.options.value"
-                :model-value="form.track"
-                @update:model-value="(opt) => (form.track = opt?.value ?? '')"
-              />
-            </div>
-            <div>
-              <span class="mb-1.5 block text-sm text-gray-700">Department<span class="text-red-500">*</span></span>
-              <Autocomplete
-                placeholder="Select a department"
-                :options="departmentOptions.options.value"
-                :model-value="form.department"
-                @update:model-value="(opt) => (form.department = opt?.value ?? '')"
-              />
-            </div>
-          </div>
-          <div class="grid grid-cols-2 gap-4">
-            <div>
-              <span class="mb-1.5 block text-sm text-gray-700">Designation</span>
-              <Autocomplete
-                placeholder="Select a designation"
-                :options="designationOptions.options.value"
-                :model-value="form.designation"
-                @update:model-value="(opt) => (form.designation = opt?.value ?? '')"
-              />
-            </div>
-            <FormControl
-              label="Employment Type"
-              type="select"
-              v-model="form.employment_type"
-              :options="employmentTypeOptions"
-              required
-            />
-          </div>
-          <div class="grid grid-cols-2 gap-4">
-            <FormControl label="Vacancies" type="number" v-model="form.vacancies" required />
-            <FormControl label="Pay Level" v-model="form.pay_level" />
-          </div>
-          <FormControl label="Tenure Description" type="textarea" v-model="form.tenure_description" />
-        </div>
+        <JobOpeningForm :form="form" :error="formError" />
       </template>
       <template #actions>
         <Button variant="solid" :loading="submitting" @click="submitCreate">Create</Button>
@@ -103,56 +40,49 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { Autocomplete } from 'frappe-ui'
 import { toast } from '@/utils/notify'
 import StaffLayout from '@/layouts/StaffLayout.vue'
 import PageHeader from '@/components/layout/PageHeader.vue'
-import EmptyState from '@/components/common/EmptyState.vue'
+import DataTable from '@/components/common/DataTable.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
+import JobOpeningForm, { emptyJobForm } from '@/components/jobs/JobOpeningForm.vue'
 import { useStaffJobOpenings } from '@/composables/useJobOpenings'
 import { jobOpeningService } from '@/services/jobOpenings'
 import { useSessionStore } from '@/stores/session'
-import { useRecruitmentTrackOptions, useDepartmentOptions, useDesignationOptions } from '@/composables/useMasterData'
 
 const session = useSessionStore()
 const router = useRouter()
 
 const { jobs, loading, fetchJobs } = useStaffJobOpenings()
-const trackOptions = useRecruitmentTrackOptions()
-const departmentOptions = useDepartmentOptions()
-const designationOptions = useDesignationOptions()
+
+const columns = [
+  { key: 'job_title', label: 'Job Title' },
+  { key: 'track', label: 'Track' },
+  { key: 'department', label: 'Department' },
+  { key: 'designation', label: 'Designation' },
+  { key: 'employment_type', label: 'Employment Type' },
+  { key: 'vacancies', label: 'Vacancies' },
+  { key: 'status', label: 'Status' },
+]
+const filters = [
+  { key: 'status', label: 'Statuses' },
+  { key: 'track', label: 'Tracks' },
+  { key: 'department', label: 'Departments' },
+  { key: 'employment_type', label: 'Employment Types' },
+]
 
 onMounted(() => {
   session.fetchRoles()
-  fetchJobs()
+  fetchJobs({}, { limit_page_length: 0 })
 })
-
-const employmentTypeOptions = ['Permanent', 'Consultant', 'Grant-funded', 'Contract']
 
 const showCreateDialog = ref(false)
 const submitting = ref(false)
 const formError = ref('')
-
-function emptyForm() {
-  return {
-    job_title: '',
-    track: '',
-    department: '',
-    designation: '',
-    employment_type: '',
-    vacancies: 1,
-    tenure_description: '',
-    pay_level: '',
-  }
-}
-
-const form = reactive(emptyForm())
+const form = reactive(emptyJobForm())
 
 function openCreateDialog() {
-  trackOptions.fetch()
-  departmentOptions.fetch()
-  designationOptions.fetch()
-  Object.assign(form, emptyForm())
+  Object.assign(form, emptyJobForm())
   formError.value = ''
   showCreateDialog.value = true
 }

@@ -1,11 +1,10 @@
 <template>
   <div class="flex flex-col gap-6">
     <div v-if="loading && !app" class="text-sm text-gray-500">Loading application...</div>
-    <div v-else-if="error" class="text-sm text-red-600">{{ error }}</div>
+    <div v-else-if="error" class="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">{{ error }}</div>
     <template v-else-if="app">
-      <section class="rounded-lg border bg-white p-4">
-        <div class="mb-3 text-sm font-semibold text-gray-900">Personal Details</div>
-        <dl class="grid grid-cols-1 gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
+      <Card icon="user" title="Personal Details">
+        <dl class="grid grid-cols-1 gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
           <Field label="Name" :value="c.full_name" />
           <Field label="Email" :value="c.email" />
           <Field label="Mobile" :value="c.mobile_number" />
@@ -14,108 +13,113 @@
           <Field label="Heard via" :value="app.source" />
           <Field class="sm:col-span-2" label="Address" :value="c.address" />
         </dl>
-      </section>
+      </Card>
 
-      <section class="rounded-lg border bg-white p-4">
-        <div class="mb-3 text-sm font-semibold text-gray-900">Academic Qualifications</div>
+      <Card icon="book-open" title="Academic Qualifications">
         <div v-if="!app.qualifications?.length" class="text-sm text-gray-500">None provided.</div>
-        <div v-for="q in app.qualifications" :key="q.name" class="mb-3 rounded border p-3 text-sm last:mb-0">
-          <div class="font-medium text-gray-900">{{ q.degree_name }} <span class="font-normal text-gray-500">· {{ q.degree_level }}</span></div>
-          <div class="text-gray-600">
-            {{ q.other_institution || q.institution }} · {{ q.year_of_graduation }} · {{ q.percentage_or_cgpa }}% ·
-            {{ q.division_grade }} · {{ q.specialization }}
-          </div>
-          <div class="mt-1 flex gap-3">
-            <FileLink :url="q.transcript_attachment" label="Transcript" />
-            <FileLink :url="q.certificate_attachment" label="Certificate" />
+        <div class="flex flex-col gap-3">
+          <div v-for="q in app.qualifications" :key="q.name" class="rounded-lg border border-gray-200 p-4 text-sm">
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="font-bold text-gray-900">{{ q.degree_name }}</span>
+              <span class="rounded bg-indigo-50 px-2 py-0.5 text-xs text-indigo-700">{{ levelLabel(q.degree_level) }}</span>
+            </div>
+            <div class="mt-1 text-gray-600">{{ q.other_institution || q.institution }}</div>
+            <dl class="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <Field label="Year" :value="q.year_of_graduation" />
+              <Field label="Percentage" :value="q.percentage_or_cgpa ? `${q.percentage_or_cgpa}%` : ''" />
+              <Field label="Division / Grade" :value="q.division_grade" />
+              <Field label="Specialization" :value="q.specialization" />
+            </dl>
+            <div class="mt-3 flex flex-wrap gap-2">
+              <FileChip :url="q.transcript_attachment" label="Transcript" />
+              <FileChip :url="q.certificate_attachment" label="Degree Certificate" />
+            </div>
           </div>
         </div>
-      </section>
+      </Card>
 
-      <section class="rounded-lg border bg-white p-4">
-        <div class="mb-3 text-sm font-semibold text-gray-900">Professional Experience</div>
-        <dl class="mb-3 grid grid-cols-2 gap-x-6 gap-y-2 text-sm sm:grid-cols-3">
+      <Card icon="briefcase" title="Professional Experience">
+        <dl class="mb-4 grid grid-cols-2 gap-3 text-sm sm:grid-cols-3">
           <Field label="Overall (years)" :value="app.overall_experience_years" />
           <Field label="Relevant (years)" :value="app.relevant_experience_years" />
           <Field label="Notice period" :value="app.notice_period" />
         </dl>
-        <div v-for="(e, idx) in app.employment_history" :key="e.name" class="mb-3 rounded border p-3 text-sm last:mb-0">
-          <div class="font-medium text-gray-900">#{{ idx + 1 }} {{ e.designation }}, {{ e.employer_name }}</div>
-          <div class="text-gray-600">
-            {{ formatDate(e.from_date) }} – {{ e.is_current ? 'Present' : formatDate(e.to_date) }}
+        <ol v-if="app.employment_history?.length" class="relative ml-2 border-l border-gray-200 text-sm">
+          <li v-for="e in app.employment_history" :key="e.name" class="mb-4 ml-5 last:mb-0">
+            <span class="absolute -left-[5px] mt-1.5 h-2.5 w-2.5 rounded-full bg-indigo-400" />
+            <div class="font-bold text-gray-900">{{ e.designation }}</div>
+            <div class="text-gray-700">{{ e.employer_name }}</div>
+            <div class="text-xs text-gray-500">{{ formatDate(e.from_date) }} – {{ e.is_current ? 'Present' : formatDate(e.to_date) }}</div>
+            <div v-if="e.key_responsibilities" class="mt-1 whitespace-pre-line text-gray-700">{{ e.key_responsibilities }}</div>
+          </li>
+        </ol>
+        <div v-else class="text-sm text-gray-500">No employment history.</div>
+      </Card>
+
+      <Card v-if="app.screening_answers?.length" icon="help-circle" title="Screening Questions">
+        <div class="flex flex-col divide-y">
+          <div v-for="a in app.screening_answers" :key="a.name" class="py-3 text-sm first:pt-0 last:pb-0">
+            <div class="text-gray-600">{{ a.question }}</div>
+            <div class="mt-0.5 font-bold text-gray-900">{{ a.answer || '—' }}</div>
+            <div v-if="a.details" class="mt-1 whitespace-pre-line text-gray-700">{{ a.details }}</div>
           </div>
-          <div v-if="e.key_responsibilities" class="mt-1 whitespace-pre-line text-gray-700">{{ e.key_responsibilities }}</div>
         </div>
-      </section>
+      </Card>
 
-      <section v-if="app.screening_answers?.length" class="rounded-lg border bg-white p-4">
-        <div class="mb-3 text-sm font-semibold text-gray-900">Screening Questions</div>
-        <div v-for="a in app.screening_answers" :key="a.name" class="mb-3 text-sm last:mb-0">
-          <div class="text-gray-600">{{ a.question }}</div>
-          <div class="font-medium text-gray-900">{{ a.answer || '—' }}</div>
-          <div v-if="a.details" class="mt-0.5 whitespace-pre-line text-gray-700">{{ a.details }}</div>
-        </div>
-      </section>
-
-      <section class="rounded-lg border bg-white p-4">
-        <div class="mb-3 text-sm font-semibold text-gray-900">References</div>
+      <Card icon="users" title="References">
         <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <div v-for="r in app.references" :key="r.name" class="rounded border p-3 text-sm">
-            <div class="font-medium text-gray-900">{{ r.referee_name }}</div>
-            <div class="text-gray-600">{{ r.current_designation_org }} · {{ r.relationship }}</div>
-            <div class="text-gray-600">{{ r.email }} · {{ r.mobile }}</div>
+          <div v-for="r in app.references" :key="r.name" class="rounded-lg border border-gray-200 p-4 text-sm">
+            <div class="font-bold text-gray-900">{{ r.referee_name }}</div>
+            <div class="text-gray-600">{{ r.current_designation_org }}</div>
+            <div class="mt-1 text-xs text-gray-500">{{ r.relationship }}</div>
+            <div class="mt-2 flex flex-col gap-1 text-gray-700">
+              <span class="flex items-center gap-1.5"><FeatherIcon name="mail" class="h-3.5 w-3.5 text-gray-400" />{{ r.email }}</span>
+              <span class="flex items-center gap-1.5"><FeatherIcon name="phone" class="h-3.5 w-3.5 text-gray-400" />{{ r.mobile }}</span>
+            </div>
           </div>
         </div>
-      </section>
+      </Card>
 
-      <section class="rounded-lg border bg-white p-4">
-        <div class="mb-3 text-sm font-semibold text-gray-900">Documents & Compensation</div>
-        <div class="mb-3 flex flex-wrap gap-x-4 gap-y-1">
-          <FileLink :url="app.resume_attachment" label="Resume / CV" />
-          <FileLink :url="app.sop_attachment" label="Statement of Purpose" />
-          <FileLink v-for="d in app.documents" :key="d.name" :url="d.attachment" :label="d.document_type" />
-          <FileLink :url="app.additional_attachment" label="Additional Documents" />
+      <Card icon="paperclip" title="Documents & Compensation">
+        <template #action>
+          <button class="flex items-center gap-1 text-sm font-medium text-indigo-600 hover:underline" @click="emit('view-documents')">
+            <FeatherIcon name="eye" class="h-4 w-4" /> View documents
+          </button>
+        </template>
+        <div class="mb-4 flex flex-wrap gap-2">
+          <FileChip :url="app.resume_attachment" label="Resume / CV" />
+          <FileChip :url="app.sop_attachment" label="Statement of Purpose" />
+          <FileChip v-for="d in app.documents" :key="d.name" :url="d.attachment" :label="d.document_type" />
+          <FileChip :url="app.additional_attachment" label="Additional Documents" />
         </div>
-        <dl class="grid grid-cols-2 gap-x-6 gap-y-2 text-sm sm:grid-cols-3">
+        <dl class="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
           <Field v-if="'current_salary' in app" label="Current salary / month" :value="money(app.current_salary)" />
-          <Field v-if="'expected_salary' in app" label="Expected salary" :value="money(app.expected_salary)" />
+          <Field v-if="'expected_salary' in app" label="Expected salary / month" :value="money(app.expected_salary)" />
           <Field label="Earliest joining" :value="formatDate(app.earliest_doj)" />
           <Field
             label="Declaration"
             :value="app.declaration_accepted ? `Accepted ${formatDate(app.declaration_accepted_on)}` : 'Not recorded'"
           />
         </dl>
-      </section>
+      </Card>
     </template>
   </div>
 </template>
 
 <script setup>
-import { computed, h, ref, watch } from 'vue'
+import { computed, h } from 'vue'
 import dayjs from 'dayjs'
-import { applicationService } from '@/services/applications'
+import { FeatherIcon } from 'frappe-ui'
 
-const props = defineProps({ applicationName: { type: String, required: true } })
+const props = defineProps({
+  // pathways.api.application.get_application_detail, loaded by the page.
+  app: { type: Object, default: null },
+  loading: { type: Boolean, default: false },
+  error: { type: String, default: '' },
+})
+const emit = defineEmits(['view-documents'])
 
-const app = ref(null)
-const loading = ref(false)
-const error = ref('')
-const c = computed(() => app.value?.candidate_details || {})
-
-async function load(name) {
-  loading.value = true
-  error.value = ''
-  try {
-    app.value = await applicationService.getApplicationDetail(name)
-  } catch (e) {
-    app.value = null
-    error.value = e?.messages?.[0] || 'Could not load the application.'
-  } finally {
-    loading.value = false
-  }
-}
-
-watch(() => props.applicationName, load, { immediate: true })
+const c = computed(() => props.app?.candidate_details || {})
 
 function formatDate(value) {
   return value ? dayjs(value).format('DD MMM YYYY') : ''
@@ -129,16 +133,45 @@ function money(value) {
   return value == null ? '' : `₹ ${Number(value).toLocaleString('en-IN')}`
 }
 
+function levelLabel(level) {
+  return level === 'Undergraduate' ? 'Graduate' : level === 'Postgraduate' ? 'Post Graduate' : level
+}
+
+const Card = (p, { slots }) =>
+  h('section', { class: 'rounded-xl border bg-white p-5 shadow-sm' }, [
+    h('div', { class: 'mb-4 flex items-center justify-between gap-2' }, [
+      h('div', { class: 'flex items-center gap-2' }, [
+        h('span', { class: 'flex h-7 w-7 items-center justify-center rounded-md bg-indigo-50 text-indigo-600' }, [
+          h(FeatherIcon, { name: p.icon, class: 'h-4 w-4' }),
+        ]),
+        h('h3', { class: 'text-sm font-bold text-gray-900' }, p.title),
+      ]),
+      slots.action?.(),
+    ]),
+    slots.default?.(),
+  ])
+Card.props = ['icon', 'title']
+
 const Field = (p) =>
   h('div', { class: p.class }, [
-    h('dt', { class: 'text-gray-500' }, p.label),
-    h('dd', { class: 'font-medium text-gray-900 whitespace-pre-line' }, p.value === 0 ? '0' : p.value || '—'),
+    h('dt', { class: 'text-xs text-gray-500' }, p.label),
+    h('dd', { class: 'mt-0.5 font-medium text-gray-900 whitespace-pre-line break-words' }, p.value === 0 ? '0' : p.value || '—'),
   ])
 Field.props = ['label', 'value', 'class']
 
-const FileLink = (p) =>
+const FileChip = (p) =>
   p.url
-    ? h('a', { href: p.url, target: '_blank', rel: 'noopener', class: 'text-sm text-blue-600 hover:underline' }, p.label)
+    ? h(
+        'a',
+        {
+          href: p.url,
+          target: '_blank',
+          rel: 'noopener',
+          class:
+            'inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-medium text-gray-700 hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700',
+        },
+        [h(FeatherIcon, { name: 'file-text', class: 'h-3.5 w-3.5' }), p.label],
+      )
     : null
-FileLink.props = ['url', 'label']
+FileChip.props = ['url', 'label']
 </script>
