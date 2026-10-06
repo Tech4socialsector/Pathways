@@ -58,11 +58,35 @@
           <ErrorMessage :message="formError" />
           <FormControl label="Job Title" v-model="form.job_title" required />
           <div class="grid grid-cols-2 gap-4">
-            <FormControl label="Recruitment Track" v-model="form.track" required />
-            <FormControl label="Department" v-model="form.department" required />
+            <div>
+              <span class="mb-1.5 block text-sm text-gray-700">Recruitment Track<span class="text-red-500">*</span></span>
+              <Autocomplete
+                placeholder="Select a track"
+                :options="trackOptions.options.value"
+                :model-value="form.track"
+                @update:model-value="(opt) => (form.track = opt?.value ?? '')"
+              />
+            </div>
+            <div>
+              <span class="mb-1.5 block text-sm text-gray-700">Department<span class="text-red-500">*</span></span>
+              <Autocomplete
+                placeholder="Select a department"
+                :options="departmentOptions.options.value"
+                :model-value="form.department"
+                @update:model-value="(opt) => (form.department = opt?.value ?? '')"
+              />
+            </div>
           </div>
           <div class="grid grid-cols-2 gap-4">
-            <FormControl label="Designation" v-model="form.designation" />
+            <div>
+              <span class="mb-1.5 block text-sm text-gray-700">Designation</span>
+              <Autocomplete
+                placeholder="Select a designation"
+                :options="designationOptions.options.value"
+                :model-value="form.designation"
+                @update:model-value="(opt) => (form.designation = opt?.value ?? '')"
+              />
+            </div>
             <FormControl
               label="Employment Type"
               type="select"
@@ -101,17 +125,21 @@
 <script setup>
 import { onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { toast } from 'frappe-ui'
+import { toast, Autocomplete } from 'frappe-ui'
 import StaffLayout from '@/layouts/StaffLayout.vue'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
 import { useStaffJobOpeningDetail } from '@/composables/useJobOpenings'
 import { jobOpeningService } from '@/services/jobOpenings'
+import { useRecruitmentTrackOptions, useDepartmentOptions, useDesignationOptions } from '@/composables/useMasterData'
 
 const props = defineProps({ id: { type: String, required: true } })
 const router = useRouter()
 
 const { job, loading, permissions, fetchJob, fetchPermissions } = useStaffJobOpeningDetail()
+const trackOptions = useRecruitmentTrackOptions()
+const departmentOptions = useDepartmentOptions()
+const designationOptions = useDesignationOptions()
 
 function loadAll(id) {
   fetchJob(id)
@@ -138,6 +166,9 @@ const form = reactive({
 })
 
 function openEditDialog() {
+  trackOptions.fetch()
+  departmentOptions.fetch()
+  designationOptions.fetch()
   Object.assign(form, {
     job_title: job.value.job_title,
     track: job.value.track,

@@ -59,6 +59,12 @@ const routes = [
     meta: { requiresStaff: true },
   },
   {
+    path: '/master-setup',
+    name: 'MasterSetup',
+    component: () => import('@/pages/MasterSetup.vue'),
+    meta: { requiresStaff: true },
+  },
+  {
     path: '/reports',
     name: 'Reports',
     component: () => import('@/pages/Reports.vue'),

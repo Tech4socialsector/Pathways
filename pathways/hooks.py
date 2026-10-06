@@ -199,6 +199,12 @@ has_permission = {
 # Hook on document methods and events
 
 doc_events = {
+	# Master Setup integrity guards — no-ops for DocTypes not in
+	# pathways.utils.master_setup's registry / INACTIVE_LINK_GUARDS.
+	"*": {
+		"validate": "pathways.utils.master_setup.validate",
+		"on_trash": "pathways.utils.master_setup.on_trash",
+	},
 	"Application": {
 		"on_update": "pathways.utils.audit.log_application_status_change",
 	},

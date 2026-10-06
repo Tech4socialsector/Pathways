@@ -50,6 +50,7 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { Dropdown, Avatar, FeatherIcon } from 'frappe-ui'
 import { useSessionStore } from '@/stores/session'
+import { useMasterSetupAccess } from '@/composables/useMasterSetup'
 import { callMethod } from '@/services/api'
 import SidebarNavLink from './SidebarNavLink.vue'
 import SettingsDialog from './SettingsDialog.vue'
@@ -68,7 +69,10 @@ watch(isExpanded, (value) => {
 
 const profile = reactive({ full_name: session.user, user_image: null })
 
+const { canAccess: canAccessMasterSetup, fetchAccess: fetchMasterSetupAccess } = useMasterSetupAccess()
+
 onMounted(async () => {
+  fetchMasterSetupAccess()
   const data = await callMethod('pathways.api.auth.get_my_profile')
   if (data) {
     profile.full_name = data.full_name
@@ -163,6 +167,9 @@ const ALL_ITEMS = [
     icon: 'folder',
     roles: ['Pathways Recruiter', 'Pathways PNCO', 'Pathways Admin'],
   },
+  // Shown from DocType permissions (write/create on any registered master),
+  // not role names — see pathways.utils.master_setup.
+  { to: '/master-setup', label: 'Master Setup', icon: 'sliders', visible: () => canAccessMasterSetup.value },
   {
     to: '/reports',
     label: 'Reports',
@@ -172,6 +179,10 @@ const ALL_ITEMS = [
 ]
 
 const visibleItems = computed(() =>
-  ALL_ITEMS.filter((item) => !item.roles || session.hasAnyRole(item.roles) || session.hasRole('Pathways Admin')),
+  ALL_ITEMS.filter((item) =>
+    item.visible
+      ? item.visible()
+      : !item.roles || session.hasAnyRole(item.roles) || session.hasRole('Pathways Admin'),
+  ),
 )
 </script>
