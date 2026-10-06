@@ -128,11 +128,16 @@ def get_my_applications():
 def get_application_status(application_name):
 	"""Candidate-facing status view — deliberately excludes internal
 	notes, interviewer feedback, compensation and other confidential
-	data per brief §25/§42. has_permission on Application (wired via
-	hooks.py) already enforces that only the owning candidate (or staff)
-	can reach this; this function further trims the response shape.
+	data per brief §25/§42.
+
+	frappe.get_doc() does not auto-check permissions on read (unlike
+	doc.save() for writes) — the explicit check_permission call below is
+	what actually enforces that only the owning candidate or privileged
+	staff (has_application_permission, wired via hooks.py) can reach
+	this; this function further trims the response shape on top of that.
 	"""
-	app = frappe.get_doc("Application", application_name)  # raises PermissionError if not allowed
+	app = frappe.get_doc("Application", application_name)
+	app.check_permission("read")
 
 	job = frappe.db.get_value(
 		"Job Opening", app.job_opening, ["job_title", "department", "track"], as_dict=True

@@ -54,8 +54,14 @@ class DocumentCollection(Document):
 
 @frappe.whitelist()
 def upload_document(document_collection_name, document_type, attachment):
-	"""Candidate-facing document upload, backing the Document Submission web form."""
+	"""Candidate-facing document upload, backing the Document Submission web form.
+
+	check_permission restricts this to the owning candidate or privileged
+	staff (has_document_collection_permission, wired via hooks.py) —
+	frappe.get_doc() does not enforce this on its own.
+	"""
 	doc = frappe.get_doc("Document Collection", document_collection_name)
+	doc.check_permission("write")
 	row = next((r for r in doc.checklist if r.document_type == document_type), None)
 	if not row:
 		frappe.throw("This document type is not part of the checklist for this application.")
@@ -70,7 +76,19 @@ def upload_document(document_collection_name, document_type, attachment):
 
 @frappe.whitelist()
 def verify_document(document_collection_name, document_type, verified=True, rejection_reason=None):
-	"""Staff-facing verification action."""
+	"""Staff-facing verification action.
+
+	This function carries its own @frappe.whitelist(), so it's reachable
+	directly (not just through api.documents.verify_document) — the role
+	check must live here, not only in that thin wrapper, or it can be
+	bypassed by calling this path instead. check_permission("write")
+	alone isn't enough either: a Candidate has write on their OWN
+	Document Collection (to submit documents) but must never be able to
+	verify them.
+	"""
+	if "Pathways Admin" not in frappe.get_roles() and "Pathways PNCO" not in frappe.get_roles():
+		frappe.throw("You are not authorised to verify documents.")
+
 	doc = frappe.get_doc("Document Collection", document_collection_name)
 	row = next((r for r in doc.checklist if r.document_type == document_type), None)
 	if not row:

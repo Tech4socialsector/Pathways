@@ -61,7 +61,13 @@ def get_approval_chain_status(doctype, docname):
 	if doctype not in GREEN_SHEET_HANDLERS:
 		frappe.throw(f"{doctype} is not a supported Green Sheet type.")
 
+	# Green Sheets have no row-level has_permission hook (every approver
+	# role can see every Green Sheet by design — approvers are org-wide
+	# officers, not job-specific) but frappe.get_doc() still won't check
+	# even the role-level permission table on its own, so a Candidate or
+	# unrelated staff role would otherwise read this unchecked.
 	doc = frappe.get_doc(doctype, docname)
+	doc.check_permission("read")
 	if not doc.approval_chain_template:
 		return {"steps": [], "current_level": 0, "status": doc.status}
 

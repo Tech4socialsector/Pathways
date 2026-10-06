@@ -5,6 +5,94 @@ import frappe
 
 
 @frappe.whitelist()
+def get_application_for_review(application):
+	"""Full application detail for a shortlisting/selection committee
+	member — candidate profile, CV/SOP, qualifications, and any score
+	already submitted. Deliberately separate from
+	pathways.api.application.get_application_status, which is the
+	candidate-facing view and excludes exactly this data.
+
+	frappe.get_doc() does not auto-check permissions on read (unlike
+	doc.save() for writes) — the explicit check below is what actually
+	restricts this to a privileged role or a committee member assigned
+	to this application's job opening, via has_application_permission
+	in permissions.py.
+	"""
+	app = frappe.get_doc("Application", application)
+	app.check_permission("read")
+
+	candidate = frappe.get_doc("Candidate", app.candidate)
+
+	shortlisting_committee = frappe.db.get_value(
+		"Shortlisting Committee", {"job_opening": app.job_opening}, "name"
+	)
+	existing_score = None
+	if shortlisting_committee:
+		existing_score_name = frappe.db.exists(
+			"Shortlisting Score", {"application": application, "shortlisting_committee": shortlisting_committee}
+		)
+		if existing_score_name:
+			score_doc = frappe.get_doc("Shortlisting Score", existing_score_name)
+			existing_score = {
+				"is_shortlisted": score_doc.is_shortlisted,
+				"remarks": score_doc.remarks,
+				"criteria": [
+					{
+						"criterion_label": row.criterion_label,
+						"max_score": row.max_score,
+						"score_given": row.score_given,
+					}
+					for row in score_doc.criteria
+				],
+			}
+
+	return {
+		"name": app.name,
+		"application_id": app.application_id,
+		"job_opening": app.job_opening,
+		"track": app.track,
+		"status": app.status,
+		"shortlisting_committee": shortlisting_committee,
+		"existing_shortlisting_score": existing_score,
+		"candidate": {
+			"full_name": candidate.full_name,
+			"email": candidate.email,
+			"gender": candidate.gender,
+			"category": candidate.category,
+		},
+		"current_salary": app.current_salary,
+		"expected_salary": app.expected_salary,
+		"earliest_doj": app.earliest_doj,
+		"resume_attachment": app.resume_attachment,
+		"sop_attachment": app.sop_attachment,
+		"qualifications": [
+			{
+				"degree_level": row.degree_level,
+				"degree_name": row.degree_name,
+				"institution": row.institution or row.other_institution,
+				"year_of_graduation": row.year_of_graduation,
+				"percentage_or_cgpa": row.percentage_or_cgpa,
+				"specialization": row.specialization,
+			}
+			for row in app.qualifications
+		],
+		"employment_history": [
+			{
+				"designation": row.designation,
+				"employer_name": row.employer_name,
+				"from_date": row.from_date,
+				"to_date": row.to_date,
+			}
+			for row in app.employment_history
+		],
+		"publications": [
+			{"title": row.title, "journal_name": row.journal_name, "pdf_attachment": row.pdf_attachment}
+			for row in app.publications
+		],
+	}
+
+
+@frappe.whitelist()
 def get_rubric_for_job_opening(job_opening, stage):
 	track = frappe.db.get_value("Job Opening", job_opening, "track")
 	if not track:
@@ -54,6 +142,12 @@ def submit_shortlisting_score(application, shortlisting_committee, is_shortliste
 				},
 			)
 
+	# check_permission reads shortlisting_committee off the doc, so it only
+	# works once that field is set above — this is what actually restricts
+	# submission to a member of THIS job opening's committee (has_permission
+	# hook in permissions.py), not just anyone holding the committee role.
+	score.check_permission("write" if existing else "create")
+
 	if existing:
 		score.save(ignore_permissions=True)
 	else:
@@ -64,10 +158,15 @@ def submit_shortlisting_score(application, shortlisting_committee, is_shortliste
 
 
 @frappe.whitelist()
-def submit_interview_assessment(interview, panelist, criteria, recommendation=None):
+def submit_interview_assessment(interview, criteria, recommendation=None):
+	"""panelist is always the calling user, never a client-supplied value
+	— otherwise one panelist could submit an assessment attributed to
+	another.
+	"""
 	if isinstance(criteria, str):
 		criteria = frappe.parse_json(criteria)
 
+	panelist = frappe.session.user
 	existing = frappe.db.exists("Interview Assessment", {"interview": interview, "panelist": panelist})
 	assessment = (
 		frappe.get_doc("Interview Assessment", existing) if existing else frappe.new_doc("Interview Assessment")
@@ -88,6 +187,11 @@ def submit_interview_assessment(interview, panelist, criteria, recommendation=No
 				"score_given": row.get("score_given"),
 			},
 		)
+
+	# See submit_shortlisting_score — check_permission restricts this to a
+	# member of the interview's own Selection Committee, not just anyone
+	# holding the committee role.
+	assessment.check_permission("write" if existing else "create")
 
 	if existing:
 		assessment.save(ignore_permissions=True)

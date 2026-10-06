@@ -245,6 +245,93 @@ def has_offer_permission(doc, user=None, permission_type=None):
 	return False
 
 
+def get_shortlisting_score_permission_query_conditions(user):
+	if not user:
+		user = frappe.session.user
+	roles = set(frappe.get_roles(user))
+	if roles & PRIVILEGED_ROLES:
+		return ""
+
+	if "Pathways Shortlisting Committee Member" in roles:
+		committees = frappe.get_all(
+			"Shortlisting Committee",
+			filters=[["Committee Member Row", "member", "=", user]],
+			pluck="name",
+		)
+		if not committees:
+			return "1=0"
+		committee_list = ", ".join(frappe.db.escape(c) for c in committees)
+		return f"`tabShortlisting Score`.shortlisting_committee in ({committee_list})"
+
+	return "1=0"
+
+
+def has_shortlisting_score_permission(doc, user=None, permission_type=None):
+	user = user or frappe.session.user
+	roles = set(frappe.get_roles(user))
+	if roles & PRIVILEGED_ROLES:
+		return True
+
+	if "Pathways Shortlisting Committee Member" in roles:
+		return bool(
+			frappe.db.exists(
+				"Shortlisting Committee",
+				[["Committee Member Row", "member", "=", user], ["name", "=", doc.shortlisting_committee]],
+			)
+		)
+
+	return False
+
+
+def get_interview_assessment_permission_query_conditions(user):
+	if not user:
+		user = frappe.session.user
+	roles = set(frappe.get_roles(user))
+	if roles & PRIVILEGED_ROLES:
+		return ""
+
+	if "Pathways Selection Committee Member" in roles:
+		committees = frappe.get_all(
+			"Selection Committee",
+			filters=[["Committee Member Row", "member", "=", user]],
+			pluck="name",
+		)
+		if not committees:
+			return "1=0"
+		committee_list = ", ".join(frappe.db.escape(c) for c in committees)
+		interviews = frappe.get_all(
+			"Interview",
+			filters={"selection_committee": ["in", committees]},
+			pluck="name",
+		)
+		if not interviews:
+			return "1=0"
+		interview_list = ", ".join(frappe.db.escape(i) for i in interviews)
+		return f"`tabInterview Assessment`.interview in ({interview_list})"
+
+	return "1=0"
+
+
+def has_interview_assessment_permission(doc, user=None, permission_type=None):
+	user = user or frappe.session.user
+	roles = set(frappe.get_roles(user))
+	if roles & PRIVILEGED_ROLES:
+		return True
+
+	if "Pathways Selection Committee Member" in roles:
+		selection_committee = frappe.db.get_value("Interview", doc.interview, "selection_committee")
+		if not selection_committee:
+			return False
+		return bool(
+			frappe.db.exists(
+				"Selection Committee",
+				[["Committee Member Row", "member", "=", user], ["name", "=", selection_committee]],
+			)
+		)
+
+	return False
+
+
 def get_joining_permission_query_conditions(user):
 	if not user:
 		user = frappe.session.user

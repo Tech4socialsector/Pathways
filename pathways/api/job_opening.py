@@ -18,9 +18,15 @@ import frappe
 @frappe.whitelist()
 def get_job_opening(job_opening):
 	"""Full detail for one Job Opening, for staff — any status, not just
-	Advertised. frappe.get_doc runs the standard read permission check.
+	Advertised.
+
+	frappe.get_doc() does NOT check permissions on read by default (that
+	requires an explicit check_permission call) — without the line
+	below, any logged-in user, including a Candidate with zero role
+	grant on this doctype, could read Draft/internal Job Openings.
 	"""
 	doc = frappe.get_doc("Job Opening", job_opening)
+	doc.check_permission("read")
 	return doc.as_dict()
 
 

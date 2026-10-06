@@ -180,6 +180,8 @@ permission_query_conditions = {
 	"Document Collection": "pathways.permissions.get_document_collection_permission_query_conditions",
 	"Offer Appointment Order": "pathways.permissions.get_offer_permission_query_conditions",
 	"Joining": "pathways.permissions.get_joining_permission_query_conditions",
+	"Shortlisting Score": "pathways.permissions.get_shortlisting_score_permission_query_conditions",
+	"Interview Assessment": "pathways.permissions.get_interview_assessment_permission_query_conditions",
 }
 
 has_permission = {
@@ -188,6 +190,8 @@ has_permission = {
 	"Document Collection": "pathways.permissions.has_document_collection_permission",
 	"Offer Appointment Order": "pathways.permissions.has_offer_permission",
 	"Joining": "pathways.permissions.has_joining_permission",
+	"Shortlisting Score": "pathways.permissions.has_shortlisting_score_permission",
+	"Interview Assessment": "pathways.permissions.has_interview_assessment_permission",
 }
 
 # Document Events

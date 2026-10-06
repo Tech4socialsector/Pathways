@@ -121,7 +121,13 @@ const ALL_ITEMS = [
     to: '/applications',
     label: 'Applications',
     icon: 'file-text',
-    roles: ['Pathways Recruiter', 'Pathways PNCO', 'Pathways Admin'],
+    roles: [
+      'Pathways Recruiter',
+      'Pathways PNCO',
+      'Pathways Admin',
+      'Pathways Shortlisting Committee Member',
+      'Pathways Selection Committee Member',
+    ],
   },
   {
     to: '/interviews',
