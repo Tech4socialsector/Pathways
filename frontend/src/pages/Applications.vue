@@ -3,6 +3,7 @@
     <PageHeader title="Applications" />
     <div class="flex-1 overflow-y-auto p-6">
       <DataTable
+        ref="table"
         :extra-columns="extraColumns"
         :columns="columns"
         :rows="applications.data || []"
@@ -164,7 +165,8 @@
 </template>
 
 <script setup>
-import { reactive, ref } from 'vue'
+import { nextTick, reactive, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import dayjs from 'dayjs'
 import { Button, FeatherIcon } from 'frappe-ui'
 import { toast } from '@/utils/notify'
@@ -181,6 +183,21 @@ import { useSessionStore } from '@/stores/session'
 
 const session = useSessionStore()
 const applications = useApplicationList()
+
+// /applications?job=<Job Opening>: open the list filtered to that job
+// (Job Openings card menu > View applications).
+const route = useRoute()
+const table = ref(null)
+watch(
+  () => [applications.data, route.query.job],
+  async ([rows, job]) => {
+    if (!job || !rows?.length) return
+    const title = rows.find((r) => r.job_opening === job)?.job_title
+    await nextTick()
+    if (title) table.value?.setFilter('job_title', [title])
+  },
+  { immediate: true },
+)
 
 const columns = [
   { key: 'application_id', label: 'Application ID' },

@@ -1,6 +1,10 @@
 <template>
   <div class="flex flex-col gap-3">
-    <div class="flex flex-wrap items-end gap-2">
+    <!-- With toolbarPanel, the page's #above-toolbar (e.g. status tabs) and the
+         search / filters / sort / view row share one white panel. -->
+    <div :class="toolbarPanel && 'rounded-xl border bg-white px-4 pb-3 pt-1 shadow-sm'">
+    <slot name="above-toolbar" />
+    <div class="flex flex-wrap items-end gap-2" :class="toolbarPanel && $slots['above-toolbar'] && 'pt-3'">
       <div class="w-full sm:w-64">
         <TextInput v-model="search" type="text" :placeholder="searchPlaceholder">
           <template #prefix><FeatherIcon name="search" class="h-4 w-4 text-gray-500" /></template>
@@ -88,6 +92,8 @@
           </div>
         </div>
       </div>
+    </div>
+
     </div>
 
     <!-- Bulk actions for the selected rows -->
@@ -281,6 +287,8 @@ const props = defineProps({
   // Turns on the Columns menu; preferences are saved per user under this
   // key (defaults to exportName for lists that set one).
   settingsKey: { type: String, default: '' },
+  // Wrap the toolbar (and #above-toolbar) in a white panel.
+  toolbarPanel: { type: Boolean, default: false },
 })
 const emit = defineEmits(['row-click'])
 const slots = useSlots()

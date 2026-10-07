@@ -1,24 +1,39 @@
 <template>
   <StaffLayout>
-    <PageHeader title="Job Openings">
+    <PageHeader
+      title="Job Openings"
+      subtitle="Manage and track all job openings across departments and employment types."
+      :breadcrumbs="[{ label: 'Dashboard', to: '/' }, { label: 'Job Openings' }]"
+    >
       <template #actions>
-        <Button
-          v-if="session.can('Job Opening', 'create')"
-          variant="solid"
-          @click="openCreateDialog"
-        >
+        <Button v-if="session.can('Job Opening', 'create')" variant="solid" icon-left="plus" :class="BTN_BRAND" @click="openCreateDialog">
           New Job Opening
         </Button>
       </template>
     </PageHeader>
     <div class="flex-1 overflow-y-auto bg-gray-50/60 p-6">
+      <DataTable
+        ref="table"
+        toolbar-panel
+        :columns="columns"
+        :extra-columns="extraColumns"
+        :rows="jobs"
+        :loading="loading"
+        :filters="filters"
+        clickable
+        empty-title="No job openings"
+        search-placeholder="Search job openings..."
+        export-name="job-openings"
+        @row-click="(job) => router.push(`/jobs/${job.name}`)"
+      >
       <!-- Status at a glance; a tab filters the list to that status. -->
-      <nav v-if="jobs.length" class="mb-4 flex gap-1 overflow-x-auto border-b" aria-label="Filter by status">
+      <template #above-toolbar>
+      <nav v-if="jobs.length" class="-mx-1 flex gap-1 overflow-x-auto border-b" aria-label="Filter by status">
         <button
           v-for="t in statusTabs"
           :key="t.key"
           type="button"
-          class="relative flex shrink-0 items-center gap-2 px-3 pb-2.5 pt-1 text-sm transition"
+          class="relative flex shrink-0 items-center gap-2 px-3 pb-3 pt-3 text-sm transition"
           :class="activeStatusTab === t.key ? 'font-semibold text-brand-700' : 'text-gray-600 hover:text-gray-900'"
           :aria-current="activeStatusTab === t.key ? 'true' : undefined"
           @click="table?.setFilter('status', t.key === ALL_TAB ? [] : [t.key])"
@@ -34,48 +49,46 @@
           <span v-if="activeStatusTab === t.key" class="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-brand-700" />
         </button>
       </nav>
-
-      <DataTable
-        ref="table"
-        :columns="columns"
-        :extra-columns="extraColumns"
-        :rows="jobs"
-        :loading="loading"
-        :filters="filters"
-        clickable
-        empty-title="No job openings"
-        search-placeholder="Search job openings..."
-        export-name="job-openings"
-        @row-click="(job) => router.push(`/jobs/${job.name}`)"
-      >
+      </template>
         <template #cell-status="{ value }"><StatusBadge :status="value" /></template>
         <template #card="{ row, selectable, selected, toggle }">
-          <div class="flex items-center justify-between gap-3">
-            <div class="flex min-w-0 items-center gap-2">
-              <input
-                v-if="selectable"
-                type="checkbox"
-                class="rounded border-gray-300 text-brand-700 focus:ring-brand-700"
-                :checked="selected"
-                :aria-label="`Select ${row.job_title}`"
-                @click.stop
-                @change="toggle($event.target.checked)"
-              />
-              <span class="truncate font-mono text-xs font-medium tracking-wide text-gray-500">{{ row.position || 'No job code' }}</span>
+          <div class="flex items-start gap-3">
+            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-700">
+              <FeatherIcon :name="trackIcon(row.track)" class="h-5 w-5" />
+            </span>
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center justify-between gap-2">
+                <div class="flex min-w-0 items-center gap-2">
+                  <input
+                    v-if="selectable"
+                    type="checkbox"
+                    class="rounded border-gray-300 text-brand-700 focus:ring-brand-700"
+                    :checked="selected"
+                    :aria-label="`Select ${row.job_title}`"
+                    @click.stop
+                    @change="toggle($event.target.checked)"
+                  />
+                  <span class="truncate text-xs font-medium uppercase tracking-wide text-gray-500">{{ row.position || 'No job code' }}</span>
+                </div>
+                <div class="flex shrink-0 items-center gap-1" @click.stop>
+                  <StatusBadge :status="row.status" />
+                  <Dropdown :options="cardMenu(row)" placement="right">
+                    <button type="button" class="rounded p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-800" :aria-label="`Actions for ${row.job_title}`">
+                      <FeatherIcon name="more-vertical" class="h-4 w-4" />
+                    </button>
+                  </Dropdown>
+                </div>
+              </div>
+              <h3 class="mt-1 line-clamp-2 font-heading text-base font-semibold leading-snug text-gray-900 group-hover:text-brand-700" :title="row.job_title">
+                {{ row.job_title }}
+              </h3>
+              <p class="mt-0.5 truncate text-sm text-gray-500" :title="row.department">{{ row.department }}</p>
             </div>
-            <StatusBadge :status="row.status" />
           </div>
 
-          <h3 class="mt-3 line-clamp-2 font-heading text-base font-semibold leading-snug text-gray-900 group-hover:text-brand-700" :title="row.job_title">
-            {{ row.job_title }}
-          </h3>
-          <p class="mt-1 truncate text-sm text-gray-500" :title="[row.department, row.designation].filter(Boolean).join(' · ')">
-            {{ row.department }}<template v-if="row.designation && row.designation !== row.job_title"> · {{ row.designation }}</template>
-          </p>
-
-          <div class="mt-3 flex flex-wrap gap-1.5">
+          <div class="mt-3 flex flex-wrap gap-1.5 pl-[3.25rem]">
             <span v-if="row.track" class="inline-flex items-center gap-1 rounded-md bg-brand-50 px-2 py-0.5 text-xs font-medium text-brand-700">
-              <FeatherIcon name="layers" class="h-3 w-3" />{{ row.track }}
+              <FeatherIcon :name="trackIcon(row.track)" class="h-3 w-3" />{{ row.track }}
             </span>
             <span v-if="row.employment_type" class="inline-flex items-center gap-1 rounded-md bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700">
               <FeatherIcon name="briefcase" class="h-3 w-3" />{{ row.employment_type }}
@@ -84,18 +97,19 @@
 
           <div class="mt-auto pt-4">
             <div class="flex items-center justify-between gap-3 border-t pt-3 text-xs">
-              <div class="flex items-center gap-4 text-gray-600">
+              <div class="flex items-center gap-3 text-gray-600">
                 <span class="flex items-center gap-1.5" :title="`${row.vacancies || 0} vacancies`">
                   <FeatherIcon name="users" class="h-3.5 w-3.5 text-gray-400" />
-                  <b class="font-semibold text-gray-900">{{ row.vacancies || 0 }}</b> {{ Number(row.vacancies) === 1 ? 'post' : 'posts' }}
+                  {{ row.vacancies || 0 }} {{ Number(row.vacancies) === 1 ? 'post' : 'posts' }}
                 </span>
+                <span class="h-3 w-px bg-gray-200" aria-hidden="true" />
                 <span class="flex items-center gap-1.5" :title="`${row.applications || 0} applications`">
                   <FeatherIcon name="file-text" class="h-3.5 w-3.5 text-gray-400" />
-                  <b class="font-semibold text-gray-900">{{ row.applications || 0 }}</b> applied
+                  {{ row.applications || 0 }} applied
                 </span>
               </div>
               <span class="flex shrink-0 items-center gap-1.5" :class="deadlineInfo(row).tone" :title="deadlineInfo(row).title">
-                <FeatherIcon name="calendar" class="h-3.5 w-3.5" />{{ deadlineInfo(row).text }}
+                <FeatherIcon :name="deadlineInfo(row).icon" class="h-3.5 w-3.5" />{{ deadlineInfo(row).text }}
               </span>
             </div>
           </div>
@@ -163,6 +177,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { Button, Dialog, Dropdown, FeatherIcon, FormControl } from 'frappe-ui'
 import dayjs from 'dayjs'
 import { toast } from '@/utils/notify'
 import StaffLayout from '@/layouts/StaffLayout.vue'
@@ -220,15 +235,38 @@ const extraColumns = [
   { key: 'name', label: 'Record ID' },
 ]
 function deadlineInfo(row) {
-  if (!row.application_deadline) return { text: 'No deadline', tone: 'text-gray-400', title: 'No application deadline set' }
+  if (!row.application_deadline) return { text: 'No deadline', tone: 'text-gray-400', title: 'No application deadline set', icon: 'calendar' }
   const close = dayjs(row.application_deadline)
   const when = close.format('DD MMM YYYY')
   const title = `Applications close ${when}`
-  if (row.status !== 'Advertised') return { text: when, tone: 'text-gray-500', title }
+  if (row.status !== 'Advertised') return { text: when, tone: 'text-gray-500', title, icon: 'calendar' }
   const days = close.startOf('day').diff(dayjs().startOf('day'), 'day')
-  if (days < 0) return { text: 'Deadline passed', tone: 'font-medium text-red-600', title }
-  if (days === 0) return { text: 'Closes today', tone: 'font-medium text-orange-600', title }
-  return { text: `${days}d left`, tone: days <= 7 ? 'font-medium text-orange-600' : 'font-medium text-green-700', title }
+  if (days < 0) return { text: 'Deadline passed', tone: 'font-medium text-red-600', title, icon: 'alert-circle' }
+  if (days === 0) return { text: 'Closes today', tone: 'font-medium text-orange-600', title, icon: 'clock' }
+  return { text: `${days}d left`, tone: days <= 7 ? 'font-medium text-orange-600' : 'font-medium text-green-700', title, icon: 'clock' }
+}
+
+// One icon per track, on the card and its track chip.
+function trackIcon(track) {
+  return { Faculty: 'book-open', Research: 'search', Admin: 'briefcase' }[track] || 'file-text'
+}
+
+// The card's ⋮ menu.
+function cardMenu(row) {
+  const items = [
+    { label: 'Open', icon: 'external-link', onClick: () => router.push(`/jobs/${row.name}`) },
+    { label: 'View applications', icon: 'file-text', onClick: () => router.push({ path: '/applications', query: { job: row.name } }) },
+  ]
+  if (row.status === 'Advertised') {
+    items.push({ label: 'View public posting', icon: 'globe', onClick: () => window.open(`/pathways/portal/jobs/${row.name}`, '_blank') })
+  }
+  if (session.can('Job Opening', 'write')) {
+    items.push({ label: 'Change status', icon: 'refresh-cw', onClick: () => openBulk('status', [row], null) })
+  }
+  if (session.can('Job Opening', 'delete')) {
+    items.push({ label: 'Delete', icon: 'trash-2', onClick: () => openBulk('delete', [row], null) })
+  }
+  return [{ group: 'Actions', hideLabel: true, items }]
 }
 
 const filters = [
