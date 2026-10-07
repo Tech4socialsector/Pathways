@@ -30,11 +30,39 @@
           </div>
         </div>
 
-        <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
-          <div class="flex flex-col gap-6">
-            <div class="rounded-xl border bg-white p-5 shadow-sm">
-              <div class="mb-4 text-xs font-bold uppercase tracking-wide text-brand-700">Your progress</div>
-              <RecruitmentTimeline :steps="timelineSteps" />
+        <!-- Progress: the same line as the staff application page -->
+        <section class="isolate mb-6 rounded-xl border bg-white p-5 shadow-sm">
+          <div class="mb-4 text-xs font-bold uppercase tracking-wide text-brand-700">Your progress</div>
+          <ProgressStepper :steps="timelineSteps" />
+        </section>
+
+        <div class="mb-6 grid grid-cols-1 items-start gap-6 md:grid-cols-2 xl:grid-cols-3">
+            <!-- Files they uploaded with the application -->
+            <div class="rounded-xl border bg-white p-5 shadow-sm md:col-span-2 xl:col-span-3">
+              <div class="mb-3 flex items-center justify-between">
+                <span class="text-xs font-bold uppercase tracking-wide text-brand-700">My documents</span>
+                <Button v-if="myDocuments.length" size="sm" variant="ghost" icon-left="eye" @click="openViewer(0)">View all</Button>
+              </div>
+              <div v-if="submissionLoading" class="text-sm text-gray-500">Loading…</div>
+              <p v-else-if="!myDocuments.length" class="text-sm text-gray-500">No documents uploaded.</p>
+              <ul v-else class="-mx-2 grid grid-cols-1 gap-x-4 sm:grid-cols-2 lg:grid-cols-3">
+                <li v-for="(d, i) in myDocuments" :key="d.file_url + i">
+                  <button
+                    type="button"
+                    class="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left text-sm hover:bg-brand-50"
+                    @click="openViewer(i)"
+                  >
+                    <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-brand-50 text-brand-700">
+                      <FeatherIcon :name="d.kind === 'image' ? 'image' : 'file-text'" class="h-4 w-4" />
+                    </span>
+                    <span class="min-w-0 flex-1">
+                      <span class="block truncate font-medium text-gray-900">{{ d.label }}</span>
+                      <span class="block truncate text-xs text-gray-500">{{ d.group }} · {{ d.file_name }}</span>
+                    </span>
+                    <FeatherIcon name="eye" class="h-4 w-4 shrink-0 text-gray-400" />
+                  </button>
+                </li>
+              </ul>
             </div>
 
             <div v-if="status.interviews?.length" class="rounded-xl border bg-white p-5 shadow-sm">
@@ -64,21 +92,27 @@
             </div>
 
             <div v-if="status.document_status" class="rounded-xl border bg-white p-5 shadow-sm">
-              <div class="mb-3 text-xs font-bold uppercase tracking-wide text-brand-700">Documents</div>
+              <div class="mb-3 text-xs font-bold uppercase tracking-wide text-brand-700">Joining documents</div>
               <StatusBadge :status="status.document_status" />
             </div>
-          </div>
-
-          <!-- What they submitted, read-only -->
-          <div class="lg:col-span-2">
-            <div class="mb-3 flex items-center justify-between">
-              <h2 class="text-xs font-bold uppercase tracking-wide text-brand-700">My application</h2>
-              <span class="flex items-center gap-1 text-xs text-gray-500"><FeatherIcon name="eye" class="h-3.5 w-3.5" />View only</span>
-            </div>
-            <ApplicationSubmissionPanel :app="submission" :loading="submissionLoading" :error="submissionError" />
-          </div>
         </div>
+
+        <!-- What they submitted, read-only, full width -->
+        <section>
+          <div class="mb-3 flex items-center justify-between">
+            <h2 class="text-xs font-bold uppercase tracking-wide text-brand-700">My application</h2>
+            <span class="flex items-center gap-1 text-xs text-gray-500"><FeatherIcon name="eye" class="h-3.5 w-3.5" />View only</span>
+          </div>
+          <ApplicationSubmissionPanel :app="submission" :loading="submissionLoading" :error="submissionError" />
+        </section>
       </template>
+
+      <DocumentViewer
+        v-model:open="viewerOpen"
+        :title="`My documents - ${status?.application_id || ''}`"
+        :documents="myDocuments"
+        :start-index="viewerIndex"
+      />
     </div>
   </CandidatePortalLayout>
 </template>
@@ -89,11 +123,12 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { Button, FeatherIcon, FormControl } from 'frappe-ui'
 import dayjs from 'dayjs'
 import ApplicationSubmissionPanel from '@/components/common/ApplicationSubmissionPanel.vue'
+import DocumentViewer from '@/components/common/DocumentViewer.vue'
 import { applicationService } from '@/services/applications'
 import { toast } from '@/utils/notify'
 import CandidatePortalLayout from '@/layouts/CandidatePortalLayout.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
-import RecruitmentTimeline from '@/components/common/RecruitmentTimeline.vue'
+import ProgressStepper from '@/components/common/ProgressStepper.vue'
 import { useApplicationStatus } from '@/composables/useApplications'
 import { useMyOffer } from '@/composables/useOffers'
 
@@ -180,6 +215,13 @@ const headline = computed(() => {
 const submission = ref(null)
 const submissionLoading = ref(false)
 const submissionError = ref('')
+const myDocuments = computed(() => submission.value?.documents || [])
+const viewerOpen = ref(false)
+const viewerIndex = ref(0)
+function openViewer(i) {
+  viewerIndex.value = i
+  viewerOpen.value = true
+}
 
 async function fetchSubmission(id) {
   submissionLoading.value = true

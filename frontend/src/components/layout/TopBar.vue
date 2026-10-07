@@ -117,6 +117,18 @@
       </template>
     </Dropdown>
 
+    <Dialog v-model="confirmLogout" :options="{ title: 'Log out?', size: 'sm' }">
+      <template #body-content>
+        <p class="text-sm text-gray-600">You'll be signed out of Pathways and the Desk.</p>
+      </template>
+      <template #actions>
+        <div class="flex justify-end gap-2">
+          <Button variant="ghost" @click="confirmLogout = false">Cancel</Button>
+          <Button variant="solid" :class="BTN_BRAND" :loading="session.logout.loading" @click="session.logout.submit()">Log out</Button>
+        </div>
+      </template>
+    </Dialog>
+
     <SettingsDialog v-if="session.canManageSettings" v-model="showSettingsDialog" />
   </header>
 </template>
@@ -124,7 +136,8 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
-import { Avatar, Dropdown, FeatherIcon } from 'frappe-ui'
+import { Avatar, Button, Dialog, Dropdown, FeatherIcon } from 'frappe-ui'
+import { BTN_BRAND } from '@/utils/buttonStyles'
 import { useSessionStore } from '@/stores/session'
 import { jobOpeningService } from '@/services/jobOpenings'
 import { approvalService } from '@/services/approvals'
@@ -240,6 +253,7 @@ watch(() => router.currentRoute.value.path, loadPending)
 
 // ----- user menu (moved here from the sidebar)
 const showSettingsDialog = ref(false)
+const confirmLogout = ref(false)
 
 const appMenuOptions = computed(() => {
   const items = []
@@ -254,7 +268,7 @@ const appMenuOptions = computed(() => {
   }
   items.push(
     { label: 'Desk', icon: 'grid', onClick: () => (window.location.href = '/app') },
-    { label: 'Log out', icon: 'log-out', onClick: () => session.logout.submit() },
+    { label: 'Log out', icon: 'log-out', onClick: () => (confirmLogout.value = true) },
   )
   return [{ group: 'Pathways', hideLabel: true, items }]
 })

@@ -25,17 +25,10 @@
             {{ link.label }}
             <span v-if="isActive(link.to)" class="absolute inset-x-3 -bottom-[13px] h-0.5 rounded-full bg-brand-700" />
           </router-link>
-          <router-link
-            v-if="session.isCandidate"
-            to="/portal/change-password"
-            class="hidden rounded-md px-3 py-2 font-medium text-gray-600 hover:text-gray-900 sm:block"
-          >
-            Change password
-          </router-link>
           <button
             v-if="session.isLoggedIn"
             class="rounded-md px-3 py-2 font-medium text-gray-600 hover:text-gray-900"
-            @click="session.logout.submit()"
+            @click="confirmLogout = true"
           >
             Log out
           </button>
@@ -49,6 +42,18 @@
         </nav>
       </div>
     </header>
+    <Dialog v-model="confirmLogout" :options="{ title: 'Log out?', size: 'sm' }">
+      <template #body-content>
+        <p class="text-sm text-gray-600">You'll need your username and password to log in again.</p>
+      </template>
+      <template #actions>
+        <div class="flex justify-end gap-2">
+          <Button variant="ghost" @click="confirmLogout = false">Cancel</Button>
+          <Button variant="solid" :class="BTN_BRAND" :loading="session.logout.loading" @click="session.logout.submit()">Log out</Button>
+        </div>
+      </template>
+    </Dialog>
+
     <main class="flex-1">
       <slot />
     </main>
@@ -62,19 +67,24 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
+import { Button, Dialog } from 'frappe-ui'
+import { BTN_BRAND } from '@/utils/buttonStyles'
 import { useRoute } from 'vue-router'
 import { useSessionStore } from '@/stores/session'
 import { appearance } from '@/utils/theme'
 
 const session = useSessionStore()
+const confirmLogout = ref(false)
 const route = useRoute()
 const loginUrl = computed(() => `/login?redirect-to=${encodeURIComponent(window.location.pathname)}`)
 const year = new Date().getFullYear()
 
+// Signed-in candidates see their own pages first; Openings comes last.
 const links = computed(() => [
-  { to: '/portal/jobs', label: 'Openings' },
   ...(session.isLoggedIn ? [{ to: '/portal/applications', label: 'My Applications' }] : []),
+  ...(session.isCandidate ? [{ to: '/portal/change-password', label: 'Change password' }] : []),
+  { to: '/portal/jobs', label: 'Openings' },
 ])
 
 function isActive(to) {

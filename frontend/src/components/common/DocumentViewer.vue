@@ -133,6 +133,8 @@ const props = defineProps({
   documents: { type: Array, default: () => [] },
   loading: { type: Boolean, default: false },
   downloadAllUrl: { type: String, default: '' },
+  // Which document to show first.
+  startIndex: { type: Number, default: 0 },
 })
 const emit = defineEmits(['update:open'])
 
@@ -144,7 +146,7 @@ watch(
   () => props.open,
   async (open) => {
     if (!open) return
-    selected.value = 0
+    selected.value = Math.min(Math.max(props.startIndex, 0), Math.max(props.documents.length - 1, 0))
     await nextTick()
     panel.value?.focus()
   },

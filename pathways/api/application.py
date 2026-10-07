@@ -370,12 +370,46 @@ def get_my_application_detail(application_name):
 	if frappe.db.get_value("Candidate", app.candidate, "email") != frappe.session.user:
 		frappe.throw(_("Not permitted."), frappe.PermissionError)
 
-	candidate_fields = [df for df in _data_fields("Candidate") if df.fieldname != "password_change_required"]
-	out = {k: v for k, v in app.as_dict(no_default_fields=True).items() if k not in CANDIDATE_HIDDEN}
+	job = frappe.get_doc("Job Opening", app.job_opening)
+	hidden = CANDIDATE_HIDDEN | _fields_not_asked(job, app)
+	candidate_fields = [
+		df for df in _data_fields("Candidate") if df.fieldname not in hidden and df.fieldname != "password_change_required"
+	]
+	out = {k: v for k, v in app.as_dict(no_default_fields=True).items() if k not in hidden}
 	out["candidate_details"] = frappe.db.get_value("Candidate", app.candidate, [df.fieldname for df in candidate_fields], as_dict=True)
 	out["layout"] = form_layout("Application", visible=set(out))
 	out["candidate_fields"] = [_field_def(df) for df in candidate_fields]
+	out["documents"] = _application_documents(app)
 	return out
+
+
+# Application fields each Job Opening form switch adds to the apply form.
+SECTION_FIELDS = {
+	"specialization": ("specializations", "other_specialization"),
+	"category_disability": ("category", "disability_type", "disability_percentage"),
+	"phd": ("phd_awarded",),
+	"net": ("net_qualified", "net_exam", "net_subject", "net_other_subject", "net_award_date", "net_roll_number"),
+	"experience_months": (
+		"overall_experience_months", "teaching_experience_months", "research_experience_months",
+		"legal_experience_months", "legal_experience_details",
+	),
+	"admin_responsibilities": ("held_admin_responsibility", "administrative_responsibilities"),
+	"publications": ("publications",),
+}
+
+
+def _fields_not_asked(job, app):
+	"""Fields the apply form for this job never showed: the sections the
+	job's form switches leave off, and tables it had nothing to ask for."""
+	from pathways.utils.application_form import get_form_sections
+
+	sections = get_form_sections(job)
+	hidden = {f for key, fields in SECTION_FIELDS.items() if not sections.get(key) for f in fields}
+	if not job.get("screening_questions") and not app.get("screening_answers"):
+		hidden.add("screening_answers")
+	if not app.get("documents"):
+		hidden.add("documents")
+	return hidden
 
 
 @frappe.whitelist()
