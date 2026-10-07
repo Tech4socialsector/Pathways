@@ -23,6 +23,12 @@ export const scoringService = {
       office_order_reference: officeOrderReference,
     })
   },
+  getShortlistingReport(jobOpening) {
+    return callMethod('pathways.api.shortlisting_report.get_shortlisting_report', { job_opening: jobOpening })
+  },
+  shortlistingReportUrl(jobOpening) {
+    return `/api/method/pathways.api.shortlisting_report.download_shortlisting_report?job_opening=${encodeURIComponent(jobOpening)}`
+  },
   sendRegretEmails(jobOpening, groups) {
     return callMethod('pathways.api.scoring.send_regret_emails', { job_opening: jobOpening, groups })
   },

@@ -14,6 +14,12 @@ export const reportService = {
   getReportCharts(params = {}) {
     return callMethod('pathways.api.reports.get_report_charts', params)
   },
+  listShortlistingSheets(params = {}) {
+    return callMethod('pathways.api.shortlisting_report.list_shortlisting_sheets', params)
+  },
+  downloadAllShortlistingSheets(params = {}) {
+    return downloadMethod('pathways.api.shortlisting_report.download_all_shortlisting_sheets', params, 'Shortlisting Sheets - All Jobs.xlsx')
+  },
   exportReport(params = {}) {
     return downloadMethod('pathways.api.reports.export_report', params, 'recruitment-report.xlsx')
   },

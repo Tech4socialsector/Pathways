@@ -3,6 +3,7 @@
     <PageHeader title="Applications" />
     <div class="flex-1 overflow-y-auto p-6">
       <DataTable
+        :extra-columns="extraColumns"
         :columns="columns"
         :rows="applications.data || []"
         :loading="applications.loading"
@@ -188,6 +189,21 @@ const columns = [
   { key: 'eligibility_status', label: 'Eligibility' },
   { key: 'status', label: 'Status' },
   { key: 'application_date', label: 'Applied On', format: (row) => (row.application_date ? dayjs(row.application_date).format('DD MMM YYYY') : '') },
+]
+// More fields users can add from the Columns menu.
+const fmtDate = (v, withTime) => (v ? dayjs(v).format(withTime ? 'DD MMM YYYY, h:mm A' : 'DD MMM YYYY') : '')
+const extraColumns = [
+  { key: 'candidate_email', label: 'Email' },
+  { key: 'candidate_mobile', label: 'Mobile' },
+  { key: 'track', label: 'Track' },
+  { key: 'department', label: 'Department' },
+  { key: 'source', label: 'Source' },
+  { key: 'overall_experience_years', label: 'Overall Experience (yrs)', align: 'right' },
+  { key: 'relevant_experience_years', label: 'Relevant Experience (yrs)', align: 'right' },
+  { key: 'notice_period', label: 'Notice Period' },
+  { key: 'eligibility_reason', label: 'Reason Not Eligible' },
+  { key: 'regret_sent_on', label: 'Regret Sent', format: (row) => fmtDate(row.regret_sent_on, true) },
+  { key: 'modified', label: 'Last Updated', format: (row) => fmtDate(row.modified, true) },
 ]
 const filters = [
   { key: 'eligibility_status', label: 'Eligibility' },

@@ -45,6 +45,8 @@ def _account_summary(account):
 
 @frappe.whitelist()
 def get_email_setup():
+	from pathways.utils.communication import template_body
+
 	_require_manager()
 	rules = frappe.get_all(
 		"Recruitment Email Rule",
@@ -56,8 +58,7 @@ def get_email_setup():
 		rule["recipient_roles"] = frappe.get_all("Pathways Role", filters={"parent": rule.name, "parenttype": "Recruitment Email Rule"}, pluck="role")
 		# Roles nobody (but Administrator, who is never emailed) holds.
 		rule["empty_roles"] = [r for r in rule["recipient_roles"] if not _role_has_users(r)]
-		subject, response = frappe.db.get_value("Email Template", rule.email_template, ["subject", "response"]) or ("", "")
-		rule["subject"], rule["response"] = subject, response
+		rule["subject"], rule["response"] = _template_text(rule.email_template)
 		rule["attachments"] = frappe.get_all(
 			"File",
 			filters={"attached_to_doctype": "Recruitment Email Rule", "attached_to_name": rule.name},
@@ -71,8 +72,8 @@ def get_email_setup():
 	for rule in rules:
 		used_by.setdefault(rule.email_template, []).append(rule.label)
 	templates = [
-		{"name": t.name, "subject": t.subject, "response": t.response, "used_by": used_by.get(t.name, [])}
-		for t in frappe.get_all("Email Template", fields=["name", "subject", "response"], order_by="name asc")
+		{"name": t.name, "subject": t.subject, "response": template_body(t), "used_by": used_by.get(t.name, [])}
+		for t in frappe.get_all("Email Template", fields=["name", "subject", "response", "response_html", "use_html"], order_by="name asc")
 	]
 
 	return {
@@ -174,6 +175,8 @@ def save_email_rule(event, data):
 			frappe.throw(_("The subject cannot be empty."))
 		template.subject = data.get("subject")
 		template.response = data.get("response") or ""
+		# Desk shows the HTML field when "Use HTML" is on: keep both in step.
+		template.response_html = template.response
 		template.use_html = 1
 		template.save(ignore_permissions=True)
 	return get_email_setup()
@@ -241,7 +244,9 @@ def _sample_context():
 		"approver_label": "Registrar", "link": frappe.utils.get_url("/pathways/jobs"), "application_count": 0, "ratio": 5,
 		"change": "deadline extended", "remarks": "", "interview_date_time": "12 Nov 2026, 10:30 AM",
 		"meeting_link": "https://zoom.us/j/0000000000", "rsvp_deadline": "08 Nov 2026", "acceptance_deadline": "20 Nov 2026",
-		"joining_date": "01 Dec 2026", "notification_number": "Notification No. 21/2026"}
+		"joining_date": "01 Dec 2026", "notification_number": "Notification No. 21/2026", "interview_date": "12 Nov 2026",
+		"interview_day": "Thursday", "interview_time": "10:30 AM", "interview_mode": "Online", "meeting_platform": "Teams",
+		"login_time": "10:10 AM", "pnc_contacts": "", "reporting_location": "", "reporting_time": ""}
 	job = frappe.get_all("Job Opening", filters={"status": "Advertised"}, pluck="name", order_by="creation desc", limit=1)
 	if job:
 		context.update(job_email_context(frappe.get_doc("Job Opening", job[0])))
@@ -257,14 +262,14 @@ def preview_email_rule(event):
 	"""The email as it would be sent: rendered subject and message, the
 	people it would go to, and its attachments."""
 	_require_manager()
-	from pathways.utils.communication import event_recipients
+	from pathways.utils.communication import event_recipients, template_body
 
 	rule = frappe.get_doc("Recruitment Email Rule", event)
 	template = frappe.get_doc("Email Template", rule.email_template)
 	context = _sample_context()
 	try:
 		subject = frappe.render_template(template.subject, context)
-		message = frappe.render_template(template.response, context)
+		message = frappe.render_template(template_body(template), context)
 	except Exception as e:
 		frappe.throw(_("The template has an error: {0}").format(str(e)))
 	sample_job = frappe.get_all("Job Opening", filters={"status": "Advertised"}, pluck="name", order_by="creation desc", limit=1)
@@ -320,3 +325,10 @@ def _role_has_users(role):
 			limit=1,
 		)
 	)
+
+
+def _template_text(name):
+	from pathways.utils.communication import template_body
+
+	t = frappe.db.get_value("Email Template", name, ["subject", "response", "response_html", "use_html"], as_dict=True)
+	return (t.subject, template_body(t)) if t else ("", "")

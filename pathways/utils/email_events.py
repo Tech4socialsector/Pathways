@@ -13,6 +13,114 @@ import frappe
 SIGN_OFF = "<p>Kind regards,<br>Recruitment Team<br>NLSIU, Bengaluru</p>"
 
 TEMPLATES = {
+	# Workflow folder: none (step 6). Plain acknowledgement.
+	"Application Acknowledgement": (
+		"Application Received: {{ job_title }}",
+		"<p>Dear {{ candidate_name }},</p>"
+		"<p>Greetings from National Law School of India University (NLSIU), Bangalore!</p>"
+		"<p>Thank you for applying for the position of <b>{{ job_title }}</b>. Your application "
+		"(ID: <b>{{ application_id }}</b>) has been received. Please keep this ID for any communication with us.</p>"
+		"<p>If you have any queries, you can email us at {{ contact_email or 'recruitment@nls.ac.in' }}.</p>" + SIGN_OFF,
+	),
+	# Workflow folder: 4. Shortlisting / Email to Shortlisting Committee.
+	"Shortlisting Committee Invitation": (
+		"Shortlisting committee: {{ job_title }}",
+		"<p>Dear {{ recipient_name }},</p>"
+		"<p>Thank you for agreeing to be a part of the shortlisting committee for the <b>{{ job_title }}</b>. "
+		"We have received {{ application_count }} responses for the advertisement.</p>"
+		"<p>Please note the essential steps to be followed in the process of shortlisting candidates for interview:</p><ul>"
+		"<li>1:{{ ratio }} candidates, if available, need to be shortlisted for interviews.</li>"
+		"<li>Please first check whether the candidate is eligible for the position that they have applied for. The eligibility "
+		"criteria is mentioned in the ad, which is available <a href=\"{{ posting_link }}\">here</a>. Please note the reason for "
+		"ineligibility in the remarks. This is to enable a round of cross-checking to ensure that eligible candidates have not "
+		"been erroneously excluded, and vice versa. Ineligible candidates need not be assigned a score.</li>"
+		"<li>Please score the candidates in the form provided. Please note that you should arrive at a common score as a panel. "
+		"We do not require each panelist to score the candidate individually.</li>"
+		"<li>Once you have completed the shortlisting process, please submit the scores on the platform.</li>"
+		"<li>Please keep the shortlist confidential until the candidates have been invited for interview by the PnC team.</li></ul>"
+		"<p><b>Important</b> - While shortlisting for interviews, please ensure that the candidates shortlisted come from diverse "
+		"backgrounds. At NLSIU we value diversity and believe it enriches the environment, fosters inclusion, and strengthens our "
+		"community by bringing varied perspectives and experiences.</p>"
+		"<p>Please find the link to access the applications along with the relevant documents uploaded: "
+		"<a href=\"{{ job_link }}\">{{ job_link }}</a></p>"
+		"{% if deadline %}<p>We request you to complete the shortlisting by <b>{{ deadline }}</b>.</p>{% endif %}"
+		"<p>Thank you for your time and effort. Please let me know if you have any queries.</p>" + SIGN_OFF,
+	),
+	# Workflow folder: 5. Round 1 Interview / Regret Mail and 9. Regret Mails / Regret Email Template.
+	"Regret Mail": (
+		"Important: Update on your job application for {{ job_title }}",
+		"<p>Dear Candidate,</p>"
+		"<p>We have an update on your application for the position of {{ job_title }} at NLSIU Bangalore.</p>"
+		"<p>We regret to inform you that we will not be moving forward with your application. We truly appreciate the time "
+		"and effort put in by you for your application.</p>"
+		"<p>Please note that this decision is not a reflection of your abilities, and we encourage you to apply for positions "
+		"that may/will come up in the future.</p>"
+		"<p>Please keep a lookout on the website - "
+		"<a href=\"https://www.nls.ac.in/news-and-events/work-with-us/\">https://www.nls.ac.in/news-and-events/work-with-us/</a></p>"
+		+ SIGN_OFF,
+	),
+	# Workflow folder: 5. Round 1 Interview / Email to Candidate.
+	"Interview Invite (Round 1)": (
+		"Action Required : Interviews - {{ job_title }}",
+		"<p>Dear Applicant,</p>"
+		"<p>Greetings from National Law School of India University (NLSIU), Bangalore!</p>"
+		"<p>This is with reference to your interviews (Round 1) for the position {{ job_title }} at NLS. We are pleased to "
+		"inform you that your application has been selected for the Round 1 interview. This round is scheduled on "
+		"<b>{{ interview_date_time }}</b> (IST) via video conferencing.</p>"
+		"<p>Please find below the {{ meeting_platform or 'Teams' }} link for the meeting:<br>"
+		"<a href=\"{{ meeting_link }}\">{{ meeting_link }}</a></p><ol>"
+		"<li>Please login into the {{ meeting_platform or 'Teams' }} meeting ten minutes before your start time and please "
+		"remain logged in. You will be admitted into the call once the panel is ready.</li>"
+		"<li>While our earnest attempt is to bring each candidate into the interview room as per schedule, we request you to "
+		"bear with us if there is a delay.<br><b>IMPORTANT</b> - We request you to keep a two-hour window for the interview to "
+		"factor for any delay.</li>"
+		"<li>If you face any technical glitches, please be assured that our team will reach out to you. You can also email us "
+		"at {{ contact_email or 'recruitment@nls.ac.in' }}.</li></ol>"
+		"<p>Please confirm your participation by replying to this email by <b>{{ rsvp_deadline }}</b>.</p>" + SIGN_OFF,
+	),
+	# Workflow folder: 6. Final Interview / Interview Call Letter.
+	"Interview Call Letter": (
+		"Action Required : Interviews for the position of {{ job_title }}",
+		"<p>Dear Applicant,</p>"
+		"<p>Greetings from National Law School of India University (NLSIU), Bangalore!</p>"
+		"<p>This is with reference to your application for the position of {{ job_title }} in our institution.</p>"
+		"<p>We are pleased to inform you that your application has been shortlisted, and your interview is scheduled via "
+		"video conferencing on:</p>"
+		"<p>Date - <b>{{ interview_date }}</b><br>Day - <b>{{ interview_day }}</b><br>Time - <b>{{ interview_time }}</b><br>"
+		"Mode - {{ interview_mode or 'Online' }}</p>"
+		"{% if track == 'Faculty' %}<p>The interview will be in 2 parts:</p><ol>"
+		"<li>A talk by you on your pedagogical approach to teaching, with at least one example (approximately 3 to 5 minutes). "
+		"Please note that due to a paucity of time, slide presentations are not possible.</li>"
+		"<li>A discussion with the Selection Committee (approximately 10 minutes).</li></ol>{% endif %}"
+		"<p>Please find the details of the meeting ID and password for the {{ meeting_platform or 'Teams' }} call:<br>"
+		"<a href=\"{{ meeting_link }}\">{{ meeting_link }}</a>{% if meeting_details %}<br>{{ meeting_details }}{% endif %}</p>"
+		"<p>Please note:</p><ol>"
+		"<li>Please login into the {{ meeting_platform or 'Teams' }} meeting twenty minutes{% if login_time %} ({{ login_time }}){% endif %} "
+		"before your start time and please remain logged in. You will be admitted into the call once the Committee is ready. "
+		"Please ensure that your camera and microphone are switched on when you enter the meeting room.</li>"
+		"<li>While our earnest attempt is to bring each candidate into the interview room as per schedule, we request you to "
+		"bear with us if there is a delay.</li>"
+		"<li>If you face any technical glitches, please be assured that our recruitment team will reach out to you. You can "
+		"also email us at {{ contact_email or 'recruitment@nls.ac.in' }}.</li></ol>"
+		+ SIGN_OFF +
+		"<p><b>General Instructions:</b></p><ol>"
+		"<li>Ensure your room is well-illuminated and free of any background/external noise.</li>"
+		"<li>Ensure your computer's mic and camera are functioning well, with the background being clear.</li>"
+		"<li>Test your internet speed/stability, keep a backup.</li></ol>",
+	),
+	# Workflow folder: 10. Appointment Order email / Letter to Candidate.
+	"Appointment Order Covering Note": (
+		"Appointment Letter - {{ job_title }}",
+		"<p>Dear {{ candidate_name }},</p>"
+		"<p>Greetings from the National Law School of India University, Bangalore!</p>"
+		"<p>Please find attached the Appointment Letter as {{ job_title }} at NLSIU. Request you to confirm your acceptance "
+		"and send a signed scanned copy of the appointment letter with a reply all to this email by "
+		"<b>{{ acceptance_deadline }}</b>.</p>"
+		"<p>Please also indicate your earliest date of joining in the same email.</p>"
+		"<p>You may get in touch with {{ pnc_contacts or 'the People and Culture team' }}"
+		"{% if pnc_contacts %}, from the People and Culture team,{% endif %} if you need any further clarifications or support.</p>"
+		"<p>Regards,<br>Registrar's Office</p>",
+	),
 	"Candidate Portal Login": (
 		"Your NLSIU Careers login: track your application",
 		"<p>Dear {{ candidate_name }},</p>"
@@ -56,22 +164,6 @@ TEMPLATES = {
 		"<p>If more applications are needed, extend the deadline from the job page (this issues a corrigendum): "
 		"<a href=\"{{ job_link }}\">{{ job_link }}</a></p>" + SIGN_OFF,
 	),
-	"Shortlisting Committee Invitation": (
-		"Shortlisting committee: {{ job_title }}",
-		"<p>Dear {{ recipient_name }},</p>"
-		"<p>Thank you for agreeing to be a part of the shortlisting committee for <b>{{ job_title }}</b>. "
-		"We have received {{ application_count }} responses for the advertisement.</p>"
-		"<p>Please note the essential steps to be followed in shortlisting candidates for interview:</p><ul>"
-		"<li>1:{{ ratio }} candidates, if available, need to be shortlisted for interviews.</li>"
-		"<li>Please first check whether the candidate is eligible for the position. Note the reason for ineligibility; "
-		"ineligible candidates need not be assigned a score.</li>"
-		"<li>Please score the candidates in Pathways. Arrive at a common score as a panel.</li>"
-		"<li>Please keep the shortlist confidential until the candidates have been invited for interview by the PnC team.</li></ul>"
-		"<p><b>Important</b> - While shortlisting, please ensure that the candidates shortlisted come from diverse backgrounds. "
-		"At NLSIU we value diversity and believe it enriches the environment, fosters inclusion, and strengthens our community.</p>"
-		"<p>The applications and documents are here: <a href=\"{{ job_link }}\">{{ job_link }}</a>"
-		"{% if deadline %}<br>Please complete the shortlisting by {{ deadline }}.{% endif %}</p>" + SIGN_OFF,
-	),
 	"Shortlisted Notice": (
 		"Update on your application: {{ job_title }}",
 		"<p>Dear {{ candidate_name }},</p>"
@@ -91,25 +183,56 @@ TEMPLATES = {
 		"<p>Thank you for being on the selection committee for <b>{{ job_title }}</b>. We are grateful for your time and "
 		"guidance. The PnC team will be in touch about the honorarium.</p>" + SIGN_OFF,
 	),
+	# Workflow folder: 11. Onboarding Email.
 	"Onboarding Documents": (
 		"DOCUMENTS TO BE SUBMITTED",
-		"<p>Dear {{ candidate_name }},</p><p>We are looking forward to welcoming you to NLSIU!</p>"
-		"<p>On the day of joining, kindly bring the softcopy and photocopy of: PAN (mandatory), Aadhaar (mandatory), "
-		"digital photograph (mandatory), passport (optional), copy of the signed appointment order (mandatory), Class X and XII "
-		"certificates (mandatory), graduation certificate and transcripts (mandatory), post-graduation certificate and "
-		"transcripts (if applicable), latest payslips (mandatory), relieving letter (mandatory), no objection certificate "
-		"(if applicable), Provident Fund UAN (if applicable), updated CV, and proof of PAN-Aadhaar link.</p>"
-		"<p>We will also need a digital photograph (non-passport) for the people directory on the website, and a brief "
-		"write-up (not more than 200 words) about yourself in Word format, emailed at least 2 days before your date of joining.</p>"
-		+ SIGN_OFF,
+		"<p>Dear {{ candidate_name }},</p>"
+		"<p>We are looking forward to welcoming you to NLSIU!</p>"
+		"<p>On the day of joining, kindly bring the softcopy and Photocopy of the below mentioned documents</p>"
+		"<table style=\"border-collapse:collapse\" border=\"1\" cellpadding=\"6\">"
+		"<tr><td>1</td><td>PAN (MANDATORY)</td></tr>"
+		"<tr><td>2</td><td>AADHAAR (MANDATORY)</td></tr>"
+		"<tr><td>3</td><td>DIGITAL PHOTOGRAPH (MANDATORY)</td></tr>"
+		"<tr><td>4</td><td>PASSPORT (OPTIONAL)</td></tr>"
+		"<tr><td>5</td><td>COPY OF THE SIGNED APPOINTMENT ORDER (MANDATORY)</td></tr>"
+		"<tr><td>6</td><td>XTH STD CERTIFICATE (MANDATORY)</td></tr>"
+		"<tr><td>7</td><td>XIITH STD CERTIFICATE (MANDATORY)</td></tr>"
+		"<tr><td>8</td><td>GRADUATION - I CERTIFICATE (MANDATORY)</td></tr>"
+		"<tr><td>9</td><td>GRADUATION - TRANSCRIPTS (MANDATORY)</td></tr>"
+		"<tr><td>10</td><td>GRADUATION - II CERTIFICATE (IF APPLICABLE)</td></tr>"
+		"<tr><td>11</td><td>POST GRADUATION - I CERTIFICATE (IF APPLICABLE)</td></tr>"
+		"<tr><td>12</td><td>POST GRADUATION - TRANSCRIPTS (IF APPLICABLE)</td></tr>"
+		"<tr><td>13</td><td>POST GRADUATION - II CERTIFICATE (IF APPLICABLE)</td></tr>"
+		"<tr><td>14</td><td>LATEST PAYSLIPS (MANDATORY)</td></tr>"
+		"<tr><td>15</td><td>RELIEVING LETTER (MANDATORY)</td></tr>"
+		"<tr><td>16</td><td>NO OBJECTION CERTIFICATE (IF APPLICABLE)</td></tr>"
+		"<tr><td>17</td><td>PROVIDENT FUND UAN (IF APPLICABLE)</td></tr>"
+		"<tr><td>18</td><td>UPDATED CV</td></tr>"
+		"<tr><td>19</td><td>PAN &amp; AADHAAR LINK (PROVIDE PROOF)</td></tr>"
+		"</table>"
+		"<p>We also will also need:</p><ul>"
+		"<li>A digital photograph (non-passport) for the people directory on the website.</li>"
+		"<li>A brief write-up (not more than 200 words) about yourself, covering your qualifications, your work experience, "
+		"your research areas (if applicable), and your interests.</li></ul>"
+		"<p>Please note:<br>The write-up should be shared in a WORD format and must be emailed by replying to this email at "
+		"least 02 days prior to your date of joining.<br>Kindly find the reference link for the format below<br>"
+		"<a href=\"https://www.nls.ac.in/people/anjali-varma/\">https://www.nls.ac.in/people/anjali-varma/</a></p>"
+		"<p><b>Onboarding on to the ERP</b></p>"
+		"<p>As a part of the onboarding process, we have sent you a link from people@nls.ac.in for updating your details on "
+		"the ERP. Please fill in the details and upload the relevant documents at the earliest.</p>"
+		"<p>On the day of joining{% if joining_date %} ({{ joining_date }}){% endif %}, please meet me on the "
+		"{{ reporting_location or 'Ground Floor, Training Centre Room No. 004' }} at {{ reporting_time or '10:00 am' }}.</p>"
+		"<p>Regards,<br>People and Culture Team<br>NLSIU, Bengaluru</p>",
 	),
+	# Workflow folder: 12. Intimation to IT-Facilities / Email.
 	"IT & Facilities Intimation": (
 		"New joiner: {{ candidate_name }}, {{ job_title }}",
 		"<p>Dear Team,</p>"
-		"<p>The following staff member is joining as indicated against their name. Kindly arrange for a laptop, create an "
-		"NLS email ID, and share the same.</p>"
+		"<p>The following staff member is joining as indicated against their name. Kindly arrange for a laptop, create NLS "
+		"email ID, and share the same.</p>"
 		"<p>Name: {{ candidate_name }}<br>Designation: {{ job_title }}<br>Date of Joining: {{ joining_date }}<br>"
-		"Email: {{ candidate_email }}<br>Mobile No.: {{ candidate_mobile }}</p><p>Thanks!</p>" + SIGN_OFF,
+		"Email: {{ candidate_email }}<br>Mobile No. : {{ candidate_mobile }}</p>"
+		"<p>Thanks!</p><p>Regards,<br>People and Culture Team<br>NLSIU, Bengaluru</p>",
 	),
 }
 
@@ -144,19 +267,19 @@ EVENTS = [
 	("Screening & Shortlisting", "candidate_shortlisted", "Shortlisted (to candidate)", "The committee shortlists a candidate. Off by default: the interview invite usually follows.",
 		"Shortlisted Notice", {"send_to_candidate": 1}, True, False, CANDIDATE_VARS),
 	("Interviews", "interview_invite_round1", "Interview invite: Round 1 / HR interaction", "Round 1 is scheduled (workflow step 13).",
-		"Interview Invite (Round 1)", {"send_to_candidate": 1}, False, True, CANDIDATE_VARS + ", interview_date_time, meeting_link, rsvp_deadline"),
+		"Interview Invite (Round 1)", {"send_to_candidate": 1}, False, True, CANDIDATE_VARS + ", interview_date_time, meeting_link, meeting_platform, rsvp_deadline"),
 	("Interviews", "interview_call_letter", "Interview call letter: final interview", "The final interview is scheduled (workflow steps 14-16).",
-		"Interview Call Letter", {"send_to_candidate": 1}, False, True, CANDIDATE_VARS + ", interview_date_time, meeting_link"),
+		"Interview Call Letter", {"send_to_candidate": 1}, False, True, CANDIDATE_VARS + ", track, interview_date, interview_day, interview_time, interview_mode, meeting_platform, meeting_link, meeting_details, login_time"),
 	("Interviews", "interview_reminder", "Interview reminder (to candidate)", "Daily, the day before a scheduled interview.",
 		"Interview Reminder", {"send_to_candidate": 1}, True, True, CANDIDATE_VARS + ", interview_date_time, meeting_link"),
 	("Selection & Offer", "appointment_order", "Appointment order (to candidate)", "The signed appointment order is sent (workflow step 28).",
-		"Appointment Order Covering Note", {"send_to_candidate": 1, "attach_record_files": 1}, False, True, CANDIDATE_VARS + ", acceptance_deadline"),
+		"Appointment Order Covering Note", {"send_to_candidate": 1, "attach_record_files": 1}, False, True, CANDIDATE_VARS + ", acceptance_deadline, pnc_contacts"),
 	("Selection & Offer", "regret_after_interview", "Regret after interview (to candidate)", "Interviewed candidates who were not selected (workflow step 32).",
 		"Regret Mail", {"send_to_candidate": 1}, False, True, CANDIDATE_VARS),
 	("Onboarding & Closure", "panel_thanks", "Thank you to panellists", "After the interviews (workflow step 33).",
 		"Panel Thank You", {}, False, True, "job_title, recipient_name"),
 	("Onboarding & Closure", "onboarding", "Onboarding documents (to new joiner)", "The candidate accepts the offer (workflow step 34).",
-		"Onboarding Documents", {"send_to_candidate": 1}, False, True, CANDIDATE_VARS + ", joining_date"),
+		"Onboarding Documents", {"send_to_candidate": 1}, False, True, CANDIDATE_VARS + ", joining_date, reporting_location, reporting_time"),
 	("Onboarding & Closure", "it_facilities", "Intimation to IT & Facilities", "Joining is confirmed (laptop, NLS email ID).",
 		"IT & Facilities Intimation", {"roles": ["Pathways IT Facilities"]}, False, True,
 		"candidate_name, job_title, joining_date, candidate_email, candidate_mobile"),

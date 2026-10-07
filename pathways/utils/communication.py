@@ -5,6 +5,14 @@ import frappe
 from frappe.utils import now_datetime
 
 
+def template_body(template):
+	"""An Email Template's message: its HTML when "Use HTML" is ticked (as
+	templates edited in Desk store it), otherwise the rich-text response."""
+	if template.get("use_html") and (template.get("response_html") or "").strip():
+		return template.response_html
+	return template.response or ""
+
+
 def send_templated_email(email_template, recipient, reference_doctype, reference_name, args=None):
 	"""Send an email via a Frappe Email Template (Jinja-rendered) and log it
 	to Communication Log, per the notification matrix in the architecture
@@ -16,7 +24,7 @@ def send_templated_email(email_template, recipient, reference_doctype, reference
 		template = frappe.get_doc("Email Template", email_template)
 		context = args or {}
 		subject = frappe.render_template(template.subject, context)
-		message = frappe.render_template(template.response, context)
+		message = frappe.render_template(template_body(template), context)
 		frappe.sendmail(recipients=[recipient], subject=subject, message=message)
 	except Exception:
 		status = "Failed"
@@ -137,7 +145,7 @@ def _send_event(rule_event=None, reference_doctype=None, reference_name=None, co
 				recipients=[email],
 				cc=cc,
 				subject=frappe.render_template(template.subject, values),
-				message=frappe.render_template(template.response, values),
+				message=frappe.render_template(template_body(template), values),
 				reference_doctype=reference_doctype,
 				reference_name=reference_name,
 				attachments=attachments or None,
@@ -186,5 +194,7 @@ def candidate_email_context(application):
 		"candidate_mobile": person.get("mobile_number"),
 		"application_id": app.application_id,
 		"job_title": frappe.db.get_value("Job Opening", app.job_opening, "job_title"),
+		"track": frappe.db.get_value("Job Opening", app.job_opening, "track"),
+		"contact_email": frappe.get_cached_doc("Pathways Settings").recruitment_contact_email or "",
 	}
 	return context, {"email": person.get("email"), "name": person.get("full_name")}

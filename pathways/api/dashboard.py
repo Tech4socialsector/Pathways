@@ -265,6 +265,14 @@ def get_drilldown(bucket, track=None, job_opening=None, department=None, from_da
 			filters["status"] = ["in", with_statuses(statuses) or [""]]
 		return _application_rows(filters)
 
+	if bucket.startswith("pipeline:"):
+		# Recruitment Pipeline table: one job's count for one stage, counted
+		# the same way as the Recruitment Pipeline report.
+		if not job_opening:
+			frappe.throw(_("Choose a job opening."))
+		names = _pipeline_applications(job_opening, bucket.split(":", 1)[1])
+		return _application_rows({"name": ["in", names or [""]]})
+
 	if bucket.startswith("funnel:"):
 		stage = dict(FUNNEL_STAGES).get(bucket.split(":", 1)[1])
 		if stage is None:
@@ -278,6 +286,28 @@ def get_drilldown(bucket, track=None, job_opening=None, department=None, from_da
 	for row in rows:
 		row["detail"] = details.get(row["name"])
 	return rows
+
+
+PIPELINE_STATUSES = {
+	"selected": ["Selected"],
+	"offered": ["Offer Extended", "Offer Accepted", "Offer Declined"],
+	"joined": ["Joined"],
+}
+
+
+def _pipeline_applications(job_opening, stage):
+	apps = frappe.get_all("Application", filters={"job_opening": job_opening}, pluck="name")
+	if not apps or stage == "applied":
+		return apps
+	if stage == "eligible":
+		return frappe.get_all("Eligibility Check", filters={"application": ["in", apps], "is_eligible": 1}, pluck="application")
+	if stage == "shortlisted":
+		return frappe.get_all("Shortlisting Score", filters={"application": ["in", apps], "is_shortlisted": 1}, pluck="application")
+	if stage == "interviewed":
+		return frappe.get_all("Interview", filters={"application": ["in", apps], "status": "Completed"}, pluck="application")
+	if stage in PIPELINE_STATUSES:
+		return frappe.get_all("Application", filters={"name": ["in", apps], "status": ["in", PIPELINE_STATUSES[stage]]}, pluck="name")
+	frappe.throw(_("Unknown pipeline stage."))
 
 
 def _attention_details(bucket):
@@ -412,7 +442,7 @@ def get_dashboard(filters=None):
 		{"at": h.changed_on, "kind": "status", "text": f"{h.previous_status} → {h.new_status}", "who": frappe.utils.get_fullname(h.changed_by),
 			"link": f"/applications/{h.application}", "ref": h.application}
 		for h in frappe.get_all("Application Status History", filters=hist_filters,
-			fields=["application", "previous_status", "new_status", "changed_by", "changed_on"], order_by="changed_on desc", limit_page_length=12)
+			fields=["application", "previous_status", "new_status", "changed_by", "changed_on"], order_by="changed_on desc", limit_page_length=10)
 	]
 	corr_filters = {"job_opening": ["in", [j.name for j in jobs]]} if job_filters else {}
 	activity += [
@@ -443,7 +473,7 @@ def get_dashboard(filters=None):
 		"deadlines": deadlines[:12],
 		"jobs": glance,
 		"recent_applications": recent_apps,
-		"activity": activity[:12],
+		"activity": activity[:10],
 		"options": {
 			"tracks": frappe.get_all("Recruitment Track", filters={"is_active": 1}, pluck="name", order_by="name asc"),
 			"departments": frappe.get_all("Department", filters={"is_active": 1}, pluck="name", order_by="name asc"),

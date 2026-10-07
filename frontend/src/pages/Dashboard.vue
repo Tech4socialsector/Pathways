@@ -188,6 +188,36 @@
             </DataTable>
           </SectionCard>
 
+          <!-- Recruitment pipeline: how far each job has got, stage by stage -->
+          <SectionCard title="Recruitment Pipeline" icon="trending-up" subtitle="Each job opening's progress through the stages. Follows the Track and Job opening filters.">
+            <DataTable
+              export-name="recruitment-pipeline"
+              :columns="PIPELINE_COLUMNS"
+              :rows="pipelineRows"
+              :loading="pipeline.loading"
+              row-key="job_opening"
+              :selectable="false"
+              clickable
+              empty-title="No job openings to report on"
+              search-placeholder="Search job openings..."
+              @row-click="(row) => router.push(`/jobs/${row.job_opening}`)"
+            >
+              <template #cell-job_title="{ row }">
+                <span class="font-semibold text-gray-900">{{ row.job_title || row.job_opening }}</span>
+              </template>
+              <template v-for="k in PIPELINE_COUNTS" :key="k" #[`cell-${k}`]="{ row, value }">
+                <button
+                  v-if="value"
+                  type="button"
+                  class="rounded px-2 py-0.5 font-semibold text-brand-700 hover:bg-brand-50 hover:underline"
+                  :title="`See the ${value} application(s)`"
+                  @click.stop="openPipelineDrilldown(row, k)"
+                >{{ value }}</button>
+                <span v-else class="cursor-default px-2 text-gray-300" title="No applications at this stage" @click.stop>0</span>
+              </template>
+            </DataTable>
+          </SectionCard>
+
           <div class="grid grid-cols-1 gap-6 xl:grid-cols-2">
             <!-- Recent applications -->
             <SectionCard title="Recent Applications" icon="inbox">
@@ -238,7 +268,7 @@
       :bucket="drilldown.bucket"
       :title="drilldown.title"
       :description="drilldown.description"
-      :filters="{ filters: apiFilters }"
+      :filters="drilldown.params || { filters: apiFilters }"
     />
   </StaffLayout>
 </template>
@@ -259,6 +289,7 @@ import MultiSelectFilter from '@/components/common/MultiSelectFilter.vue'
 import { BTN_BRAND } from '@/utils/buttonStyles'
 import { useSessionStore } from '@/stores/session'
 import { reportService } from '@/services/reports'
+import { callMethod } from '@/services/api'
 
 const session = useSessionStore()
 const router = useRouter()
@@ -442,9 +473,9 @@ const JOB_COLUMNS = [
 ]
 
 // One dialog for every drill-down.
-const drilldown = reactive({ open: false, bucket: '', title: '', description: '' })
+const drilldown = reactive({ open: false, bucket: '', title: '', description: '', params: null })
 function openDrilldown(bucket, title, description = '') {
-  Object.assign(drilldown, { open: true, bucket, title, description })
+  Object.assign(drilldown, { open: true, bucket, title, description, params: null })
 }
 
 function initials(name) {
@@ -481,4 +512,52 @@ const AttentionRow = (p) => [
   h(FeatherIcon, { name: 'chevron-right', class: 'h-4 w-4 text-gray-400' }),
 ]
 AttentionRow.props = ['item']
+
+// ----- recruitment pipeline (the Recruitment Pipeline report)
+const PIPELINE_COUNTS = ['applied', 'eligible', 'shortlisted', 'interviewed', 'selected', 'offered', 'joined']
+const PIPELINE_COLUMNS = [
+  { key: 'job_title', label: 'Job Opening', format: (row) => row.job_title || row.job_opening },
+  { key: 'track', label: 'Track' },
+  { key: 'status', label: 'Status' },
+  ...PIPELINE_COUNTS.map((k) => ({ key: k, label: k[0].toUpperCase() + k.slice(1), align: 'right' })),
+]
+const pipeline = reactive({ rows: [], loading: false })
+async function loadPipeline() {
+  pipeline.loading = true
+  try {
+    const res = await callMethod('frappe.desk.query_report.run', { report_name: 'Recruitment Pipeline' })
+    pipeline.rows = (res?.result || []).filter((r) => r && r.job_opening)
+  } catch {
+    pipeline.rows = []
+  } finally {
+    pipeline.loading = false
+  }
+}
+const pipelineRows = computed(() =>
+  pipeline.rows.filter(
+    (r) =>
+      (!applied.tracks.length || applied.tracks.includes(r.track)) &&
+      (!applied.job_openings.length || applied.job_openings.includes(r.job_opening)),
+  ),
+)
+onMounted(loadPipeline)
+
+const STAGE_LABELS = {
+  applied: 'Applied',
+  eligible: 'Eligible',
+  shortlisted: 'Shortlisted',
+  interviewed: 'Interviewed',
+  selected: 'Selected',
+  offered: 'Offered',
+  joined: 'Joined',
+}
+function openPipelineDrilldown(row, stage) {
+  Object.assign(drilldown, {
+    open: true,
+    bucket: `pipeline:${stage}`,
+    title: `${STAGE_LABELS[stage]} · ${row.job_title || row.job_opening}`,
+    description: `Applications counted as "${STAGE_LABELS[stage]}" for this job opening.`,
+    params: { job_opening: row.job_opening },
+  })
+}
 </script>

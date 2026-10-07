@@ -14,6 +14,7 @@
     <div class="flex-1 overflow-y-auto p-6">
       <DataTable
         :columns="columns"
+        :extra-columns="extraColumns"
         :rows="jobs"
         :loading="loading"
         :filters="filters"
@@ -126,6 +127,22 @@ const columns = [
       return days < 0 ? `${when} (passed)` : days === 0 ? `${when} (today)` : `${when} (${days}d left)`
     },
   },
+]
+// More fields users can add from the Columns menu.
+const extraColumns = [
+  { key: 'applications', label: 'Applications', align: 'right' },
+  { key: 'has_committee', label: 'Committee' },
+  {
+    key: 'application_start',
+    label: 'Applications Open',
+    format: (row) => (row.application_start ? dayjs(row.application_start).format('DD MMM YYYY') : ''),
+  },
+  { key: 'pay_level', label: 'Pay Level' },
+  { key: 'tenure_description', label: 'Tenure' },
+  { key: 'shortlisting_ratio', label: 'Shortlisting Ratio', format: (row) => (row.shortlisting_ratio ? `1:${row.shortlisting_ratio}` : 'Default') },
+  { key: 'creation', label: 'Created On', format: (row) => (row.creation ? dayjs(row.creation).format('DD MMM YYYY') : '') },
+  { key: 'modified', label: 'Last Updated', format: (row) => (row.modified ? dayjs(row.modified).format('DD MMM YYYY, h:mm A') : '') },
+  { key: 'name', label: 'Record ID' },
 ]
 const filters = [
   { key: 'status', label: 'Statuses' },

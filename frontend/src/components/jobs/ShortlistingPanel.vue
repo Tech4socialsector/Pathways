@@ -55,6 +55,18 @@
         </div>
       </div>
 
+      <!-- Shortlisting sheet: the committee's sheet for this track -->
+      <div v-if="s.can_shortlist && s.applications">
+        <div class="mb-2 text-xs font-bold uppercase tracking-wide text-brand-700">Shortlisting sheet</div>
+        <div class="grid grid-cols-2 gap-2">
+          <Button size="sm" variant="outline" icon-left="eye" @click="openReport">View</Button>
+          <a :href="scoringService.shortlistingReportUrl(job.name)" class="inline-flex">
+            <Button size="sm" variant="solid" icon-left="download" class="w-full" :class="BTN_BRAND">Excel</Button>
+          </a>
+        </div>
+        <p class="mt-1.5 text-xs text-gray-500">{{ reportHint }}</p>
+      </div>
+
       <!-- Regret emails, sent together once screening is done -->
       <div v-if="s.can_shortlist && s.regret">
         <div class="mb-2 text-xs font-bold uppercase tracking-wide text-brand-700">Regret emails</div>
@@ -119,6 +131,8 @@
       </template>
     </Dialog>
 
+    <ShortlistingSheetDialog v-model:open="reportOpen" :job-opening="job.name" :job-title="job.job_title" :track="job.track" />
+
     <CommitteeSetupDialog v-model:open="committeeOpen" :job-opening="job.name" @created="emit('changed')" />
   </SectionCard>
 </template>
@@ -128,6 +142,7 @@ import { computed, ref } from 'vue'
 import { Button, Dialog, FeatherIcon, FormControl } from 'frappe-ui'
 import SectionCard from '@/components/common/SectionCard.vue'
 import CommitteeSetupDialog from '@/components/common/CommitteeSetupDialog.vue'
+import ShortlistingSheetDialog from '@/components/common/ShortlistingSheetDialog.vue'
 import { BTN_BRAND } from '@/utils/buttonStyles'
 import { toast } from '@/utils/notify'
 import { applicationService } from '@/services/applications'
@@ -207,5 +222,18 @@ async function sendRegrets() {
   } finally {
     sendingRegret.value = false
   }
+}
+
+// ----- shortlisting sheet
+const reportOpen = ref(false)
+const reportHint = computed(
+  () =>
+    ({
+      Faculty: 'Eligibility Check and Consolidated scores, as in the Faculty sheets.',
+      Research: 'Candidate details, rubric scores (best 12), remarks and status.',
+    })[props.job.track] || 'Candidate details, screening answers, ineligibility reason, decision and remarks.',
+)
+function openReport() {
+  reportOpen.value = true
 }
 </script>

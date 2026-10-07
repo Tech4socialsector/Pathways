@@ -38,93 +38,10 @@ DEFAULT_CANDIDATE_SOURCES = [
 	"Students of NLUs/Other Universities",
 ]
 
+# Recruitment emails live in pathways.utils.email_events (one template per
+# workflow email, worded as in the workflow folder). Only templates no
+# Email Setup rule owns stay here.
 EMAIL_TEMPLATES = [
-	{
-		"name": "Application Acknowledgement",
-		"subject": "Application Received: {{ job_title }}",
-		"response": (
-			"<p>Dear {{ candidate_name }},</p>"
-			"<p>Thank you for applying for the position of <b>{{ job_title }}</b> at "
-			"National Law School of India University (NLSIU), Bengaluru. "
-			"Your application (ID: {{ application_id }}) has been received.</p>"
-			"<p>Kind regards,<br>Recruitment Team<br>NLSIU, Bengaluru</p>"
-		),
-	},
-	{
-		"name": "Interview Invite (Round 1)",
-		"subject": "Action Required : Interviews - {{ job_title }}",
-		"response": (
-			"<p>Dear Applicant,</p>"
-			"<p>Greetings from National Law School of India University (NLSIU), Bengaluru!</p>"
-			"<p>This is with reference to your interviews (Round 1) for the position "
-			"{{ job_title }} at NLS. We are pleased to inform you that your application "
-			"has been selected for the Round 1 interview. This round is scheduled on "
-			"{{ interview_date_time }} via video conferencing.</p>"
-			"<p>Meeting link: {{ meeting_link }}</p>"
-			"<p>Please login into the meeting ten minutes before your start time. "
-			"We request you to keep a two-hour window for the interview to factor for any delay.</p>"
-			"<p>Please confirm your participation by replying to this email by {{ rsvp_deadline }}.</p>"
-			"<p>Kind regards,<br>Recruitment Team<br>NLSIU, Bengaluru</p>"
-		),
-	},
-	{
-		"name": "Interview Call Letter",
-		"subject": "Action Required : Interviews for the position of {{ job_title }}",
-		"response": (
-			"<p>Dear Applicant,</p>"
-			"<p>Greetings from National Law School of India University (NLSIU), Bengaluru!</p>"
-			"<p>We are pleased to inform you that your application has been shortlisted, "
-			"and your interview is scheduled via video conferencing on {{ interview_date_time }}.</p>"
-			"<p>Meeting details: {{ meeting_link }}</p>"
-			"<p>Please login twenty minutes before your start time and please remain logged in. "
-			"Please ensure that your camera and microphone are switched on when you enter the "
-			"meeting room.</p>"
-			"<p>Kind regards,<br>Recruitment Team<br>NLSIU, Bengaluru</p>"
-		),
-	},
-	{
-		"name": "Regret Mail",
-		"subject": "Important: Update on your job application for {{ job_title }}",
-		"response": (
-			"<p>Dear Candidate,</p>"
-			"<p>We have an update on your application for the position of {{ job_title }} "
-			"at NLSIU Bengaluru.</p>"
-			"<p>We regret to inform you that we will not be moving forward with your application. "
-			"We truly appreciate the time and effort put in by you for your application.</p>"
-			"<p>Please note that this decision is not a reflection of your abilities, and we "
-			"encourage you to apply for positions that may/will come up in the future.</p>"
-			"<p>Please keep a lookout on the website - https://www.nls.ac.in/news-and-events/work-with-us/</p>"
-			"<p>Kind regards,<br>Recruitment Team<br>NLSIU, Bengaluru</p>"
-		),
-	},
-	{
-		"name": "Appointment Order Covering Note",
-		"subject": "Appointment Letter - {{ job_title }}",
-		"response": (
-			"<p>Dear {{ candidate_name }},</p>"
-			"<p>Greetings from National Law School of India University, Bengaluru!</p>"
-			"<p>Please find attached the Appointment Letter as {{ job_title }} at NLSIU. "
-			"Request you to confirm your acceptance and send a signed scanned copy of the "
-			"appointment letter with a reply all to this email by {{ acceptance_deadline }}.</p>"
-			"<p>Please also indicate your earliest date of joining in the same email.</p>"
-			"<p>Regards,<br>Registrar's Office</p>"
-		),
-	},
-	{
-		"name": "Onboarding Email",
-		"subject": "DOCUMENTS TO BE SUBMITTED",
-		"response": (
-			"<p>Dear {{ candidate_name }},</p>"
-			"<p>We are looking forward to welcoming you to NLSIU!</p>"
-			"<p>On the day of joining, kindly bring the softcopy and photocopy of the required "
-			"documents as per the checklist shared with you.</p>"
-			"<p>We will also need a digital photograph for the people directory on the website, "
-			"and a brief write-up (not more than 200 words) about yourself, to be emailed at "
-			"least 2 days prior to your date of joining.</p>"
-			"<p>On the day of joining, please meet at {{ reporting_location }} at {{ reporting_time }}.</p>"
-			"<p>Regards,<br>People and Culture Team<br>NLSIU, Bengaluru</p>"
-		),
-	},
 	{
 		"name": "Document Resubmission Request",
 		"subject": "Action Required: Document Resubmission - {{ document_name }}",
@@ -136,27 +53,6 @@ EMAIL_TEMPLATES = [
 			"<p>Please log in to your application portal and upload a corrected copy at your earliest "
 			"convenience.</p>"
 			"<p>Regards,<br>People and Culture Team<br>NLSIU, Bengaluru</p>"
-		),
-	},
-	{
-		"name": "Interview Reminder",
-		"subject": "Reminder: Your interview is tomorrow",
-		"response": (
-			"<p>Dear Candidate,</p>"
-			"<p>This is a reminder that your interview is scheduled for tomorrow. "
-			"Please refer to your earlier interview invitation email for the date, time and "
-			"meeting details.</p>"
-			"<p>Kind regards,<br>Recruitment Team<br>NLSIU, Bengaluru</p>"
-		),
-	},
-	{
-		"name": "Panelist Thanks",
-		"subject": "Thank You for Serving on the Selection Committee",
-		"response": (
-			"<p>Dear {{ panelist_name }},</p>"
-			"<p>On behalf of NLSIU, thank you for your time and effort in serving on the "
-			"Selection Committee for {{ job_title }}. Your contribution is greatly appreciated.</p>"
-			"<p>Regards,<br>Recruitment Team<br>NLSIU, Bengaluru</p>"
 		),
 	},
 ]

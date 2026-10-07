@@ -34,6 +34,7 @@ declare module 'vue' {
     SettingsDialog: typeof import('./src/components/layout/SettingsDialog.vue')['default']
     ShortlistingPanel: typeof import('./src/components/jobs/ShortlistingPanel.vue')['default']
     ShortlistingReviewPanel: typeof import('./src/components/common/ShortlistingReviewPanel.vue')['default']
+    ShortlistingSheetDialog: typeof import('./src/components/common/ShortlistingSheetDialog.vue')['default']
     SidebarNavLink: typeof import('./src/components/layout/SidebarNavLink.vue')['default']
     StatusBadge: typeof import('./src/components/common/StatusBadge.vue')['default']
     TopBar: typeof import('./src/components/layout/TopBar.vue')['default']

@@ -14,6 +14,18 @@ export function useApplicationList() {
       'status',
       'eligibility_status',
       'application_date',
+      // Optional columns (Columns menu)
+      'candidate.email as candidate_email',
+      'candidate.mobile_number as candidate_mobile',
+      'track',
+      'job_opening.department as department',
+      'source',
+      'overall_experience_years',
+      'relevant_experience_years',
+      'notice_period',
+      'eligibility_reason',
+      'regret_sent_on',
+      'modified',
     ],
     orderBy: 'creation desc',
     // DataTable searches, filters and paginates client-side, so load all rows.

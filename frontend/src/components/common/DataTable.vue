@@ -19,6 +19,40 @@
       <Button v-if="isFiltered" variant="ghost" @click="clearFilters">Clear</Button>
       <div class="ml-auto flex items-center gap-2">
         <slot name="toolbar" />
+        <!-- Column chooser: which columns this user sees, and their order -->
+        <div v-if="columnsKey" ref="colRoot" class="relative">
+          <Button icon-left="columns" :class="colOpen && 'bg-gray-200'" @click="colOpen = !colOpen">
+            Columns<span v-if="customised" class="ml-1 h-1.5 w-1.5 rounded-full bg-brand-700" />
+          </Button>
+          <div v-if="colOpen" class="absolute right-0 top-9 z-30 w-72 overflow-hidden rounded-lg border bg-white shadow-xl">
+            <div class="flex items-center justify-between border-b px-3 py-2">
+              <span class="text-sm font-semibold text-gray-900">Show columns</span>
+              <button type="button" class="text-xs font-medium text-brand-700 hover:underline disabled:opacity-40" :disabled="!customised" @click="resetColumns">
+                Reset
+              </button>
+            </div>
+            <ul class="max-h-80 overflow-y-auto py-1">
+              <li v-for="(col, idx) in orderedColumns" :key="col.key" class="flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-gray-50">
+                <input
+                  :id="`col-${columnsKey}-${col.key}`"
+                  type="checkbox"
+                  class="rounded border-gray-300 text-brand-700 focus:ring-brand-700"
+                  :checked="!hiddenSet.has(col.key)"
+                  :disabled="!hiddenSet.has(col.key) && shownColumns.length === 1"
+                  @change="toggleColumn(col.key, $event.target.checked)"
+                />
+                <label :for="`col-${columnsKey}-${col.key}`" class="min-w-0 flex-1 cursor-pointer truncate text-gray-800">{{ col.label }}</label>
+                <button type="button" class="rounded p-0.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700 disabled:opacity-30" :disabled="idx === 0" :aria-label="`Move ${col.label} up`" @click="moveColumn(idx, -1)">
+                  <FeatherIcon name="chevron-up" class="h-4 w-4" />
+                </button>
+                <button type="button" class="rounded p-0.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700 disabled:opacity-30" :disabled="idx === orderedColumns.length - 1" :aria-label="`Move ${col.label} down`" @click="moveColumn(idx, 1)">
+                  <FeatherIcon name="chevron-down" class="h-4 w-4" />
+                </button>
+              </li>
+            </ul>
+            <p class="border-t px-3 py-2 text-xs text-gray-500">Saved for your account.</p>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -59,7 +93,7 @@
               />
             </th>
             <th
-              v-for="col in columns"
+              v-for="col in shownColumns"
               :key="col.key"
               class="whitespace-nowrap px-4 py-2 font-medium"
               :class="[col.align === 'right' && 'text-right', col.sortable !== false && 'cursor-pointer select-none hover:text-gray-800']"
@@ -73,7 +107,7 @@
         </thead>
         <tbody>
           <tr v-if="!sortedRows.length">
-            <td :colspan="columns.length + ($slots.actions ? 1 : 0) + (selectable ? 1 : 0)" class="px-4 py-8 text-center text-gray-500">
+            <td :colspan="shownColumns.length + ($slots.actions ? 1 : 0) + (selectable ? 1 : 0)" class="px-4 py-8 text-center text-gray-500">
               No records match your search or filters.
             </td>
           </tr>
@@ -94,7 +128,7 @@
               />
             </td>
             <td
-              v-for="(col, i) in columns"
+              v-for="(col, i) in shownColumns"
               :key="col.key"
               class="px-4 py-2.5"
               :class="[i === 0 ? 'font-medium text-gray-900' : 'text-gray-600', col.align === 'right' && 'text-right']"
@@ -135,7 +169,8 @@
 </template>
 
 <script setup>
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { callMethod } from '@/services/api'
 import { Button, FeatherIcon, FormControl, TextInput } from 'frappe-ui'
 import EmptyState from '@/components/common/EmptyState.vue'
 
@@ -158,6 +193,11 @@ const props = defineProps({
   // @export="(rows, clear) => ..." replaces the built-in CSV of the visible
   // columns (e.g. Applications exports full records from the server).
   onExport: { type: Function, default: null },
+  // Columns available from the Columns menu but hidden until a user adds them.
+  extraColumns: { type: Array, default: () => [] },
+  // Turns on the Columns menu; preferences are saved per user under this
+  // key (defaults to exportName for lists that set one).
+  settingsKey: { type: String, default: '' },
 })
 const emit = defineEmits(['row-click'])
 
@@ -197,7 +237,7 @@ const filteredRows = computed(() => {
       if (value && String(row[key] ?? '') !== value) return false
     }
     if (!term) return true
-    return props.columns.some((col) => String(display(row, col)).toLowerCase().includes(term))
+    return allColumns.value.some((col) => String(display(row, col)).toLowerCase().includes(term))
   })
 })
 
@@ -281,8 +321,8 @@ function exportSelected() {
 function exportCsv() {
   const cell = (value) => `"${String(value ?? '').replace(/"/g, '""')}"`
   const lines = [
-    props.columns.map((c) => cell(c.label)).join(','),
-    ...selectedRows.value.map((row) => props.columns.map((c) => cell(display(row, c))).join(',')),
+    shownColumns.value.map((c) => cell(c.label)).join(','),
+    ...selectedRows.value.map((row) => shownColumns.value.map((c) => cell(display(row, c))).join(',')),
   ]
   const blob = new Blob(['\ufeff' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' })
   const link = document.createElement('a')
@@ -294,4 +334,72 @@ function exportCsv() {
 watch(pageCount, (n) => {
   if (page.value > n) page.value = n
 })
+
+// ----- columns chooser (per user)
+const columnsKey = computed(() => props.settingsKey || (props.exportName !== 'export' ? props.exportName : ''))
+const allColumns = computed(() => [...props.columns, ...props.extraColumns.filter((e) => !props.columns.some((c) => c.key === e.key))])
+const prefs = ref(null) // { order: [...keys], hidden: [...keys] }
+const colOpen = ref(false)
+const colRoot = ref(null)
+
+const defaultHidden = computed(() => props.extraColumns.map((c) => c.key))
+const hiddenSet = computed(() => new Set(prefs.value ? prefs.value.hidden : defaultHidden.value))
+const orderedColumns = computed(() => {
+  const order = prefs.value?.order || []
+  const byKey = Object.fromEntries(allColumns.value.map((c) => [c.key, c]))
+  const known = order.filter((k) => byKey[k]).map((k) => byKey[k])
+  return [...known, ...allColumns.value.filter((c) => !order.includes(c.key))]
+})
+const shownColumns = computed(() => {
+  if (!columnsKey.value) return props.columns
+  const shown = orderedColumns.value.filter((c) => !hiddenSet.value.has(c.key))
+  return shown.length ? shown : props.columns
+})
+const customised = computed(() => !!prefs.value)
+
+let saveTimer = null
+function savePrefs() {
+  clearTimeout(saveTimer)
+  saveTimer = setTimeout(() => {
+    callMethod('pathways.api.preferences.save_list_columns', { list_key: columnsKey.value, settings: prefs.value }).catch(() => {})
+  }, 400)
+}
+function currentPrefs() {
+  return { order: orderedColumns.value.map((c) => c.key), hidden: [...hiddenSet.value] }
+}
+function toggleColumn(key, show) {
+  const p = currentPrefs()
+  p.hidden = show ? p.hidden.filter((k) => k !== key) : [...p.hidden, key]
+  prefs.value = p
+  savePrefs()
+}
+function moveColumn(idx, step) {
+  const p = currentPrefs()
+  const [moved] = p.order.splice(idx, 1)
+  p.order.splice(idx + step, 0, moved)
+  prefs.value = p
+  savePrefs()
+}
+function resetColumns() {
+  prefs.value = null
+  savePrefs()
+}
+
+async function loadPrefs() {
+  if (!columnsKey.value) return
+  try {
+    const saved = await callMethod('pathways.api.preferences.get_list_columns', { list_key: columnsKey.value })
+    if (saved && Array.isArray(saved.order)) prefs.value = { order: saved.order, hidden: saved.hidden || [] }
+  } catch {
+    /* defaults */
+  }
+}
+function onOutsideColumns(e) {
+  if (colOpen.value && colRoot.value && !colRoot.value.contains(e.target)) colOpen.value = false
+}
+onMounted(() => {
+  loadPrefs()
+  document.addEventListener('mousedown', onOutsideColumns)
+})
+onBeforeUnmount(() => document.removeEventListener('mousedown', onOutsideColumns))
 </script>

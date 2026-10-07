@@ -62,12 +62,15 @@ def list_job_openings(filters=None, limit_start=0, limit_page_length=20):
 		filters = frappe.parse_json(filters)
 	filters = filters or {}
 
-	return frappe.get_all(
+	jobs = frappe.get_all(
 		"Job Opening",
 		filters=filters,
 		fields=[
 			"name",
 			"position",
+			"application_start",
+			"shortlisting_ratio",
+			"creation",
 			"job_title",
 			"track",
 			"department",
@@ -84,6 +87,20 @@ def list_job_openings(filters=None, limit_start=0, limit_page_length=20):
 		limit_start=frappe.utils.cint(limit_start),
 		limit_page_length=frappe.utils.cint(limit_page_length),
 	)
+	# Optional list columns (Columns menu): applications and committee.
+	names = [j.name for j in jobs]
+	if names:
+		counts = dict(
+			frappe.db.sql(
+				"select job_opening, count(*) from `tabApplication` where job_opening in %s and status != 'Withdrawn' group by job_opening",
+				(names,),
+			)
+		)
+		committees = set(frappe.get_all("Shortlisting Committee", filters={"job_opening": ["in", names]}, pluck="job_opening"))
+		for j in jobs:
+			j.applications = counts.get(j.name, 0)
+			j.has_committee = "Yes" if j.name in committees else "No"
+	return jobs
 
 
 @frappe.whitelist()
