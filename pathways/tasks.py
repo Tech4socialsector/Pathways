@@ -41,26 +41,27 @@ def daily():
 def flag_ads_closing_soon():
 	"""Confirmed source SLA: ad extension decision checked ~1 day before
 	the ad's end date. Flags via ToDo rather than auto-extending, since
-	extension is a human judgment call.
-	"""
-	tomorrow = add_days(today(), 1)
+	extension is a human judgment call (Job Opening > Extend deadline)."""
 	closing_soon = frappe.get_all(
-		"Recruitment Notification",
-		filters={"status": "Published", "closing_datetime": ["between", [today(), tomorrow]]},
-		fields=["name", "job_opening"],
+		"Job Opening",
+		filters=[
+			["status", "=", "Advertised"],
+			["application_deadline", "is", "set"],
+			["application_deadline", "between", [now_datetime(), add_days(now_datetime(), 1)]],
+		],
+		fields=["name", "job_title", "owner"],
 	)
-	for notif in closing_soon:
-		if frappe.db.exists(
-			"ToDo", {"reference_type": "Recruitment Notification", "reference_name": notif.name, "status": "Open"}
-		):
+	for job in closing_soon:
+		if frappe.db.exists("ToDo", {"reference_type": "Job Opening", "reference_name": job.name, "status": "Open"}):
 			continue
 		todo = frappe.new_doc("ToDo")
 		todo.description = (
-			f"Advertisement for {notif.job_opening} closes within 24 hours. "
-			f"Decide whether to extend (issue a Corrigendum) or let it close."
+			f"The advertisement for {job.job_title} ({job.name}) closes within 24 hours. "
+			f"Decide whether to extend it (Extend deadline, which issues a Corrigendum) or let it close."
 		)
-		todo.reference_type = "Recruitment Notification"
-		todo.reference_name = notif.name
+		todo.reference_type = "Job Opening"
+		todo.reference_name = job.name
+		todo.allocated_to = job.owner if job.owner != "Guest" else None
 		todo.insert(ignore_permissions=True)
 	frappe.db.commit()
 

@@ -6,3 +6,4 @@
 # Patches added in this section will be executed after doctypes are migrated
 pathways.patches.rename_qualification_masters_to_naming_series
 pathways.patches.v1_0.seed_access_and_application_defaults
+pathways.patches.v1_0.candidate_role_without_desk_access

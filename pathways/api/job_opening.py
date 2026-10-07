@@ -39,6 +39,9 @@ def get_job_opening(job_opening):
 		"Application", filters={"job_opening": doc.name}, pluck="status", ignore_permissions=True
 	)
 	detail["application_counts"] = dict(Counter(statuses))
+	from pathways.api.scoring import shortlisting_summary
+
+	detail["shortlisting"] = shortlisting_summary(doc)
 	detail["position_detail"] = (
 		frappe.db.get_value(
 			"Position", doc.position, ["job_code", "position_title", "reports_to", "hiring_manager_role"], as_dict=True

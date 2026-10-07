@@ -207,6 +207,9 @@ def after_install():
 def create_roles():
 	for role_name in DEFAULT_PATHWAYS_ROLES:
 		if frappe.db.exists("Role", role_name):
+			# A candidate role with desk access turns candidates into staff users.
+			if role_name == CANDIDATE_ROLE:
+				frappe.db.set_value("Role", role_name, "desk_access", 0)
 			continue
 		role = frappe.new_doc("Role")
 		role.role_name = role_name

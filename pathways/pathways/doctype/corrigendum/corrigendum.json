@@ -8,12 +8,15 @@
  "field_order": [
   "naming_series",
   "recruitment_notification",
+  "job_opening",
   "corrigendum_date",
   "column_break_1",
   "changed_field",
+  "previous_value",
   "new_value",
   "remarks_section",
   "remarks",
+  "corrigendum_attachment",
   "signed_by"
  ],
  "fields": [
@@ -31,6 +34,15 @@
    "label": "Recruitment Notification",
    "options": "Recruitment Notification",
    "reqd": 1
+  },
+  {
+   "fieldname": "job_opening",
+   "fieldtype": "Link",
+   "options": "Job Opening",
+   "label": "Job Opening",
+   "read_only": 1,
+   "fetch_from": "recruitment_notification.job_opening",
+   "in_list_view": 1
   },
   {
    "default": "Today",
@@ -53,6 +65,12 @@
    "reqd": 1
   },
   {
+   "fieldname": "previous_value",
+   "fieldtype": "Data",
+   "label": "Previous Value",
+   "read_only": 1
+  },
+  {
    "fieldname": "new_value",
    "fieldtype": "Data",
    "in_list_view": 1,
@@ -65,10 +83,15 @@
    "label": "Remarks"
   },
   {
-   "description": "\"All other entries remain unchanged\" is implied by default — use this field only for additional remarks",
+   "description": "\"All other entries remain unchanged\" is implied by default \u2014 use this field only for additional remarks",
    "fieldname": "remarks",
    "fieldtype": "Small Text",
    "label": "Remarks"
+  },
+  {
+   "fieldname": "corrigendum_attachment",
+   "fieldtype": "Attach",
+   "label": "Corrigendum PDF"
   },
   {
    "fieldname": "signed_by",
@@ -80,7 +103,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-09-21 00:00:00.000000",
+ "modified": "2026-10-07 14:00:00.000000",
  "modified_by": "Administrator",
  "module": "Pathways",
  "name": "Corrigendum",

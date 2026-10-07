@@ -1,6 +1,8 @@
 # Copyright (c) 2026, NLSIU and contributors
 # For license information, please see license.txt
 
+import re
+
 import frappe
 from frappe import _
 from frappe.rate_limiter import rate_limit
@@ -75,6 +77,17 @@ def get_job_opening_detail(job_opening):
 	detail = {field: job.get(field) for field in PUBLIC_JOB_FIELDS}
 	detail.update({"jd_text": job.jd_text, "jd_attachment": job.jd_attachment})
 	detail["form"] = get_form_config(job)
+	# Official notification and corrigenda, published with the posting.
+	from pathways.api.job_notice import notice_for
+
+	notice = notice_for(job.name)
+	detail["notice"] = {
+		"notification": notice["notification"],
+		"corrigenda": [
+			{k: c.get(k) for k in ("corrigendum_date", "changed_field", "new_value", "remarks", "corrigendum_attachment")}
+			for c in notice["corrigenda"]
+		],
+	}
 
 	user = frappe.session.user
 	detail["viewer"] = {"logged_in": user != "Guest", "email": None, "is_staff": False, "already_applied": None}
@@ -416,9 +429,11 @@ def _application_documents(app):
 	[{label, group, file_url, file_name, kind}]."""
 	rows = [("Resume / CV", "Application", app.resume_attachment), ("Statement of Purpose", "Application", app.sop_attachment)]
 	for q in app.qualifications or []:
-		level = "Graduate Degree" if q.degree_level == "Undergraduate" else "Post Graduate Degree"
+		level = {"Undergraduate": "Graduate Degree", "Postgraduate": "Post Graduate Degree", "Doctoral": "Doctoral Degree"}.get(q.degree_level, q.degree_level)
 		rows.append((f"{level} — Transcript", "Qualifications", q.transcript_attachment))
 		rows.append((f"{level} — Degree Certificate", "Qualifications", q.certificate_attachment))
+	for i, pub in enumerate(app.get("publications") or [], start=1):
+		rows.append((f"Publication #{i}", "Publications", pub.pdf_attachment))
 	for d in app.documents or []:
 		rows.append((d.document_type, "Supporting Documents", d.attachment))
 	rows.append(("Additional Documents", "Supporting Documents", app.additional_attachment))
@@ -729,3 +744,85 @@ def bulk_delete_applications(names):
 	from pathways.utils.bulk import run_bulk
 
 	return run_bulk(names, lambda name: frappe.delete_doc("Application", name))
+
+
+# ------------------------------------------------------------ documents ZIP
+# Workflow step 10: everyone's CVs, SOPs, writing samples... in one folder
+# per document type, for the shortlisting committee.
+
+ZIP_SCOPES = {
+	"all": None,
+	"eligible": {"eligibility_status": "Eligible"},
+	"shortlisted": {"status": ["in", ["Shortlisted", "Interview Scheduled", "Interview Completed", "Selected"]]},
+}
+
+
+def _zip_folder(label):
+	"""Folder for a document label from _application_documents."""
+	if label == "Resume / CV":
+		return "CV", ""
+	if label == "Statement of Purpose":
+		return "SOP", ""
+	if label.endswith("— Transcript"):
+		return "Transcripts", label.split(" — ")[0]
+	if label.endswith("— Degree Certificate"):
+		return "Degree Certificates", label.split(" — ")[0]
+	if label.startswith("Publication #"):
+		return "Publications", label.split("#")[1]
+	return re.sub(r'[\\/:*?"<>|]+', "-", label).strip(" -") or "Other", ""
+
+
+@frappe.whitelist()
+def download_documents_zip(job_opening=None, applications=None, scope="all"):
+	"""ZIP of applicants' documents, one folder per document type. Either a
+	job (scope: all / eligible / shortlisted) or a list of applications."""
+	import io
+	import zipfile
+
+	from pathways.api.scoring import can_shortlist
+
+	if applications:
+		names = frappe.parse_json(applications) if isinstance(applications, str) else applications
+		label = "selected-applications"
+	elif job_opening:
+		if not can_shortlist(job_opening):
+			frappe.throw(_("Only the recruitment team or this job's committee can download its documents."), frappe.PermissionError)
+		if scope not in ZIP_SCOPES:
+			frappe.throw(_("Unknown selection."))
+		names = frappe.get_all(
+			"Application",
+			filters={"job_opening": job_opening, "status": ["!=", "Withdrawn"], **(ZIP_SCOPES[scope] or {})},
+			pluck="name",
+			order_by="application_id asc",
+			ignore_permissions=True,
+		)
+		label = f"{frappe.db.get_value('Job Opening', job_opening, 'position') or job_opening}_{scope}"
+	else:
+		frappe.throw(_("Choose a job or applications."))
+	if not names:
+		frappe.throw(_("There are no applications to download."))
+
+	buffer = io.BytesIO()
+	count = 0
+	with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as archive:
+		for name in names:
+			app = frappe.get_doc("Application", name)
+			if not job_opening:
+				app.check_permission("read")
+			person = re.sub(r"[^\w .-]+", "", frappe.db.get_value("Candidate", app.candidate, "full_name") or "").strip()
+			for doc in _application_documents(app):
+				folder, part = _zip_folder(doc["label"])
+				extension = doc["file_name"].rsplit(".", 1)[-1] if "." in doc["file_name"] else "bin"
+				filename = f"{app.application_id} - {person}{f' - {part}' if part else ''}.{extension}"
+				try:
+					file = frappe.get_doc("File", {"file_url": doc["file_url"], "attached_to_name": app.name})
+					archive.writestr(f"{folder}/{filename}", file.get_content())
+					count += 1
+				except Exception:
+					frappe.log_error(f"Could not add {doc['file_url']} for {app.name}", "Documents ZIP")
+	if not count:
+		frappe.throw(_("These applications have no documents."))
+
+	frappe.local.response.filename = f"{label}_documents.zip"
+	frappe.local.response.filecontent = buffer.getvalue()
+	frappe.local.response.type = "download"

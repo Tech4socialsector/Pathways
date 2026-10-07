@@ -152,7 +152,7 @@ class JobOpening(Document):
 			)
 
 	def validate_status_transition(self):
-		if self.status not in STATUSES_REQUIRING_APPROVED_GREEN_SHEET:
+		if self.status not in STATUSES_REQUIRING_APPROVED_GREEN_SHEET or self.flags.reopening:
 			return
 
 		if not self.is_new():

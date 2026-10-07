@@ -15,6 +15,7 @@
   "column_break_1",
   "employment_type",
   "vacancies",
+  "shortlisting_ratio",
   "tenure_description",
   "pay_level",
   "status",
@@ -114,6 +115,12 @@
    "fieldtype": "Int",
    "label": "Vacancies",
    "reqd": 1
+  },
+  {
+   "fieldname": "shortlisting_ratio",
+   "fieldtype": "Int",
+   "label": "Shortlisting Ratio (1 : N)",
+   "description": "Candidates to shortlist per vacancy. Leave empty to use the default in Pathways Settings (1:5)."
   },
   {
    "fieldname": "tenure_description",
@@ -315,7 +322,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-10-07 11:45:00.000000",
+ "modified": "2026-10-07 14:00:00.000000",
  "modified_by": "Administrator",
  "module": "Pathways",
  "name": "Job Opening",

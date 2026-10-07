@@ -68,6 +68,51 @@
 
     </template>
 
+    <SectionCard title="Eligibility" icon="filter" subtitle="Step 1: sort eligible candidates, then shortlist from that pool">
+      <div v-if="review.eligibility_status !== 'Pending' && !elig.changing" class="flex flex-col gap-3 text-sm">
+        <div
+          class="flex items-center gap-2 rounded-lg px-3 py-2.5 font-semibold"
+          :class="review.eligibility_status === 'Eligible' ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'"
+        >
+          <FeatherIcon :name="review.eligibility_status === 'Eligible' ? 'check-circle' : 'x-circle'" class="h-4 w-4" />
+          {{ review.eligibility_status }}
+        </div>
+        <p v-if="review.eligibility_reason" class="text-gray-700">{{ review.eligibility_reason }}</p>
+        <p class="text-xs text-gray-500">
+          Checked by {{ review.eligibility_checked_by }}<template v-if="review.eligibility_checked_on"> · {{ formatDateTime(review.eligibility_checked_on) }}</template>
+        </p>
+        <Button v-if="review.can_mark_eligibility" variant="outline" icon-left="edit-2" @click="elig.changing = true">Change</Button>
+      </div>
+      <div v-else-if="review.can_mark_eligibility" class="flex flex-col gap-3">
+        <p class="text-sm text-gray-600">Does the candidate meet the essential qualifications and experience in the notification?</p>
+        <div class="grid grid-cols-2 gap-2">
+          <Button variant="solid" icon-left="check" :class="BTN_SUCCESS" :loading="elig.saving && elig.eligible" @click="markEligible(true)">Eligible</Button>
+          <Button variant="solid" icon-left="x" :class="BTN_DANGER" @click="elig.reasonOpen = true">Not eligible</Button>
+        </div>
+        <Button v-if="elig.changing" variant="ghost" @click="elig.changing = false">Cancel</Button>
+      </div>
+      <p v-else class="text-sm text-gray-500">Not checked yet.</p>
+    </SectionCard>
+
+    <Dialog v-model="elig.reasonOpen" :options="{ title: 'Not eligible', size: 'md' }">
+      <template #body-content>
+        <div class="flex flex-col gap-3">
+          <FormControl
+            label="Reason"
+            type="textarea"
+            v-model="elig.reason"
+            placeholder="e.g. Master's degree below 55%; less than 15 years of experience"
+          />
+          <p class="text-xs text-gray-500">The application moves to Not Selected. You can change this later.</p>
+        </div>
+      </template>
+      <template #actions>
+        <Button variant="solid" :class="BTN_DANGER" :loading="elig.saving" :disabled="!elig.reason.trim()" @click="markEligible(false)">
+          Mark not eligible
+        </Button>
+      </template>
+    </Dialog>
+
     <SectionCard title="Shortlisting Score" icon="clipboard" :subtitle="editing ? 'Score each criterion, then shortlist or reject' : 'Saved decision'">
       <template #actions>
         <span v-if="rubric" class="rounded-full bg-brand-50 px-2.5 py-0.5 text-sm font-bold text-brand-700">
@@ -89,11 +134,20 @@
           variant="solid"
           icon-left="users"
           :class="BTN_BRAND"
-          @click="openCommitteeDialog"
+          @click="committeeOpen = true"
         >
           Set up committee
         </Button>
         <p v-else class="mt-1 text-xs">Ask the recruiter or an administrator to set it up.</p>
+      </div>
+
+      <!-- Step 2 only for the eligible pool -->
+      <div v-else-if="review.eligibility_status !== 'Eligible'" class="rounded-lg border border-gray-200 bg-gray-50 px-3 py-3 text-sm text-gray-700">
+        <div class="flex items-center gap-2 font-semibold text-gray-900">
+          <FeatherIcon name="lock" class="h-4 w-4" />
+          {{ review.eligibility_status === 'Not Eligible' ? 'Not eligible: not scored' : 'Check eligibility first' }}
+        </div>
+        <p class="mt-0.5">Shortlisting scores are given only to candidates marked eligible above.</p>
       </div>
 
       <!-- Saved: read-only until "Edit score" -->
@@ -205,49 +259,7 @@
       </template>
     </Dialog>
 
-    <Dialog v-model="committee.open" :options="{ title: 'Set up Shortlisting Committee', size: 'lg' }">
-      <template #body-content>
-        <div class="flex flex-col gap-4">
-          <p class="text-sm text-gray-600">
-            Pick {{ committee.min }}–{{ committee.max }} members who will shortlist for this job. They get the Shortlisting
-            Committee Member role.
-          </p>
-          <div v-if="committee.loading" class="text-sm text-gray-500">Loading staff...</div>
-          <div v-else class="max-h-64 overflow-y-auto rounded-lg border">
-            <label
-              v-for="u in committee.users"
-              :key="u.name"
-              class="flex cursor-pointer items-center gap-3 border-b px-3 py-2 text-sm last:border-0 hover:bg-gray-50"
-            >
-              <input
-                v-model="committee.members"
-                type="checkbox"
-                :value="u.name"
-                :disabled="!committee.members.includes(u.name) && committee.members.length >= committee.max"
-                class="rounded border-gray-300"
-              />
-              <span class="flex-1">
-                <span class="font-medium text-gray-900">{{ u.full_name || u.name }}</span>
-                <span class="block text-xs text-gray-500">{{ u.name }}</span>
-              </span>
-            </label>
-          </div>
-          <FormControl label="Office Order Reference (optional)" v-model="committee.officeOrder" placeholder="e.g. NLSIU/OO/2026/45" />
-          <ErrorMessage :message="committee.error" />
-        </div>
-      </template>
-      <template #actions>
-        <Button
-          variant="solid"
-          :class="BTN_BRAND"
-          :loading="committee.saving"
-          :disabled="committee.members.length < committee.min"
-          @click="createCommittee"
-        >
-          Create committee ({{ committee.members.length }} selected)
-        </Button>
-      </template>
-    </Dialog>
+    <CommitteeSetupDialog v-model:open="committeeOpen" :job-opening="review.job_opening" @created="emit('committee-created')" />
   </div>
 </template>
 
@@ -257,6 +269,8 @@ import { Button, Dialog, FormControl, ErrorMessage, FeatherIcon } from 'frappe-u
 import { toast } from '@/utils/notify'
 import StatusBadge from './StatusBadge.vue'
 import SectionCard from './SectionCard.vue'
+import CommitteeSetupDialog from './CommitteeSetupDialog.vue'
+import dayjs from 'dayjs'
 import { BTN_BRAND, BTN_DANGER, BTN_DARK, BTN_SUCCESS } from '@/utils/buttonStyles'
 import { scoringService } from '@/services/scoring'
 
@@ -324,34 +338,32 @@ function cancelEdit() {
   editing.value = false
 }
 
-// ----- set up the committee in place
-const committee = reactive({ open: false, loading: false, saving: false, users: [], members: [], min: 2, max: 3, officeOrder: '', error: '' })
+const committeeOpen = ref(false)
 
-async function openCommitteeDialog() {
-  Object.assign(committee, { open: true, loading: true, members: [], officeOrder: '', error: '' })
+// ----- eligibility (step 1)
+const elig = reactive({ changing: false, saving: false, eligible: false, reasonOpen: false, reason: '' })
+
+async function markEligible(eligible) {
+  elig.saving = true
+  elig.eligible = eligible
   try {
-    const options = await scoringService.getCommitteeOptions()
-    Object.assign(committee, { users: options.users, min: options.min, max: options.max })
+    const result = await scoringService.setEligibility(props.review.name, eligible, eligible ? '' : elig.reason)
+    toast({
+      title: `Marked ${eligible ? 'eligible' : 'not eligible'}. Application is ${result.status}.`,
+      icon: 'check',
+      iconClasses: 'text-green-500',
+    })
+    Object.assign(elig, { changing: false, reasonOpen: false, reason: '' })
+    emit('scored')
   } catch (e) {
-    committee.error = e?.messages?.[0] || 'Could not load staff.'
+    toast({ title: e?.messages?.[0] || 'Could not save eligibility.', icon: 'alert-triangle', iconClasses: 'text-red-500' })
   } finally {
-    committee.loading = false
+    elig.saving = false
   }
 }
 
-async function createCommittee() {
-  committee.saving = true
-  committee.error = ''
-  try {
-    await scoringService.createShortlistingCommittee(props.review.job_opening, committee.members, committee.officeOrder)
-    committee.open = false
-    toast({ title: 'Shortlisting Committee created. You can score now.', icon: 'check', iconClasses: 'text-green-500' })
-    emit('committee-created')
-  } catch (e) {
-    committee.error = e?.messages?.[0] || 'Could not create the committee.'
-  } finally {
-    committee.saving = false
-  }
+function formatDateTime(value) {
+  return value ? dayjs(value).format('DD MMM YYYY, h:mm A') : ''
 }
 
 // ----- confirm before a decision is saved

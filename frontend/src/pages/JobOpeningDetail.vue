@@ -97,6 +97,7 @@
               </a>
             </SectionCard>
             <ApplicationFormPanel :job="job" :can-write="!!permissions.can_write" @saved="fetchJob(props.id)" />
+            <NoticePanel :job="job" @changed="fetchJob(props.id)" />
             <GreenSheetPanel
               ref="greenSheetPanel"
               :job="job"
@@ -106,6 +107,7 @@
           </div>
 
           <div class="flex flex-col gap-6 self-start">
+            <ShortlistingPanel :job="job" :can-edit="!!permissions.can_write" @changed="fetchJob(props.id)" />
             <SectionCard title="Position" icon="briefcase">
               <dl class="flex flex-col divide-y divide-gray-100 text-sm">
                 <div v-for="row in positionRows" :key="row.label" class="flex justify-between gap-4 py-2 first:pt-0 last:pb-0">
@@ -202,6 +204,8 @@ import SectionCard from '@/components/common/SectionCard.vue'
 import GreenSheetPanel from '@/components/jobs/GreenSheetPanel.vue'
 import JobOpeningForm, { emptyJobForm } from '@/components/jobs/JobOpeningForm.vue'
 import ApplicationFormPanel from '@/components/jobs/ApplicationFormPanel.vue'
+import NoticePanel from '@/components/jobs/NoticePanel.vue'
+import ShortlistingPanel from '@/components/jobs/ShortlistingPanel.vue'
 import { useStaffJobOpeningDetail } from '@/composables/useJobOpenings'
 import { jobOpeningService } from '@/services/jobOpenings'
 

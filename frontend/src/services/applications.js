@@ -38,6 +38,16 @@ export const applicationService = {
   getApplicationDocuments(applicationName) {
     return callMethod('pathways.api.application.get_application_documents', { application_name: applicationName })
   },
+  // GET download: documents ZIP, one folder per document type.
+  documentsZipUrl({ jobOpening, scope = 'all', applications } = {}) {
+    const params = new URLSearchParams()
+    if (applications) params.set('applications', JSON.stringify(applications))
+    else {
+      params.set('job_opening', jobOpening)
+      params.set('scope', scope)
+    }
+    return `/api/method/pathways.api.application.download_documents_zip?${params}`
+  },
   // GET download of every document merged into one PDF.
   downloadAllDocumentsUrl(applicationName) {
     return `/api/method/pathways.api.application.download_application_documents?application_name=${encodeURIComponent(applicationName)}`

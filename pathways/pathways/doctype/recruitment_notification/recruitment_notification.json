@@ -10,6 +10,8 @@
   "job_opening",
   "notification_type",
   "notification_number",
+  "notification_url",
+  "notification_attachment",
   "column_break_1",
   "publish_date",
   "closing_datetime",
@@ -50,6 +52,18 @@
    "read_only": 1
   },
   {
+   "fieldname": "notification_url",
+   "fieldtype": "Data",
+   "options": "URL",
+   "label": "Official Notification Link",
+   "description": "Page on nls.ac.in where the notification is published"
+  },
+  {
+   "fieldname": "notification_attachment",
+   "fieldtype": "Attach",
+   "label": "Notification PDF"
+  },
+  {
    "fieldname": "column_break_1",
    "fieldtype": "Column Break"
   },
@@ -87,7 +101,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-09-21 00:00:00.000000",
+ "modified": "2026-10-07 14:00:00.000000",
  "modified_by": "Administrator",
  "module": "Pathways",
  "name": "Recruitment Notification",

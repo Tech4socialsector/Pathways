@@ -69,6 +69,52 @@
             </a>
           </section>
 
+          <!-- Official notification and corrigenda -->
+          <section v-if="notification || corrigenda.length" class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
+            <h2 class="mb-4 flex items-center gap-2 text-xl font-bold text-gray-900">
+              <span class="h-6 w-1 rounded-full bg-brand-700" />Official notification
+            </h2>
+            <div v-if="notification" class="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
+              <span v-if="notification.notification_number" class="font-semibold text-gray-900">{{ notification.notification_number }}</span>
+              <span v-if="notification.publish_date" class="text-gray-600">Dated {{ formatDate(notification.publish_date) }}</span>
+              <a
+                v-if="notification.notification_attachment"
+                :href="notification.notification_attachment"
+                target="_blank"
+                rel="noopener"
+                class="inline-flex items-center gap-1.5 font-semibold text-brand-700 hover:underline"
+              >
+                <FeatherIcon name="file-text" class="h-4 w-4" /> Notification (PDF)
+              </a>
+              <a
+                v-if="notification.notification_url"
+                :href="notification.notification_url"
+                target="_blank"
+                rel="noopener"
+                class="inline-flex items-center gap-1.5 font-semibold text-brand-700 hover:underline"
+              >
+                <FeatherIcon name="external-link" class="h-4 w-4" /> View on nls.ac.in
+              </a>
+            </div>
+            <div v-if="corrigenda.length" class="mt-5">
+              <h3 class="mb-2 text-xs font-bold uppercase tracking-wide text-brand-700">Corrigenda</h3>
+              <ul class="flex flex-col gap-2 text-sm">
+                <li v-for="(c, idx) in corrigenda" :key="idx" class="flex flex-wrap items-start justify-between gap-2 rounded-lg bg-brand-50 px-3 py-2.5">
+                  <div>
+                    <div class="font-semibold text-gray-900">
+                      <template v-if="c.changed_field === 'Closing Date'">Last date extended to {{ formatDateTime(c.new_value) }}</template>
+                      <template v-else>{{ c.remarks || c.new_value }}</template>
+                    </div>
+                    <div class="text-xs text-gray-600">Issued {{ formatDate(c.corrigendum_date) }}</div>
+                  </div>
+                  <a v-if="c.corrigendum_attachment" :href="c.corrigendum_attachment" target="_blank" rel="noopener" class="text-xs font-semibold text-brand-700 hover:underline">
+                    Corrigendum (PDF)
+                  </a>
+                </li>
+              </ul>
+            </div>
+          </section>
+
           <section class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
             <h2 class="mb-1 flex items-center gap-2 text-xl font-bold text-gray-900">
               <span class="h-6 w-1 rounded-full bg-brand-700" />Before you apply
@@ -211,6 +257,16 @@ const documents = computed(() => {
 })
 
 const questions = computed(() => form.value.screening_questions || [])
+
+const notification = computed(() => job.value?.notice?.notification)
+const corrigenda = computed(() => job.value?.notice?.corrigenda || [])
+
+function formatDate(value) {
+  return value ? dayjs(value).format('D MMM YYYY') : ''
+}
+function formatDateTime(value) {
+  return value ? dayjs(value).format('D MMM YYYY, h:mm A') : ''
+}
 
 const extraSections = computed(() => {
   const s = form.value.sections || {}

@@ -12,6 +12,7 @@ export function useApplicationList() {
       'job_opening',
       'job_opening.job_title as job_title',
       'status',
+      'eligibility_status',
       'application_date',
     ],
     orderBy: 'creation desc',

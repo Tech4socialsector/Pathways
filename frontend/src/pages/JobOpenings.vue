@@ -87,6 +87,7 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import dayjs from 'dayjs'
 import { toast } from '@/utils/notify'
 import StaffLayout from '@/layouts/StaffLayout.vue'
 import PageHeader from '@/components/layout/PageHeader.vue'
@@ -113,6 +114,18 @@ const columns = [
   { key: 'employment_type', label: 'Employment Type' },
   { key: 'vacancies', label: 'Vacancies' },
   { key: 'status', label: 'Status' },
+  {
+    key: 'application_deadline',
+    label: 'Applications Close',
+    format: (row) => {
+      if (!row.application_deadline) return ''
+      const close = dayjs(row.application_deadline)
+      const days = close.startOf('day').diff(dayjs().startOf('day'), 'day')
+      const when = close.format('DD MMM YYYY')
+      if (row.status !== 'Advertised') return when
+      return days < 0 ? `${when} (passed)` : days === 0 ? `${when} (today)` : `${when} (${days}d left)`
+    },
+  },
 ]
 const filters = [
   { key: 'status', label: 'Statuses' },

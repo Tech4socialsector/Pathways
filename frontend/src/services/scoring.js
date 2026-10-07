@@ -7,6 +7,12 @@ export const scoringService = {
   getRubricForJobOpening(jobOpening, stage) {
     return callMethod('pathways.api.scoring.get_rubric_for_job_opening', { job_opening: jobOpening, stage })
   },
+  setEligibility(application, eligible, reason) {
+    return callMethod('pathways.api.scoring.set_eligibility', { application, eligible: eligible ? 1 : 0, reason })
+  },
+  bulkSetEligibility(names, eligible, reason) {
+    return callMethod('pathways.api.scoring.bulk_set_eligibility', { names, eligible: eligible ? 1 : 0, reason })
+  },
   getCommitteeOptions() {
     return callMethod('pathways.api.scoring.get_committee_options')
   },

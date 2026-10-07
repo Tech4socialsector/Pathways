@@ -54,6 +54,11 @@ def get_application_for_review(application):
 		"track": app.track,
 		"status": app.status,
 		"shortlisting_committee": shortlisting_committee,
+		"eligibility_status": app.eligibility_status or "Pending",
+		"eligibility_reason": app.eligibility_reason,
+		"eligibility_checked_by": frappe.utils.get_fullname(app.eligibility_checked_by) if app.eligibility_checked_by else None,
+		"eligibility_checked_on": app.eligibility_checked_on,
+		"can_mark_eligibility": can_shortlist(app.job_opening),
 		# Lets the score panel offer to set up the committee in place.
 		"can_create_committee": not shortlisting_committee and bool(frappe.has_permission("Shortlisting Committee", "create")),
 		"existing_shortlisting_score": existing_score,
@@ -125,7 +130,12 @@ def submit_shortlisting_score(application, shortlisting_committee, is_shortliste
 	if isinstance(criteria, str):
 		criteria = frappe.parse_json(criteria)
 
-	job_opening = frappe.db.get_value("Application", application, "job_opening")
+	job_opening, eligibility = frappe.db.get_value("Application", application, ["job_opening", "eligibility_status"])
+	if eligibility != "Eligible":
+		frappe.throw(
+			_("Mark the candidate eligible before scoring: shortlisting is done only from the eligible pool."),
+			title=_("Eligibility Check Pending") if eligibility != "Not Eligible" else _("Candidate Not Eligible"),
+		)
 	if not shortlisting_committee:
 		shortlisting_committee = frappe.db.get_value("Shortlisting Committee", {"job_opening": job_opening}, "name")
 	if not shortlisting_committee:
@@ -314,3 +324,124 @@ def create_shortlisting_committee(job_opening, members, office_order_reference=N
 		}
 	).insert()
 	return doc.name
+
+
+# ------------------------------------------------------------ eligibility
+# Workflow step 8: sort eligible candidates first, then shortlist (score)
+# only from that pool.
+
+
+def can_shortlist(job_opening, user=None):
+	"""Full access to applications, or a member of this job's committee."""
+	from pathways.permissions import has_full_access
+
+	user = user or frappe.session.user
+	if has_full_access("Application", user):
+		return True
+	return bool(
+		frappe.db.exists(
+			"Shortlisting Committee",
+			[["Committee Member Row", "member", "=", user], ["job_opening", "=", job_opening]],
+		)
+	)
+
+
+def _set_eligibility(application, eligible, reason=None):
+	app = frappe.get_doc("Application", application)
+	if not can_shortlist(app.job_opening):
+		frappe.throw(_("Only the shortlisting committee for this job can mark eligibility."), frappe.PermissionError)
+	eligible = frappe.utils.cint(eligible)
+	reason = (reason or "").strip()
+	if not eligible and not reason:
+		frappe.throw(_("Give the reason the candidate is not eligible."))
+
+	app.eligibility_status = "Eligible" if eligible else "Not Eligible"
+	app.eligibility_reason = None if eligible else reason
+	app.eligibility_checked_by = frappe.session.user
+	app.eligibility_checked_on = frappe.utils.now_datetime()
+	# Screening moves on: eligible into review, ineligible out of the pool.
+	previous = app.status
+	if eligible and app.status == "Submitted":
+		app.status = "Under Review"
+	elif not eligible and app.status in ("Submitted", "Under Review", "Shortlisted"):
+		app.status = "Not Selected"
+	app.save(ignore_permissions=True)
+
+	# One Eligibility Check per application holds the latest decision; each
+	# change is also noted on the application's timeline below.
+	existing = frappe.db.get_value("Eligibility Check", {"application": app.name}, "name")
+	check = frappe.get_doc("Eligibility Check", existing) if existing else frappe.new_doc("Eligibility Check")
+	check.update(
+		{
+			"application": app.name,
+			"is_eligible": eligible,
+			"ineligibility_reason": app.eligibility_reason,
+			"checked_by": frappe.session.user,
+			"checked_on": app.eligibility_checked_on,
+		}
+	)
+	check.save(ignore_permissions=True)
+	note = _("Eligibility check by {0}: {1}.").format(
+		frappe.utils.get_fullname(frappe.session.user), _("Eligible") if eligible else _("Not eligible") + f" ({reason})"
+	)
+	if app.status != previous:
+		note += " " + _("Status changed from {0} to {1}.").format(previous, app.status)
+	app.add_comment("Info", note)
+	return app.status
+
+
+@frappe.whitelist(methods=["POST"])
+def set_eligibility(application, eligible, reason=None):
+	status = _set_eligibility(application, eligible, reason)
+	return {"status": status, "eligibility_status": frappe.db.get_value("Application", application, "eligibility_status")}
+
+
+@frappe.whitelist(methods=["POST"])
+def bulk_set_eligibility(names, eligible, reason=None):
+	from pathways.utils.bulk import run_bulk
+
+	return run_bulk(names, lambda name: _set_eligibility(name, eligible, reason))
+
+
+# ------------------------------------------------------------ 1:N ratio
+
+
+def shortlisting_ratio(job):
+	ratio = frappe.utils.cint(job.get("shortlisting_ratio"))
+	return ratio or frappe.utils.cint(frappe.get_cached_doc("Pathways Settings").default_shortlisting_ratio) or 5
+
+
+def shortlisting_summary(job):
+	"""Workflow step 12: shortlist ratio x vacancies, and where the job is."""
+	from collections import Counter
+
+	rows = frappe.get_all(
+		"Application", filters={"job_opening": job.name, "status": ["!=", "Withdrawn"]}, fields=["name", "status", "eligibility_status"]
+	)
+	eligibility = Counter(r.eligibility_status or "Pending" for r in rows)
+	ratio = shortlisting_ratio(job)
+	past_shortlisting = {
+		"Shortlisted", "Interview Scheduled", "Interview Completed", "Selected", "Offer Extended",
+		"Offer Accepted", "Offer Declined", "Documents Pending", "Documents Verified", "Joined",
+	}
+	committee = frappe.db.get_value("Shortlisting Committee", {"job_opening": job.name}, ["name", "shortlisting_deadline", "office_order_reference"], as_dict=True)
+	members = []
+	if committee:
+		members = [
+			{"user": m, "full_name": frappe.utils.get_fullname(m)}
+			for m in frappe.get_all("Committee Member Row", filters={"parent": committee.name, "parenttype": "Shortlisting Committee"}, pluck="member", order_by="idx asc")
+		]
+	return {
+		"ratio": ratio,
+		"ratio_is_default": not frappe.utils.cint(job.get("shortlisting_ratio")),
+		"target": ratio * frappe.utils.cint(job.vacancies or 1),
+		"applications": len(rows),
+		"eligible": eligibility.get("Eligible", 0),
+		"not_eligible": eligibility.get("Not Eligible", 0),
+		"pending": eligibility.get("Pending", 0),
+		"shortlisted": sum(1 for r in rows if r.status in past_shortlisting),
+		"scored": frappe.db.count("Shortlisting Score", {"application": ["in", [r.name for r in rows]]}) if rows else 0,
+		"committee": {**committee, "members": members} if committee else None,
+		"can_create_committee": not committee and bool(frappe.has_permission("Shortlisting Committee", "create")),
+		"can_shortlist": can_shortlist(job.name),
+	}
