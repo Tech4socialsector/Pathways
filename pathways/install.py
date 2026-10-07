@@ -126,42 +126,6 @@ EMAIL_TEMPLATES = [
 		),
 	},
 	{
-		"name": "IT Facilities Intimation",
-		"subject": "New Staff Joining - {{ employee_name }}",
-		"response": (
-			"<p>Dear Team,</p>"
-			"<p>The following staff member is joining as indicated against their name. "
-			"Kindly arrange for a laptop, create NLS email ID, and share the same.</p>"
-			"<p>Name: {{ employee_name }}<br>"
-			"Designation: {{ designation }}<br>"
-			"Date of Joining: {{ date_of_joining }}<br>"
-			"Personal Email: {{ personal_email }}<br>"
-			"Mobile No.: {{ mobile_number }}</p>"
-			"<p>Thanks!<br>Regards,</p>"
-		),
-	},
-	{
-		"name": "Email to Shortlisting Committee",
-		"subject": "Shortlisting Request: {{ job_title }}",
-		"response": (
-			"<p>Dear Committee Member,</p>"
-			"<p>Thank you for agreeing to be a part of the shortlisting committee for "
-			"{{ job_title }}. We have received {{ application_count }} responses for the advertisement.</p>"
-			"<ul>"
-			"<li>1:{{ shortlisting_ratio }} candidates, if available, need to be shortlisted for interviews.</li>"
-			"<li>Please first check whether the candidate is eligible for the position. "
-			"Note the reason for ineligibility. Ineligible candidates need not be assigned a score.</li>"
-			"<li>Please score the candidates in the form provided. Please arrive at a common score "
-			"as a panel, not individually.</li>"
-			"<li>Please keep the shortlist confidential until candidates have been invited for interview.</li>"
-			"</ul>"
-			"<p><b>Important</b> — While shortlisting for interviews, please ensure that the "
-			"candidates shortlisted come from diverse backgrounds.</p>"
-			"<p>We request you to complete the shortlisting by {{ shortlisting_deadline }}.</p>"
-			"<p>Thank you for your time and effort.</p>"
-		),
-	},
-	{
 		"name": "Document Resubmission Request",
 		"subject": "Action Required: Document Resubmission - {{ document_name }}",
 		"response": (
@@ -202,6 +166,9 @@ def after_install():
 	create_roles()
 	create_email_templates()
 	seed_settings()
+	from pathways.utils.email_events import ensure_email_events
+
+	ensure_email_events()
 	seed_application_masters()
 	seed_master_data()
 

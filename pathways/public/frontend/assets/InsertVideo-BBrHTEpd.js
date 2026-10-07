@@ -1,1 +1,0 @@
-import{U as n,N as t,ar as a,as as d}from"./index-GdI_lycp.js";const p=n({__name:"InsertVideo",props:{editor:{}},setup(e){const o=e;function r(){o.editor.chain().focus().selectAndUploadVideo().run()}return(s,i)=>t(s.$slots,"default",a(d({onClick:r})))}});export{p as default};

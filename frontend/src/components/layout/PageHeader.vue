@@ -1,6 +1,6 @@
 <template>
   <div class="border-b bg-white px-6 pb-4 pt-3">
-    <nav v-if="breadcrumbs.length" class="mb-2 flex flex-wrap items-center gap-1.5 text-xs text-gray-500" aria-label="Breadcrumb">
+    <nav v-if="breadcrumbs.length > 1" class="mb-2 flex flex-wrap items-center gap-1.5 text-xs text-gray-500" aria-label="Breadcrumb">
       <RouterLink to="/" class="text-brand-700 hover:text-brand-800" aria-label="Home">
         <FeatherIcon name="home" class="h-3.5 w-3.5" />
       </RouterLink>
@@ -14,7 +14,7 @@
       <div class="flex min-w-0 items-start gap-3">
         <BackButton v-if="showBack" :fallback="backFallback" class="mt-0.5" />
         <div class="min-w-0">
-          <h1 class="text-gray-900" :class="breadcrumbs.length ? 'text-2xl font-bold' : 'text-xl font-semibold'">{{ title }}</h1>
+          <h1 class="text-gray-900" :class="breadcrumbs.length > 1 ? 'text-2xl font-bold' : 'text-xl font-semibold'">{{ title }}</h1>
           <p v-if="subtitle" class="mt-0.5 text-sm text-gray-500">{{ subtitle }}</p>
           <slot name="meta" />
         </div>

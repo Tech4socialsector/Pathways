@@ -63,6 +63,12 @@ def flag_ads_closing_soon():
 		todo.reference_name = job.name
 		todo.allocated_to = job.owner if job.owner != "Guest" else None
 		todo.insert(ignore_permissions=True)
+
+		from pathways.utils.communication import job_email_context, send_event
+
+		context = job_email_context(frappe.get_doc("Job Opening", job.name))
+		context["application_count"] = frappe.db.count("Application", {"job_opening": job.name})
+		send_event("ad_closing_soon", "Job Opening", job.name, context, job_opening=job.name)
 	frappe.db.commit()
 
 
@@ -86,26 +92,21 @@ def expire_overdue_offers():
 
 
 def send_interview_reminders():
-	"""T-1 day reminder for scheduled interviews."""
-	from pathways.utils.communication import send_templated_email
+	"""T-1 day reminder for scheduled interviews (Email Setup > Interviews)."""
+	from pathways.utils.communication import candidate_email_context, send_event
 
 	tomorrow = add_days(today(), 1)
 	upcoming = frappe.get_all(
 		"Interview",
 		filters={"status": "Scheduled", "scheduled_datetime": ["between", [today(), tomorrow]]},
-		fields=["name", "application"],
+		fields=["name", "application", "scheduled_datetime", "meeting_link"],
 	)
-	if not upcoming:
-		return
-
-	if not frappe.db.exists("Email Template", "Interview Reminder"):
-		return
-
 	for interview in upcoming:
-		candidate = frappe.db.get_value(
-			"Candidate", frappe.db.get_value("Application", interview.application, "candidate"), "email"
+		context, candidate = candidate_email_context(interview.application)
+		context.update(
+			{
+				"interview_date_time": frappe.utils.format_datetime(interview.scheduled_datetime, "dd MMM yyyy, h:mm a"),
+				"meeting_link": interview.meeting_link,
+			}
 		)
-		if candidate:
-			send_templated_email(
-				"Interview Reminder", candidate, "Interview", interview.name, {"interview": interview.name}
-			)
+		send_event("interview_reminder", "Interview", interview.name, context, candidate=candidate)

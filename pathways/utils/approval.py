@@ -345,11 +345,27 @@ def get_step_users(step):
 
 
 def notify_approvers(doc, step):
+	users = get_step_users(step)
 	_notify(
-		get_step_users(step),
+		users,
 		doc,
 		_("{0} {1} is awaiting your approval ({2})").format(_(doc.doctype), doc.name, step.approver_label or ""),
 	)
+	if doc.doctype == "Pre-Recruitment Green Sheet":
+		from pathways.utils.communication import send_event
+
+		send_event(
+			"green_sheet_approval",
+			doc.doctype,
+			doc.name,
+			{
+				"doc_name": doc.name,
+				"job_title": frappe.db.get_value("Job Opening", doc.job_opening, "job_title"),
+				"approver_label": step.approver_label or describe_approver(step),
+				"link": frappe.utils.get_url(f"/pathways/jobs/{doc.job_opening}"),
+			},
+			approvers=users,
+		)
 
 
 def _notify(users, doc, subject):

@@ -35,6 +35,19 @@ class Corrigendum(Document):
 		# Applied once, when issued: later edits to the record change nothing.
 		if self.changed_field == "Closing Date":
 			self.extend_deadline()
+		if self.job_opening:
+			from pathways.utils.communication import job_email_context, send_event
+
+			context = job_email_context(frappe.get_doc("Job Opening", self.job_opening))
+			context.update(
+				{
+					"change": _("deadline extended to {0}").format(context["deadline"])
+					if self.changed_field == "Closing Date"
+					else self.new_value,
+					"remarks": self.remarks,
+				}
+			)
+			send_event("corrigendum_issued", "Corrigendum", self.name, context, job_opening=self.job_opening)
 
 	def extend_deadline(self):
 		"""Move the job's application deadline (what actually opens and closes

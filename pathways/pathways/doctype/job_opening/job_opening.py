@@ -101,6 +101,16 @@ class JobOpening(Document):
 		self.validate_application_form()
 		self.set_advertisement_url()
 
+	def on_update(self):
+		if self.status == "Advertised" and self.has_value_changed("status"):
+			from pathways.utils.communication import job_email_context, send_event
+
+			context = job_email_context(self)
+			context["notification_number"] = frappe.db.get_value(
+				"Recruitment Notification", {"job_opening": self.name}, "notification_number"
+			)
+			send_event("job_advertised", "Job Opening", self.name, context, job_opening=self.name)
+
 	def apply_position_defaults(self):
 		"""When a Position is picked, start the job from it: empty fields and
 		empty form tables are filled in, anything HR has already set is kept."""

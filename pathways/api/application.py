@@ -244,23 +244,11 @@ def _email_error(message):
 
 
 def send_acknowledgement(application_name):
-	from pathways.utils.communication import send_templated_email
+	"""The "Application received" email (Email Setup > Applications)."""
+	from pathways.utils.communication import candidate_email_context, send_event
 
-	if not frappe.db.exists("Email Template", "Application Acknowledgement"):
-		return
-	app = frappe.get_doc("Application", application_name)
-	candidate = frappe.db.get_value("Candidate", app.candidate, ["full_name", "email"], as_dict=True)
-	send_templated_email(
-		"Application Acknowledgement",
-		candidate.email,
-		"Application",
-		app.name,
-		{
-			"candidate_name": candidate.full_name,
-			"job_title": frappe.db.get_value("Job Opening", app.job_opening, "job_title"),
-			"application_id": app.application_id,
-		},
-	)
+	context, candidate = candidate_email_context(application_name)
+	send_event("application_received", "Application", application_name, context, candidate=candidate)
 
 
 @frappe.whitelist()

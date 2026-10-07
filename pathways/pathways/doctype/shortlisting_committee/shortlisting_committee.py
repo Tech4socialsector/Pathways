@@ -21,6 +21,21 @@ class ShortlistingCommittee(Document):
 				f"(currently has {size})."
 			)
 
+	def after_insert(self):
+		from pathways.api.scoring import shortlisting_ratio
+		from pathways.utils.communication import job_email_context, send_event
+
+		job = frappe.get_doc("Job Opening", self.job_opening)
+		context = job_email_context(job)
+		context.update(
+			{
+				"application_count": frappe.db.count("Application", {"job_opening": job.name, "status": ["!=", "Withdrawn"]}),
+				"ratio": shortlisting_ratio(job),
+				"deadline": frappe.utils.formatdate(self.shortlisting_deadline) if self.shortlisting_deadline else "",
+			}
+		)
+		send_event("committee_assigned", "Shortlisting Committee", self.name, context, job_opening=job.name)
+
 	def on_update(self):
 		self.sync_member_roles()
 

@@ -212,6 +212,7 @@ def apply_shortlisting_decision(score):
 			decision,
 		),
 	)
+	_candidate_event("candidate_shortlisted" if decision == "Shortlisted" else "candidate_not_shortlisted", app)
 	return app.status
 
 
@@ -387,7 +388,16 @@ def _set_eligibility(application, eligible, reason=None):
 	if app.status != previous:
 		note += " " + _("Status changed from {0} to {1}.").format(previous, app.status)
 	app.add_comment("Info", note)
+	if not eligible and app.status != previous:
+		_candidate_event("candidate_not_eligible", app)
 	return app.status
+
+
+def _candidate_event(event, app):
+	from pathways.utils.communication import candidate_email_context, send_event
+
+	context, candidate = candidate_email_context(app)
+	send_event(event, "Application", app.name, context, candidate=candidate)
 
 
 @frappe.whitelist(methods=["POST"])

@@ -180,6 +180,9 @@ const appMenuOptions = computed(() => {
   if (session.canManageSettings) {
     items.push({ label: 'Settings', icon: 'settings', onClick: () => (showSettingsDialog.value = true) })
   }
+  if (session.canManageSettings) {
+    items.push({ label: 'Email Setup', icon: 'mail', onClick: () => router.push('/settings/email') })
+  }
   if (session.canManageAccess) {
     items.push({ label: 'Roles & Permissions', icon: 'shield', onClick: () => router.push('/settings/access') })
   }

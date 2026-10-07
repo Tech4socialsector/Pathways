@@ -1,0 +1,194 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "field:event",
+ "creation": "2026-10-07 16:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "event",
+  "label",
+  "stage",
+  "sort_order",
+  "column_break_1",
+  "enabled",
+  "is_automatic",
+  "trigger_description",
+  "recipients_section",
+  "send_to_candidate",
+  "send_to_committee",
+  "send_to_approvers",
+  "column_break_2",
+  "recipient_roles",
+  "extra_recipients",
+  "cc",
+  "content_section",
+  "email_template",
+  "attach_record_files",
+  "variables"
+ ],
+ "fields": [
+  {
+   "fieldname": "event",
+   "fieldtype": "Data",
+   "label": "Event Key",
+   "reqd": 1,
+   "unique": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "label",
+   "fieldtype": "Data",
+   "label": "Email",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "stage",
+   "fieldtype": "Select",
+   "label": "Stage",
+   "options": "Job & Advertisement\nApplications\nScreening & Shortlisting\nInterviews\nSelection & Offer\nOnboarding & Closure",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "sort_order",
+   "fieldtype": "Int",
+   "label": "Order"
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "enabled",
+   "fieldtype": "Check",
+   "label": "Enabled",
+   "default": "1",
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "is_automatic",
+   "fieldtype": "Check",
+   "label": "Sent Automatically",
+   "read_only": 1,
+   "description": "Off: this stage is not built yet, so nothing sends this email yet."
+  },
+  {
+   "fieldname": "trigger_description",
+   "fieldtype": "Small Text",
+   "label": "When It Is Sent",
+   "read_only": 1
+  },
+  {
+   "fieldname": "recipients_section",
+   "fieldtype": "Section Break",
+   "label": "Recipients"
+  },
+  {
+   "fieldname": "send_to_candidate",
+   "fieldtype": "Check",
+   "label": "The candidate"
+  },
+  {
+   "fieldname": "send_to_committee",
+   "fieldtype": "Check",
+   "label": "The job's shortlisting committee"
+  },
+  {
+   "fieldname": "send_to_approvers",
+   "fieldtype": "Check",
+   "label": "The approvers of the current step"
+  },
+  {
+   "fieldname": "column_break_2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "recipient_roles",
+   "fieldtype": "Table MultiSelect",
+   "label": "Everyone with these roles",
+   "options": "Pathways Role"
+  },
+  {
+   "fieldname": "extra_recipients",
+   "fieldtype": "Small Text",
+   "label": "Also send to",
+   "description": "Email addresses, comma separated (e.g. a team mailbox)."
+  },
+  {
+   "fieldname": "cc",
+   "fieldtype": "Small Text",
+   "label": "CC",
+   "description": "Email addresses, comma separated."
+  },
+  {
+   "fieldname": "content_section",
+   "fieldtype": "Section Break",
+   "label": "Content"
+  },
+  {
+   "fieldname": "email_template",
+   "fieldtype": "Link",
+   "label": "Email Template",
+   "options": "Email Template",
+   "reqd": 1
+  },
+  {
+   "fieldname": "attach_record_files",
+   "fieldtype": "Check",
+   "label": "Attach the record's files",
+   "description": "Also attach the files on the record the email is about, e.g. the signed appointment order on the Offer. Files attached to this rule are always sent."
+  },
+  {
+   "fieldname": "variables",
+   "fieldtype": "Small Text",
+   "label": "Available Placeholders",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "links": [],
+ "modified": "2026-10-07 17:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Pathways",
+ "name": "Recruitment Email Rule",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "share": 1,
+   "write": 1,
+   "role": "System Manager"
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "share": 1,
+   "write": 1,
+   "role": "Pathways Admin"
+  },
+  {
+   "read": 1,
+   "role": "Pathways Recruiter"
+  }
+ ],
+ "sort_field": "sort_order",
+ "sort_order": "ASC",
+ "states": [],
+ "title_field": "label",
+ "track_changes": 1
+}

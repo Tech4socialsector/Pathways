@@ -65,6 +65,12 @@ const routes = [
     meta: { requiresStaff: true },
   },
   {
+    path: '/settings/email',
+    name: 'EmailSetup',
+    component: () => import('@/pages/settings/EmailSetup.vue'),
+    meta: { requiresStaff: true },
+  },
+  {
     path: '/settings/access',
     name: 'RolesPermissions',
     component: () => import('@/pages/settings/RolesPermissions.vue'),
