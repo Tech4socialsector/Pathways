@@ -7,7 +7,10 @@ from pathways.permissions import get_pathways_roles
 
 # Plain fields editable from the in-app Settings dialog. Role tables
 # (Pathways Roles, duty roles) are managed from Roles & Permissions / Desk.
+APPEARANCE_FIELDS = ("app_name", "app_logo", "brand_color", "body_font", "heading_font")
+
 EDITABLE_FIELDS = (
+	*APPEARANCE_FIELDS,
 	"default_sender_email",
 	"recruitment_contact_email",
 	"acceptance_deadline_days",
@@ -56,3 +59,11 @@ def update_settings(data):
 			doc.set(table, [{"role": role} for role in data[table] or [] if role])
 	doc.save()
 	return get_settings()
+
+
+@frappe.whitelist(allow_guest=True)
+def get_appearance():
+	"""Branding only (name, logo, colour, fonts) — public, so the candidate
+	portal and login page are themed too. Nothing sensitive is returned."""
+	doc = frappe.get_cached_doc("Pathways Settings")
+	return {field: doc.get(field) for field in APPEARANCE_FIELDS}

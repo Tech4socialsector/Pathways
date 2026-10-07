@@ -73,33 +73,13 @@ function dropOffLabel(index) {
 </script>
 
 <style scoped>
+/* Shades of the brand colour (Pathways Settings > Appearance), light to dark. */
 .viz-root {
-  color-scheme: light;
-  --funnel-step-0: #dc5a6f;
-  --funnel-step-1: #c42a44;
-  --funnel-step-2: #a9142f;
-  --funnel-step-3: #920c24;
-  --funnel-step-4: #5e0818;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) .viz-root {
-    color-scheme: dark;
-    --funnel-step-0: #780a1e;
-    --funnel-step-1: #a9142f;
-    --funnel-step-2: #c42a44;
-    --funnel-step-3: #dc5a6f;
-    --funnel-step-4: #ec94a2;
-  }
-}
-
-:root[data-theme='dark'] .viz-root {
-  color-scheme: dark;
-  --funnel-step-0: #780a1e;
-  --funnel-step-1: #a9142f;
-  --funnel-step-2: #c42a44;
-  --funnel-step-3: #dc5a6f;
-  --funnel-step-4: #ec94a2;
+  --funnel-step-0: rgb(var(--brand-400));
+  --funnel-step-1: rgb(var(--brand-500));
+  --funnel-step-2: rgb(var(--brand-600));
+  --funnel-step-3: rgb(var(--brand-700));
+  --funnel-step-4: rgb(var(--brand-900));
 }
 
 .funnel-bar:hover,

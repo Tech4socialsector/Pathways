@@ -4,6 +4,13 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
+  "appearance_section",
+  "app_name",
+  "app_logo",
+  "brand_color",
+  "column_break_appearance",
+  "body_font",
+  "heading_font",
   "general_section",
   "default_sender_email",
   "recruitment_contact_email",
@@ -36,6 +43,49 @@
   "pathways_roles"
  ],
  "fields": [
+  {
+   "fieldname": "appearance_section",
+   "fieldtype": "Section Break",
+   "label": "Appearance",
+   "description": "Branding for the Pathways app and candidate portal."
+  },
+  {
+   "fieldname": "app_name",
+   "fieldtype": "Data",
+   "label": "App Name",
+   "default": "Pathways"
+  },
+  {
+   "fieldname": "app_logo",
+   "fieldtype": "Attach Image",
+   "label": "Logo",
+   "description": "Square image shown in the top bar. Leave empty for the default mark."
+  },
+  {
+   "fieldname": "brand_color",
+   "fieldtype": "Color",
+   "label": "Brand Colour",
+   "default": "#920C24",
+   "description": "Main accent colour; lighter and darker shades are derived from it."
+  },
+  {
+   "fieldname": "column_break_appearance",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "body_font",
+   "fieldtype": "Select",
+   "label": "Body Font",
+   "options": "Merriweather\nInter\nRoboto\nOpen Sans\nLato\nPoppins\nNoto Sans\nLora\nSource Serif 4\nPlayfair Display\nSystem Default",
+   "default": "Merriweather"
+  },
+  {
+   "fieldname": "heading_font",
+   "fieldtype": "Select",
+   "label": "Heading Font",
+   "options": "Merriweather\nInter\nRoboto\nOpen Sans\nLato\nPoppins\nNoto Sans\nLora\nSource Serif 4\nPlayfair Display\nSystem Default",
+   "default": "Merriweather"
+  },
   {
    "fieldname": "general_section",
    "fieldtype": "Section Break",
@@ -216,7 +266,7 @@
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-10-06 15:45:45.099542",
+ "modified": "2026-10-07 10:30:00.000000",
  "modified_by": "Administrator",
  "module": "Pathways",
  "name": "Pathways Settings",

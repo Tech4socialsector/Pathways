@@ -8,10 +8,33 @@ body,
   height: 100%;
 }
 
-/* frappe-ui sets html to InterVar in its base layer; Pathways uses
-   Merriweather everywhere (font loaded in index.html). */
+/* Appearance defaults (NLSIU maroon, Merriweather). Pathways Settings >
+   Appearance overrides these at runtime — see src/utils/theme.js. Shades
+   are "r g b" so tailwind's brand-* colours keep opacity modifiers. */
+:root {
+  --brand-50: 253 242 244;
+  --brand-100: 251 229 232;
+  --brand-200: 245 194 202;
+  --brand-300: 236 148 162;
+  --brand-400: 220 90 111;
+  --brand-500: 196 42 68;
+  --brand-600: 169 20 47;
+  --brand-700: 146 12 36;
+  --brand-800: 120 10 30;
+  --brand-900: 94 8 24;
+  --font-body: 'Merriweather', Georgia, serif;
+  --font-heading: 'Merriweather', Georgia, serif;
+}
+
+/* frappe-ui sets html to InterVar in its base layer. */
 html {
-  font-family: 'Merriweather', Georgia, serif;
+  font-family: var(--font-body);
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-heading);
 }
 
 /* Apply form: outline the control of a field with an error (FormField.vue). */

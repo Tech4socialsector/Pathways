@@ -1,11 +1,17 @@
 <template>
   <header class="flex h-12 shrink-0 items-center gap-4 bg-brand-700 px-4 text-white shadow-sm">
-    <RouterLink to="/" class="flex items-center gap-2.5">
-      <svg viewBox="0 0 64 64" class="h-7 w-7" aria-hidden="true">
+    <RouterLink to="/" class="flex min-w-0 items-center gap-2.5">
+      <img
+        v-if="appearance.app_logo"
+        :src="appearance.app_logo"
+        alt=""
+        class="h-7 w-7 shrink-0 rounded-md bg-white object-contain p-0.5"
+      />
+      <svg v-else viewBox="0 0 64 64" class="h-7 w-7 shrink-0" aria-hidden="true">
         <rect width="64" height="64" rx="14" fill="#FFFFFF" />
-        <path d="M18 46V18h13a10 10 0 0 1 0 20h-7v8h-6zm6-14h6a4 4 0 0 0 0-8h-6v8z" fill="#920C24" />
+        <path d="M18 46V18h13a10 10 0 0 1 0 20h-7v8h-6zm6-14h6a4 4 0 0 0 0-8h-6v8z" fill="rgb(var(--brand-700))" />
       </svg>
-      <span class="text-lg font-bold tracking-tight">Pathways</span>
+      <span class="truncate font-heading text-lg font-bold tracking-tight">{{ appearance.app_name }}</span>
     </RouterLink>
 
     <div class="flex-1" />
@@ -85,6 +91,7 @@ import { jobOpeningService } from '@/services/jobOpenings'
 import { approvalService } from '@/services/approvals'
 import StatusBadge from '@/components/common/StatusBadge.vue'
 import SettingsDialog from './SettingsDialog.vue'
+import { appearance } from '@/utils/theme'
 
 const session = useSessionStore()
 const router = useRouter()

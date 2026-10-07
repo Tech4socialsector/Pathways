@@ -4,6 +4,7 @@ import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import router from './router'
 import App from './App.vue'
+import { loadAppearance } from './utils/theme'
 
 import {
   FrappeUI,
@@ -43,4 +44,6 @@ for (const key in globalComponents) {
   app.component(key, globalComponents[key])
 }
 
+// Branding loads alongside the app; index.css holds the defaults meanwhile.
+loadAppearance()
 app.mount('#app')
