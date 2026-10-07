@@ -21,8 +21,40 @@
       <Button v-if="isFiltered" variant="ghost" @click="clearFilters">Clear</Button>
       <div class="ml-auto flex items-center gap-2">
         <slot name="toolbar" />
+        <!-- Cards have no column headers to click, so sorting gets its own control. -->
+        <div v-if="view === 'cards'" class="flex items-center gap-1">
+          <FormControl
+            type="select"
+            class="w-44"
+            :model-value="sortKey || NO_SORT"
+            :options="[{ label: 'Sort: Default', value: NO_SORT }, ...sortableColumns.map((c) => ({ label: `Sort: ${c.label}`, value: c.key }))]"
+            @update:model-value="setCardSort"
+          />
+          <Button
+            v-if="sortKey"
+            :icon="sortDir === 'asc' ? 'arrow-up' : 'arrow-down'"
+            :aria-label="sortDir === 'asc' ? 'Ascending' : 'Descending'"
+            :title="sortDir === 'asc' ? 'Ascending' : 'Descending'"
+            @click="sortDir = sortDir === 'asc' ? 'desc' : 'asc'"
+          />
+        </div>
+        <div v-if="hasCards" class="flex rounded-md bg-gray-100 p-0.5" role="group" aria-label="View">
+          <button
+            v-for="v in VIEWS"
+            :key="v.key"
+            type="button"
+            class="flex h-6 items-center gap-1.5 rounded px-2 text-sm transition"
+            :class="view === v.key ? 'bg-white font-medium text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'"
+            :aria-pressed="view === v.key"
+            :title="`${v.label} view`"
+            @click="setView(v.key)"
+          >
+            <FeatherIcon :name="v.icon" class="h-3.5 w-3.5" />
+            <span class="hidden md:inline">{{ v.label }}</span>
+          </button>
+        </div>
         <!-- Column chooser: which columns this user sees, and their order -->
-        <div v-if="columnsKey" ref="colRoot" class="relative">
+        <div v-if="columnsKey && view === 'table'" ref="colRoot" class="relative">
           <Button icon-left="columns" :class="colOpen && 'bg-gray-200'" @click="colOpen = !colOpen">
             Columns<span v-if="customised" class="ml-1 h-1.5 w-1.5 rounded-full bg-brand-700" />
           </Button>
@@ -78,8 +110,56 @@
       </div>
     </div>
 
-    <div v-if="loading && !rows.length" class="text-sm text-gray-500">Loading...</div>
+    <div v-if="loading && !rows.length && view === 'cards'" class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3" aria-busy="true">
+      <div v-for="i in 6" :key="i" class="h-48 animate-pulse rounded-xl border bg-white p-4">
+        <div class="h-3 w-20 rounded bg-gray-100" />
+        <div class="mt-4 h-4 w-3/4 rounded bg-gray-100" />
+        <div class="mt-2 h-3 w-1/2 rounded bg-gray-100" />
+        <div class="mt-10 h-3 w-full rounded bg-gray-100" />
+      </div>
+    </div>
+    <div v-else-if="loading && !rows.length" class="text-sm text-gray-500">Loading...</div>
     <EmptyState v-else-if="!rows.length" :title="emptyTitle" />
+    <template v-else-if="view === 'cards'">
+      <div v-if="!sortedRows.length" class="rounded-xl border border-dashed bg-white px-4 py-12 text-center text-sm text-gray-500">
+        No records match your search or filters.
+      </div>
+      <template v-else>
+        <label v-if="selectable" class="flex w-max cursor-pointer items-center gap-2 text-sm text-gray-600">
+          <input
+            type="checkbox"
+            class="rounded border-gray-300 text-brand-700 focus:ring-brand-700"
+            :checked="pageAllSelected"
+            :indeterminate.prop="pageSomeSelected && !pageAllSelected"
+            @change="togglePage($event.target.checked)"
+          />
+          Select all on this page
+        </label>
+        <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <article
+            v-for="row in pageRows"
+            :key="row[rowKey]"
+            class="group flex flex-col rounded-xl border bg-white p-4 shadow-sm transition"
+            :class="[
+              clickable && 'cursor-pointer hover:-translate-y-0.5 hover:border-gray-300 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-700',
+              isSelected(row) && 'border-brand-300 ring-1 ring-brand-300',
+            ]"
+            :tabindex="clickable ? 0 : undefined"
+            @click="clickable && emit('row-click', row)"
+            @keydown.enter.self="clickable && emit('row-click', row)"
+          >
+            <!-- The card lays out its own checkbox; it calls toggle(on) with @click.stop. -->
+            <slot
+              name="card"
+              :row="row"
+              :selectable="selectable"
+              :selected="isSelected(row)"
+              :toggle="(on) => toggleRow(row, on)"
+            />
+          </article>
+        </div>
+      </template>
+    </template>
     <div v-else class="overflow-x-auto rounded-lg border bg-white">
       <table class="w-full text-sm">
         <thead class="border-b bg-gray-50 text-left text-xs uppercase text-gray-500">
@@ -171,7 +251,7 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, useSlots, watch } from 'vue'
 import { callMethod } from '@/services/api'
 import { Button, FeatherIcon, FormControl, TextInput } from 'frappe-ui'
 import EmptyState from '@/components/common/EmptyState.vue'
@@ -203,8 +283,14 @@ const props = defineProps({
   settingsKey: { type: String, default: '' },
 })
 const emit = defineEmits(['row-click'])
+const slots = useSlots()
 
 const PAGE_SIZES = [10, 20, 50, 100]
+const NO_SORT = '__default__'
+const VIEWS = [
+  { key: 'cards', label: 'Cards', icon: 'grid' },
+  { key: 'table', label: 'Table', icon: 'list' },
+]
 
 const search = ref('')
 const filterValues = reactive({})
@@ -243,6 +329,41 @@ const filteredRows = computed(() => {
     return allColumns.value.some((col) => String(display(row, col)).toLowerCase().includes(term))
   })
 })
+
+// ----- card / table view (offered when the page provides a #card slot;
+// remembered per list in this browser)
+const hasCards = computed(() => !!slots.card)
+const viewStoreKey = computed(() => `pathways-list-view:${props.settingsKey || props.exportName}`)
+function readView() {
+  try {
+    const v = localStorage.getItem(viewStoreKey.value)
+    if (VIEWS.some((x) => x.key === v)) return v
+  } catch {
+    /* storage unavailable */
+  }
+  return 'cards'
+}
+const viewChoice = ref(readView())
+const view = computed(() => (hasCards.value ? viewChoice.value : 'table'))
+function setView(v) {
+  viewChoice.value = v
+  colOpen.value = false
+  try {
+    localStorage.setItem(viewStoreKey.value, v)
+  } catch {
+    /* storage unavailable */
+  }
+}
+
+const sortableColumns = computed(() => allColumns.value.filter((c) => c.sortable !== false))
+function setCardSort(key) {
+  if (key === NO_SORT) {
+    sortKey.value = ''
+  } else if (key !== sortKey.value) {
+    sortKey.value = key
+    sortDir.value = 'asc'
+  }
+}
 
 function toggleSort(key) {
   if (sortKey.value !== key) {
@@ -405,4 +526,10 @@ onMounted(() => {
   document.addEventListener('mousedown', onOutsideColumns)
 })
 onBeforeUnmount(() => document.removeEventListener('mousedown', onOutsideColumns))
+
+// Lets a page drive a filter from its own controls (e.g. status tabs).
+function setFilter(key, values) {
+  filterValues[key] = [...values]
+}
+defineExpose({ filterValues, setFilter })
 </script>

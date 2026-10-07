@@ -11,8 +11,32 @@
         </Button>
       </template>
     </PageHeader>
-    <div class="flex-1 overflow-y-auto p-6">
+    <div class="flex-1 overflow-y-auto bg-gray-50/60 p-6">
+      <!-- Status at a glance; a tab filters the list to that status. -->
+      <nav v-if="jobs.length" class="mb-4 flex gap-1 overflow-x-auto border-b" aria-label="Filter by status">
+        <button
+          v-for="t in statusTabs"
+          :key="t.key"
+          type="button"
+          class="relative flex shrink-0 items-center gap-2 px-3 pb-2.5 pt-1 text-sm transition"
+          :class="activeStatusTab === t.key ? 'font-semibold text-brand-700' : 'text-gray-600 hover:text-gray-900'"
+          :aria-current="activeStatusTab === t.key ? 'true' : undefined"
+          @click="table?.setFilter('status', t.key === ALL_TAB ? [] : [t.key])"
+        >
+          <span v-if="t.dot" class="h-2 w-2 rounded-full" :class="t.dot" />
+          {{ t.label }}
+          <span
+            class="rounded-full px-1.5 text-xs font-semibold"
+            :class="activeStatusTab === t.key ? 'bg-brand-50 text-brand-700' : 'bg-gray-100 text-gray-600'"
+          >
+            {{ t.count }}
+          </span>
+          <span v-if="activeStatusTab === t.key" class="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-brand-700" />
+        </button>
+      </nav>
+
       <DataTable
+        ref="table"
         :columns="columns"
         :extra-columns="extraColumns"
         :rows="jobs"
@@ -25,6 +49,57 @@
         @row-click="(job) => router.push(`/jobs/${job.name}`)"
       >
         <template #cell-status="{ value }"><StatusBadge :status="value" /></template>
+        <template #card="{ row, selectable, selected, toggle }">
+          <div class="flex items-center justify-between gap-3">
+            <div class="flex min-w-0 items-center gap-2">
+              <input
+                v-if="selectable"
+                type="checkbox"
+                class="rounded border-gray-300 text-brand-700 focus:ring-brand-700"
+                :checked="selected"
+                :aria-label="`Select ${row.job_title}`"
+                @click.stop
+                @change="toggle($event.target.checked)"
+              />
+              <span class="truncate font-mono text-xs font-medium tracking-wide text-gray-500">{{ row.position || 'No job code' }}</span>
+            </div>
+            <StatusBadge :status="row.status" />
+          </div>
+
+          <h3 class="mt-3 line-clamp-2 font-heading text-base font-semibold leading-snug text-gray-900 group-hover:text-brand-700" :title="row.job_title">
+            {{ row.job_title }}
+          </h3>
+          <p class="mt-1 truncate text-sm text-gray-500" :title="[row.department, row.designation].filter(Boolean).join(' · ')">
+            {{ row.department }}<template v-if="row.designation && row.designation !== row.job_title"> · {{ row.designation }}</template>
+          </p>
+
+          <div class="mt-3 flex flex-wrap gap-1.5">
+            <span v-if="row.track" class="inline-flex items-center gap-1 rounded-md bg-brand-50 px-2 py-0.5 text-xs font-medium text-brand-700">
+              <FeatherIcon name="layers" class="h-3 w-3" />{{ row.track }}
+            </span>
+            <span v-if="row.employment_type" class="inline-flex items-center gap-1 rounded-md bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700">
+              <FeatherIcon name="briefcase" class="h-3 w-3" />{{ row.employment_type }}
+            </span>
+          </div>
+
+          <div class="mt-auto pt-4">
+            <div class="flex items-center justify-between gap-3 border-t pt-3 text-xs">
+              <div class="flex items-center gap-4 text-gray-600">
+                <span class="flex items-center gap-1.5" :title="`${row.vacancies || 0} vacancies`">
+                  <FeatherIcon name="users" class="h-3.5 w-3.5 text-gray-400" />
+                  <b class="font-semibold text-gray-900">{{ row.vacancies || 0 }}</b> {{ Number(row.vacancies) === 1 ? 'post' : 'posts' }}
+                </span>
+                <span class="flex items-center gap-1.5" :title="`${row.applications || 0} applications`">
+                  <FeatherIcon name="file-text" class="h-3.5 w-3.5 text-gray-400" />
+                  <b class="font-semibold text-gray-900">{{ row.applications || 0 }}</b> applied
+                </span>
+              </div>
+              <span class="flex shrink-0 items-center gap-1.5" :class="deadlineInfo(row).tone" :title="deadlineInfo(row).title">
+                <FeatherIcon name="calendar" class="h-3.5 w-3.5" />{{ deadlineInfo(row).text }}
+              </span>
+            </div>
+          </div>
+        </template>
         <template v-if="session.can('Job Opening', 'write')" #bulk-actions="{ rows, clear }">
           <Button size="sm" variant="solid" icon-left="refresh-cw" :class="BTN_BRAND" @click="openBulk('status', rows, clear)">
             Change Status
@@ -86,7 +161,7 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import dayjs from 'dayjs'
 import { toast } from '@/utils/notify'
@@ -144,6 +219,18 @@ const extraColumns = [
   { key: 'modified', label: 'Last Updated', format: (row) => (row.modified ? dayjs(row.modified).format('DD MMM YYYY, h:mm A') : '') },
   { key: 'name', label: 'Record ID' },
 ]
+function deadlineInfo(row) {
+  if (!row.application_deadline) return { text: 'No deadline', tone: 'text-gray-400', title: 'No application deadline set' }
+  const close = dayjs(row.application_deadline)
+  const when = close.format('DD MMM YYYY')
+  const title = `Applications close ${when}`
+  if (row.status !== 'Advertised') return { text: when, tone: 'text-gray-500', title }
+  const days = close.startOf('day').diff(dayjs().startOf('day'), 'day')
+  if (days < 0) return { text: 'Deadline passed', tone: 'font-medium text-red-600', title }
+  if (days === 0) return { text: 'Closes today', tone: 'font-medium text-orange-600', title }
+  return { text: `${days}d left`, tone: days <= 7 ? 'font-medium text-orange-600' : 'font-medium text-green-700', title }
+}
+
 const filters = [
   { key: 'status', label: 'Statuses' },
   { key: 'track', label: 'Tracks' },
@@ -158,6 +245,35 @@ onMounted(() => {
 
 // ----- bulk actions
 const JOB_STATUSES = ['Draft', 'Pending Approval', 'Approved', 'Advertised', 'Closed', 'Filled', 'Cancelled']
+
+// ----- status tabs (only statuses that have jobs, in workflow order)
+const ALL_TAB = '__all__'
+const STATUS_DOTS = {
+  Draft: 'bg-orange-400',
+  'Pending Approval': 'bg-yellow-400',
+  Approved: 'bg-blue-500',
+  Advertised: 'bg-green-500',
+  Closed: 'bg-gray-400',
+  Filled: 'bg-teal-500',
+  Cancelled: 'bg-red-500',
+}
+const table = ref(null)
+const statusTabs = computed(() => {
+  const counts = {}
+  for (const j of jobs.value) counts[j.status] = (counts[j.status] || 0) + 1
+  const known = JOB_STATUSES.filter((s) => counts[s])
+  const other = Object.keys(counts).filter((s) => !JOB_STATUSES.includes(s)).sort()
+  return [
+    { key: ALL_TAB, label: 'All', count: jobs.value.length },
+    ...[...known, ...other].map((s) => ({ key: s, label: s, count: counts[s], dot: STATUS_DOTS[s] || 'bg-gray-400' })),
+  ]
+})
+// A tab is active when the Status filter holds exactly that status (or nothing, for All).
+const activeStatusTab = computed(() => {
+  const chosen = table.value?.filterValues?.status || []
+  if (!chosen.length) return ALL_TAB
+  return chosen.length === 1 ? chosen[0] : null
+})
 const bulk = reactive({ rows: [], clear: null, status: '', statusOpen: false, deleteOpen: false, running: false, result: null })
 
 function labelFor(name) {
