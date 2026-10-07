@@ -1,5 +1,6 @@
 import frappe
 
+from pathways.master_data import seed_master_data
 from pathways.permissions import CANDIDATE_ROLE, DEFAULT_PATHWAYS_ROLES
 
 DEFAULT_DECLARATION = (
@@ -202,6 +203,7 @@ def after_install():
 	create_email_templates()
 	seed_settings()
 	seed_application_masters()
+	seed_master_data()
 
 
 def create_roles():

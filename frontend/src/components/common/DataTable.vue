@@ -37,7 +37,7 @@
       </button>
       <div class="ml-auto flex flex-wrap items-center gap-2">
         <slot name="bulk-actions" :rows="selectedRows" :clear="clearSelection" />
-        <Button size="sm" icon-left="download" @click="exportCsv">Export CSV</Button>
+        <Button size="sm" icon-left="download" @click="exportSelected">{{ onExport ? 'Export' : 'Export CSV' }}</Button>
         <Button size="sm" variant="ghost" @click="clearSelection">Clear</Button>
       </div>
     </div>
@@ -155,6 +155,9 @@ const props = defineProps({
   selectable: { type: Boolean, default: true },
   // File name for Export CSV (without .csv).
   exportName: { type: String, default: 'export' },
+  // @export="(rows, clear) => ..." replaces the built-in CSV of the visible
+  // columns (e.g. Applications exports full records from the server).
+  onExport: { type: Function, default: null },
 })
 const emit = defineEmits(['row-click'])
 
@@ -269,6 +272,11 @@ watch(
     if (kept.length !== selected.value.size) selected.value = new Set(kept)
   },
 )
+
+function exportSelected() {
+  if (props.onExport) props.onExport(selectedRows.value, clearSelection)
+  else exportCsv()
+}
 
 function exportCsv() {
   const cell = (value) => `"${String(value ?? '').replace(/"/g, '""')}"`

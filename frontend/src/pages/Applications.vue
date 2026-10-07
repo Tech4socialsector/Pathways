@@ -11,6 +11,7 @@
         empty-title="No applications yet"
         search-placeholder="Search applications..."
         export-name="applications"
+        @export="openExport"
         @row-click="(app) => $router.push(`/applications/${app.name}`)"
       >
         <template #cell-status="{ value }"><StatusBadge :status="value" /></template>
@@ -122,6 +123,41 @@
       </template>
     </Dialog>
 
+    <Dialog v-model="exporter.open" :options="{ title: `Export ${exporter.rows.length} application(s)`, size: 'md' }">
+      <template #body-content>
+        <div class="flex flex-col gap-3" role="radiogroup" aria-label="Export layout">
+          <button
+            v-for="option in EXPORT_OPTIONS"
+            :key="option.value"
+            type="button"
+            role="radio"
+            :aria-checked="exporter.mode === option.value"
+            class="flex items-start gap-3 rounded-lg border px-4 py-3 text-left transition-colors"
+            :class="exporter.mode === option.value ? 'border-brand-700 bg-brand-50' : 'border-gray-200 hover:bg-gray-50'"
+            @click="exporter.mode = option.value"
+          >
+            <FeatherIcon :name="option.icon" class="mt-0.5 h-5 w-5 shrink-0 text-brand-700" />
+            <span>
+              <span class="block text-sm font-semibold text-gray-900">{{ option.label }}</span>
+              <span class="block text-sm text-gray-600">{{ option.description }}</span>
+              <span v-if="option.value === 'job_wise'" class="mt-1 block text-xs text-gray-500">
+                {{ exporter.jobCount }} job opening(s) in this selection.
+              </span>
+            </span>
+          </button>
+          <p class="text-xs text-gray-500">
+            Excel file (.xlsx) with every application detail: candidate profile, qualifications, experience,
+            publications, references, screening answers and document links.
+          </p>
+        </div>
+      </template>
+      <template #actions>
+        <Button variant="solid" :class="BTN_BRAND" icon-left="download" :loading="exporter.running" @click="runExport">
+          Download
+        </Button>
+      </template>
+    </Dialog>
+
     <BulkResultDialog :result="bulk.result" :label-for="labelFor" @close="bulk.result = null" />
   </StaffLayout>
 </template>
@@ -129,7 +165,7 @@
 <script setup>
 import { reactive, ref } from 'vue'
 import dayjs from 'dayjs'
-import { Button } from 'frappe-ui'
+import { Button, FeatherIcon } from 'frappe-ui'
 import { toast } from '@/utils/notify'
 import StaffLayout from '@/layouts/StaffLayout.vue'
 import PageHeader from '@/components/layout/PageHeader.vue'
@@ -229,6 +265,40 @@ function runBulkStatus() {
 
 function runBulkDelete() {
   runBulk((names) => applicationService.bulkDelete(names), 'deleted')
+}
+
+// ----- export (full records, server-built workbook)
+const EXPORT_OPTIONS = [
+  {
+    value: 'single',
+    icon: 'file-text',
+    label: 'Single sheet — all records',
+    description: 'Every selected application in one sheet, with a Job Opening column.',
+  },
+  {
+    value: 'job_wise',
+    icon: 'layers',
+    label: 'Job-wise sheets',
+    description: 'One sheet per job opening, with that job\'s screening questions as columns.',
+  },
+]
+const exporter = reactive({ open: false, rows: [], mode: 'single', jobCount: 0, running: false })
+
+function openExport(rows) {
+  Object.assign(exporter, { open: true, rows, jobCount: new Set(rows.map((r) => r.job_opening)).size })
+}
+
+async function runExport() {
+  exporter.running = true
+  try {
+    await applicationService.exportApplications(exporter.rows.map((r) => r.name), exporter.mode)
+    exporter.open = false
+    toast({ title: `Exported ${exporter.rows.length} application(s).`, icon: 'check', iconClasses: 'text-green-500' })
+  } catch (e) {
+    toast({ title: e?.messages?.[0] || 'The export failed.', icon: 'alert-triangle', iconClasses: 'text-red-500' })
+  } finally {
+    exporter.running = false
+  }
 }
 
 const showDeleteConfirm = ref(false)

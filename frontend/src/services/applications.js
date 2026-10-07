@@ -29,6 +29,34 @@ export const applicationService = {
   bulkSetStatus(names, status, remarks) {
     return callMethod('pathways.api.application.bulk_set_application_status', { names, status, remarks })
   },
+  // Full applications as an .xlsx: mode 'single' (one sheet) or
+  // 'job_wise' (a sheet per job opening). POST, as the names list can be
+  // long; saved through a blob link.
+  async exportApplications(names, mode) {
+    const headers = { 'Content-Type': 'application/json; charset=utf-8' }
+    if (window.csrf_token && window.csrf_token !== '{{ csrf_token }}') headers['X-Frappe-CSRF-Token'] = window.csrf_token
+    const res = await fetch('/api/method/pathways.api.application.export_applications', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ names, mode }),
+    })
+    if (!res.ok) {
+      const error = new Error('export_applications failed')
+      error.messages = serverMessages(await res.json().catch(() => ({})))
+      throw error
+    }
+    const blob = await res.blob()
+    const disposition = res.headers.get('Content-Disposition') || ''
+    const fileName = /filename="?([^";]+)"?/.exec(disposition)?.[1] || `applications-${mode}.xlsx`
+    const link = document.createElement('a')
+    link.href = URL.createObjectURL(blob)
+    link.download = fileName
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    // Revoke later: some browsers start the download after click() returns.
+    setTimeout(() => URL.revokeObjectURL(link.href), 10000)
+  },
   bulkDelete(names) {
     return callMethod('pathways.api.application.bulk_delete_applications', { names })
   },

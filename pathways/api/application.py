@@ -826,3 +826,19 @@ def download_documents_zip(job_opening=None, applications=None, scope="all"):
 	frappe.local.response.filename = f"{label}_documents.zip"
 	frappe.local.response.filecontent = buffer.getvalue()
 	frappe.local.response.type = "download"
+
+
+@frappe.whitelist(methods=["POST"])
+def export_applications(names, mode="single"):
+	"""Applications list > Export: the full applications as an Excel
+	workbook, one sheet for all (mode=single) or a sheet per job opening
+	(mode=job_wise)."""
+	from pathways.utils.application_export import build_workbook
+
+	if frappe.db.get_value("User", frappe.session.user, "user_type") != "System User":
+		frappe.throw(_("Not permitted."), frappe.PermissionError)
+	content, _count = build_workbook(names, mode)
+	suffix = "job-wise" if mode == "job_wise" else "all"
+	frappe.local.response.filename = f"applications-{suffix}-{today()}.xlsx"
+	frappe.local.response.filecontent = content
+	frappe.local.response.type = "download"
