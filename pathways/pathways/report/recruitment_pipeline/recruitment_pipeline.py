@@ -12,7 +12,8 @@ def execute(filters=None):
 
 def get_columns():
 	return [
-		{"label": "Job Opening", "fieldname": "job_opening", "fieldtype": "Link", "options": "Job Opening", "width": 220},
+		{"label": "Job Opening", "fieldname": "job_opening", "fieldtype": "Link", "options": "Job Opening", "width": 160},
+		{"label": "Job Title", "fieldname": "job_title", "fieldtype": "Data", "width": 260},
 		{"label": "Track", "fieldname": "track", "fieldtype": "Link", "options": "Recruitment Track", "width": 100},
 		{"label": "Status", "fieldname": "status", "fieldtype": "Data", "width": 100},
 		{"label": "Applied", "fieldname": "applied", "fieldtype": "Int", "width": 90},
@@ -33,7 +34,7 @@ def get_data(filters):
 		conditions["name"] = filters["job_opening"]
 
 	job_openings = frappe.get_all(
-		"Job Opening", filters=conditions, fields=["name", "track", "status"], order_by="creation desc"
+		"Job Opening", filters=conditions, fields=["name", "job_title", "track", "status"], order_by="creation desc"
 	)
 
 	rows = []
@@ -44,6 +45,7 @@ def get_data(filters):
 			rows.append(
 				{
 					"job_opening": job.name,
+					"job_title": job.job_title,
 					"track": job.track,
 					"status": job.status,
 					"applied": 0,
@@ -78,6 +80,7 @@ def get_data(filters):
 		rows.append(
 			{
 				"job_opening": job.name,
+				"job_title": job.job_title,
 				"track": job.track,
 				"status": job.status,
 				"applied": applied,
