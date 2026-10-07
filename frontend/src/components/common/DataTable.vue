@@ -25,6 +25,7 @@
       <Button v-if="isFiltered" variant="ghost" @click="clearFilters">Clear</Button>
       <div class="ml-auto flex items-center gap-2">
         <slot name="toolbar" />
+        <AdvancedFilter v-if="advancedFilter && rows.length" v-model="conditions" :columns="allColumns" :rows="rows" />
         <!-- Cards have no column headers to click, so sorting gets its own control. -->
         <div v-if="view === 'cards'" class="flex items-center gap-1">
           <FormControl
@@ -262,6 +263,8 @@ import { callMethod } from '@/services/api'
 import { Button, FeatherIcon, FormControl, TextInput } from 'frappe-ui'
 import EmptyState from '@/components/common/EmptyState.vue'
 import MultiSelectFilter from '@/components/common/MultiSelectFilter.vue'
+import AdvancedFilter from '@/components/common/AdvancedFilter.vue'
+import { matchesConditions } from '@/utils/advancedFilter'
 
 const props = defineProps({
   // [{ key, label, sortable?: true, align?: 'right', format?: (row) => string }]
@@ -289,6 +292,8 @@ const props = defineProps({
   settingsKey: { type: String, default: '' },
   // Wrap the toolbar (and #above-toolbar) in a white panel.
   toolbarPanel: { type: Boolean, default: false },
+  // The Desk-style Filter builder (field / condition / value rows).
+  advancedFilter: { type: Boolean, default: true },
 })
 const emit = defineEmits(['row-click'])
 const slots = useSlots()
@@ -320,11 +325,13 @@ const resolvedFilters = computed(() =>
   }),
 )
 
-const isFiltered = computed(() => !!search.value || Object.values(filterValues).some((v) => v.length))
+const conditions = ref([])
+const isFiltered = computed(() => !!search.value || conditions.value.length > 0 || Object.values(filterValues).some((v) => v.length))
 
 function clearFilters() {
   search.value = ''
   Object.keys(filterValues).forEach((k) => (filterValues[k] = []))
+  conditions.value = []
 }
 
 const filteredRows = computed(() => {
@@ -333,6 +340,7 @@ const filteredRows = computed(() => {
     for (const [key, values] of Object.entries(filterValues)) {
       if (values.length && !values.includes(String(row[key] ?? ''))) return false
     }
+    if (conditions.value.length && !matchesConditions(row, conditions.value, allColumns.value, props.rows, display)) return false
     if (!term) return true
     return allColumns.value.some((col) => String(display(row, col)).toLowerCase().includes(term))
   })
@@ -403,7 +411,7 @@ const pageCount = computed(() => Math.max(1, Math.ceil(sortedRows.value.length /
 const pageStart = computed(() => (page.value - 1) * pageSize.value)
 const pageRows = computed(() => sortedRows.value.slice(pageStart.value, pageStart.value + pageSize.value))
 
-watch([search, filterValues, pageSize], () => (page.value = 1))
+watch([search, filterValues, conditions, pageSize], () => (page.value = 1))
 
 // ----- selection (by rowKey, so it survives sorting, filtering and paging)
 const selected = ref(new Set())

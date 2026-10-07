@@ -1,0 +1,1 @@
+import{z as t}from"./index-CRoqLvtD.js";const a={hasAccess(){return t("pathways.api.master_setup.has_access")},getMasterSetup(){return t("pathways.api.master_setup.get_master_setup")},getPosition(e){return t("frappe.client.get",{doctype:"Position",name:e})}};export{a as m};

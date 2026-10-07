@@ -8,6 +8,7 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
+    AdvancedFilter: typeof import('./src/components/common/AdvancedFilter.vue')['default']
     ApplicationFormPanel: typeof import('./src/components/jobs/ApplicationFormPanel.vue')['default']
     ApplicationSubmissionPanel: typeof import('./src/components/common/ApplicationSubmissionPanel.vue')['default']
     BackButton: typeof import('./src/components/common/BackButton.vue')['default']
