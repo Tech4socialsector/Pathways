@@ -156,4 +156,13 @@ router.beforeEach(async (to) => {
   return true
 })
 
+// After a new build, an open tab still points at the old page files, which
+// no longer exist, so opening a page fails silently. Load the page fresh.
+router.onError((error, to) => {
+  const message = String(error?.message || error)
+  if (/Failed to fetch dynamically imported module|Importing a module script failed|error loading dynamically imported module/i.test(message)) {
+    window.location.assign(`/pathways${to.fullPath}`)
+  }
+})
+
 export default router

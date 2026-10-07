@@ -54,6 +54,8 @@ def get_email_setup():
 	)
 	for rule in rules:
 		rule["recipient_roles"] = frappe.get_all("Pathways Role", filters={"parent": rule.name, "parenttype": "Recruitment Email Rule"}, pluck="role")
+		# Roles nobody (but Administrator, who is never emailed) holds.
+		rule["empty_roles"] = [r for r in rule["recipient_roles"] if not _role_has_users(r)]
 		subject, response = frappe.db.get_value("Email Template", rule.email_template, ["subject", "response"]) or ("", "")
 		rule["subject"], rule["response"] = subject, response
 		rule["attachments"] = frappe.get_all(
@@ -75,6 +77,7 @@ def get_email_setup():
 
 	return {
 		"account": _account_summary(_account()),
+		"reply_to": frappe.get_cached_doc("Pathways Settings").recruitment_contact_email or "",
 		"rules": rules,
 		"templates": templates,
 		"role_options": sorted(get_pathways_roles()),
@@ -294,3 +297,26 @@ def delete_email_rule(event):
 		frappe.delete_doc("File", file, ignore_permissions=True)
 	frappe.delete_doc("Recruitment Email Rule", event, ignore_permissions=True)
 	return get_email_setup()
+
+
+@frappe.whitelist(methods=["POST"])
+def save_reply_to(email):
+	"""Where replies to recruitment emails go (Pathways Settings >
+	Recruitment Contact Email)."""
+	_require_manager()
+	email = (email or "").strip()
+	if email and not frappe.utils.validate_email_address(email):
+		frappe.throw(_("Enter a valid email address."))
+	frappe.db.set_single_value("Pathways Settings", "recruitment_contact_email", email or None)
+	frappe.clear_document_cache("Pathways Settings", "Pathways Settings")
+	return email
+
+
+def _role_has_users(role):
+	return bool(
+		frappe.get_all(
+			"User",
+			filters=[["Has Role", "role", "=", role], ["enabled", "=", 1], ["name", "not in", ("Administrator", "Guest")]],
+			limit=1,
+		)
+	)

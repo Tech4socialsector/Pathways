@@ -15,6 +15,7 @@ from pathways.utils.application_form import (
 	get_required_documents,
 	is_accepting_applications,
 	name_uploads_for_application,
+	not_accepting_message,
 	sign_upload,
 	validate_submission,
 )
@@ -29,6 +30,7 @@ PUBLIC_JOB_FIELDS = (
 	"employment_type",
 	"tenure_description",
 	"pay_level",
+	"application_start",
 	"application_deadline",
 )
 
@@ -121,7 +123,7 @@ def upload_application_file(job_opening):
 	Format and size are checked per field again on submit."""
 	job = _get_public_job(job_opening)
 	if not is_accepting_applications(job):
-		frappe.throw(_("Applications for this position are closed."))
+		frappe.throw(not_accepting_message(job))
 
 	upload = frappe.request.files.get("file") if frappe.request else None
 	if not upload or not upload.filename:
@@ -179,7 +181,7 @@ def submit_application(job_opening, data):
 	frappe.db.get_value("Job Opening", job_opening, "name", for_update=True)
 	job = frappe.get_doc("Job Opening", job_opening)
 	if not is_accepting_applications(job):
-		frappe.throw(_("Applications for this position are closed."))
+		frappe.throw(not_accepting_message(job))
 
 	candidate_name = frappe.db.get_value("Candidate", {"email": email}, "name", for_update=True)
 	if candidate_name and frappe.db.exists(

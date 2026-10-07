@@ -56,7 +56,9 @@ def send_event(event, reference_doctype, reference_name, context=None, candidate
 	frappe.enqueue(
 		"pathways.utils.communication._send_event",
 		enqueue_after_commit=True,
-		event=event,
+		# Not "event": frappe.enqueue has its own parameter by that name and
+		# would swallow it, so the job would run without knowing which email.
+		rule_event=event,
 		reference_doctype=reference_doctype,
 		reference_name=reference_name,
 		context=context or {},
@@ -108,15 +110,29 @@ def event_attachments(rule, reference_doctype=None, reference_name=None):
 	return list(dict.fromkeys(files))
 
 
-def _send_event(event, reference_doctype, reference_name, context, candidate=None, job_opening=None, approvers=None):
+def _send_event(rule_event=None, reference_doctype=None, reference_name=None, context=None, candidate=None, job_opening=None, approvers=None, event=None):
+	event = rule_event or event
+	context = context or {}
 	rule = frappe.get_doc("Recruitment Email Rule", event)
 	template = frappe.get_doc("Email Template", rule.email_template)
 	cc = [e.strip() for e in (rule.cc or "").split(",") if e.strip()]
 	attachments = [{"fid": f} for f in event_attachments(rule, reference_doctype, reference_name)]
-	for email, name in event_recipients(rule, candidate, job_opening, approvers):
+	# Replies go to the recruitment team (Email Setup > Reply-to address).
+	reply_to = frappe.get_cached_doc("Pathways Settings").recruitment_contact_email or None
+	recipients = event_recipients(rule, candidate, job_opening, approvers)
+	if not recipients:
+		# Nobody to send to (e.g. no user holds the rule's roles): leave a
+		# trace in the Error Log instead of failing silently.
+		frappe.log_error(
+			title=f"Pathways email not sent: no recipients for {rule.label}",
+			message=f"Event {event} for {reference_doctype} {reference_name}. Check the recipients in Email Setup.",
+			reference_doctype=reference_doctype,
+			reference_name=reference_name,
+		)
+	for email, name in recipients:
 		status = "Sent"
 		try:
-			values = {**context, "recipient_name": name or (context.get("candidate_name") if candidate and email == candidate.get("email") else "") or "Colleague"}
+			values = {"contact_email": reply_to or "", **context, "recipient_name": name or (context.get("candidate_name") if candidate and email == candidate.get("email") else "") or "Colleague"}
 			frappe.sendmail(
 				recipients=[email],
 				cc=cc,
@@ -125,6 +141,7 @@ def _send_event(event, reference_doctype, reference_name, context, candidate=Non
 				reference_doctype=reference_doctype,
 				reference_name=reference_name,
 				attachments=attachments or None,
+				reply_to=reply_to,
 			)
 		except Exception:
 			status = "Failed"

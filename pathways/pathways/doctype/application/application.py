@@ -24,14 +24,14 @@ class Application(Document):
 		answers or required documents, which api.application.submit_application
 		validates. Accept it only where those would not apply, with the same
 		gates as the portal (open job, candidate account)."""
-		from pathways.utils.application_form import get_required_documents, is_accepting_applications
+		from pathways.utils.application_form import get_required_documents, is_accepting_applications, not_accepting_message
 
 		if frappe.db.get_value("User", frappe.session.user, "user_type") != "Website User":
 			frappe.throw("Staff accounts cannot apply. Please register with a personal email address.")
 
 		job = frappe.get_doc("Job Opening", self.job_opening)
 		if not is_accepting_applications(job):
-			frappe.throw("Applications for this position are closed.")
+			frappe.throw(not_accepting_message(job))
 		if job.screening_questions or any(d["mandatory"] for d in get_required_documents(job)):
 			frappe.throw(
 				"This position needs screening answers or documents. Please apply through the job posting: "

@@ -16,6 +16,11 @@
   "justification_section",
   "justification_note",
   "duration_of_ad_days",
+  "documents_section",
+  "jd_attachment",
+  "supporting_attachment",
+  "column_break_docs",
+  "signed_copy_attachment",
   "approval_section",
   "approval_steps",
   "approval_log",
@@ -93,6 +98,32 @@
    "label": "Duration of Advertisement (Days)"
   },
   {
+   "fieldname": "documents_section",
+   "fieldtype": "Section Break",
+   "label": "Documents"
+  },
+  {
+   "fieldname": "jd_attachment",
+   "fieldtype": "Attach",
+   "label": "Job Description (final, as per template)"
+  },
+  {
+   "fieldname": "supporting_attachment",
+   "fieldtype": "Attach",
+   "label": "Other supporting document"
+  },
+  {
+   "fieldname": "column_break_docs",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "signed_copy_attachment",
+   "fieldtype": "Attach",
+   "label": "Signed Green Sheet (scanned)",
+   "allow_on_submit": 1,
+   "description": "Upload the physically signed copy once approved."
+  },
+  {
    "fieldname": "approval_section",
    "fieldtype": "Section Break",
    "label": "Approval Log"
@@ -127,7 +158,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-10-06 15:42:11.892849",
+ "modified": "2026-10-07 16:30:00.000000",
  "modified_by": "Administrator",
  "module": "Pathways",
  "name": "Pre-Recruitment Green Sheet",

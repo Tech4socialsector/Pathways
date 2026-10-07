@@ -13,6 +13,9 @@ export const approvalService = {
       channel,
     })
   },
+  getApprovalDocument(doctype, docname) {
+    return callMethod('pathways.api.approval.get_approval_document', { doctype, docname })
+  },
   getApprovalChainStatus(doctype, docname) {
     return callMethod('pathways.api.approval.get_approval_chain_status', { doctype, docname })
   },

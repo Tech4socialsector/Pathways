@@ -62,7 +62,10 @@
 
         <!-- Gates -->
         <div v-if="!form.is_open" class="mt-6 rounded-lg border bg-white p-6 text-center text-sm text-gray-700">
-          Applications for this position are closed.
+          <template v-if="form.opens_later && form.application_start">
+            Applications for this position open on <b>{{ formatDateTime(form.application_start) }}</b>. Please come back then.
+          </template>
+          <template v-else>Applications for this position are closed.</template>
         </div>
 
         <div v-else-if="submitted" class="mt-6 overflow-hidden rounded-xl border bg-white shadow-sm">
@@ -250,7 +253,7 @@
                   <Autocomplete
                     placeholder="Search your university"
                     :options="institutionOptions"
-                    :model-value="q._other ? OTHER : q.other_institution"
+                    :model-value="q._other ? OTHER : q.other_institution || ''"
                     @update:model-value="(o) => pickInstitution(q, o?.value)"
                   />
                   <FormControl v-if="q._other" class="mt-2" placeholder="Name of your College / University" v-model="q.other_institution" />
@@ -346,7 +349,7 @@
                 <Autocomplete
                   placeholder="Search subject"
                   :options="netSubjectOptions"
-                  :model-value="data.application.net_subject"
+                  :model-value="data.application.net_subject || ''"
                   @update:model-value="(o) => (data.application.net_subject = o?.value || '')"
                 />
                 <FormControl

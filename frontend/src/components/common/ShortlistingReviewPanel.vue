@@ -115,7 +115,7 @@
 
     <SectionCard title="Shortlisting Score" icon="clipboard" :subtitle="editing ? 'Score each criterion, then shortlist or reject' : 'Saved decision'">
       <template #actions>
-        <span v-if="rubric" class="rounded-full bg-brand-50 px-2.5 py-0.5 text-sm font-bold text-brand-700">
+        <span v-if="rubric && scored" class="rounded-full bg-brand-50 px-2.5 py-0.5 text-sm font-bold text-brand-700">
           {{ totalScore }} / {{ maxScore }}
         </span>
       </template>
@@ -159,7 +159,7 @@
           <FeatherIcon :name="existing?.is_shortlisted ? 'check-circle' : 'x-circle'" class="h-4 w-4" />
           {{ existing?.is_shortlisted ? 'Shortlisted' : 'Rejected' }}
         </div>
-        <dl class="flex flex-col divide-y divide-gray-100 rounded-lg border border-gray-200 text-sm">
+        <dl v-if="scored" class="flex flex-col divide-y divide-gray-100 rounded-lg border border-gray-200 text-sm">
           <div v-for="c in form.criteria" :key="c.criterion_label" class="flex items-center justify-between gap-3 px-3 py-2.5">
             <dt class="text-gray-700">{{ c.criterion_label }}</dt>
             <dd class="font-semibold text-gray-900">{{ c.score_given }} <span class="font-normal text-gray-400">/ {{ c.max_score }}</span></dd>
@@ -169,12 +169,15 @@
           <div class="text-xs text-gray-500">Remarks</div>
           <div class="mt-0.5 whitespace-pre-line text-gray-800">{{ form.remarks }}</div>
         </div>
-        <Button variant="solid" icon-left="edit-2" :class="BTN_DARK" @click="startEdit">Edit score</Button>
+        <Button variant="solid" icon-left="edit-2" :class="BTN_DARK" @click="startEdit">{{ scored ? 'Edit score' : 'Change decision' }}</Button>
       </div>
 
       <!-- Editing -->
       <div v-else class="flex flex-col gap-4">
-        <div class="flex flex-col divide-y divide-gray-100 rounded-lg border border-gray-200">
+        <p v-if="!scored" class="text-sm text-gray-600">
+          Decide from the application; note the reason in the remarks (as in the shortlisting sheet).
+        </p>
+        <div v-if="scored" class="flex flex-col divide-y divide-gray-100 rounded-lg border border-gray-200">
           <div v-for="(criterion, i) in form.criteria" :key="criterion.criterion_label" class="flex items-center gap-3 px-3 py-2.5">
             <div class="flex-1 text-sm">
               <div class="font-medium text-gray-900">{{ criterion.criterion_label }}</div>
@@ -192,7 +195,12 @@
           </div>
         </div>
 
-        <FormControl label="Remarks" type="textarea" v-model="form.remarks" placeholder="Optional notes for the committee" />
+        <FormControl
+          label="Remarks"
+          type="textarea"
+          v-model="form.remarks"
+          :placeholder="scored ? 'Optional notes for the committee' : 'Reason for shortlisting or not shortlisting the candidate'"
+        />
 
         <ErrorMessage :message="formError" />
         <div class="flex flex-wrap items-center gap-2">
@@ -232,7 +240,7 @@
                 {{ confirm.shortlist ? 'Shortlist' : 'Reject' }} {{ review.candidate?.full_name || 'this candidate' }}?
               </h3>
               <p class="mt-1 text-sm text-gray-600">
-                Total score <span class="font-semibold text-gray-900">{{ totalScore }} / {{ maxScore }}</span>.
+                <template v-if="scored">Total score <span class="font-semibold text-gray-900">{{ totalScore }} / {{ maxScore }}</span>.</template>
                 <template v-if="statusWillChange">
                   The application will move to
                   <span class="font-semibold" :class="confirm.shortlist ? 'text-green-700' : 'text-red-700'">
@@ -289,6 +297,9 @@ function overMax(c) {
   const score = Number(c.score_given)
   return Number.isNaN(score) || score < 0 || score > Number(c.max_score)
 }
+
+// A rubric with no criteria (e.g. Admin) is a decision with remarks, no score.
+const scored = computed(() => (props.rubric?.criteria || []).length > 0 && props.rubric?.scoring_mode !== 'Pass/Fail Only')
 
 const totalScore = computed(() => form.criteria.reduce((sum, c) => sum + (Number(c.score_given) || 0), 0))
 const maxScore = computed(() => form.criteria.reduce((sum, c) => sum + (Number(c.max_score) || 0), 0))
@@ -377,9 +388,13 @@ const statusWillChange = computed(() => {
 
 function askConfirm(isShortlisted) {
   formError.value = ''
-  const bad = form.criteria.find(overMax)
+  const bad = scored.value && form.criteria.find(overMax)
   if (bad) {
     formError.value = `${bad.criterion_label}: enter a score between 0 and ${bad.max_score}.`
+    return
+  }
+  if (!scored.value && !form.remarks.trim()) {
+    formError.value = 'Add a remark: the reason for shortlisting or not shortlisting.'
     return
   }
   Object.assign(confirm, { open: true, shortlist: !!isShortlisted })
@@ -401,7 +416,7 @@ async function submit(isShortlisted) {
       shortlisting_committee: props.review.shortlisting_committee,
       is_shortlisted: isShortlisted,
       remarks: form.remarks,
-      criteria: form.criteria,
+      criteria: scored.value ? form.criteria : [],
     })
     editing.value = false
     toast({

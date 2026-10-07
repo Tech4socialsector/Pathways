@@ -59,6 +59,9 @@ def get_job_green_sheets(job_opening):
 			"current_approval_level",
 			"justification_note",
 			"duration_of_ad_days",
+			"jd_attachment",
+			"supporting_attachment",
+			"signed_copy_attachment",
 			"amended_from",
 			"owner",
 			"creation",
@@ -95,7 +98,9 @@ def get_job_green_sheets(job_opening):
 
 
 @frappe.whitelist()
-def save_green_sheet(job_opening, justification_note, duration_of_ad_days=None, name=None, submit=0):
+def save_green_sheet(
+	job_opening, justification_note, duration_of_ad_days=None, name=None, submit=0, jd_attachment=None, supporting_attachment=None
+):
 	"""Create the job's Green Sheet, or update its draft, and optionally
 	submit it for approval in the same call.
 	"""
@@ -119,6 +124,8 @@ def save_green_sheet(job_opening, justification_note, duration_of_ad_days=None, 
 
 	doc.justification_note = justification_note
 	doc.duration_of_ad_days = frappe.utils.cint(duration_of_ad_days) or None
+	doc.jd_attachment = jd_attachment or None
+	doc.supporting_attachment = supporting_attachment or None
 	doc.save()
 
 	if frappe.utils.cint(submit):
@@ -176,3 +183,17 @@ def delete_green_sheet_draft(name):
 		raise frappe.PermissionError
 	frappe.delete_doc(DOCTYPE, name, ignore_permissions=True)
 	return name
+
+
+@frappe.whitelist(methods=["POST"])
+def attach_signed_green_sheet(name, file_url=None):
+	"""Workflow step 25: keep the physically signed copy with the approved
+	sheet (allowed after submission; empty file_url removes it)."""
+	doc = _get_sheet(name)
+	if doc.docstatus != 1:
+		frappe.throw("Upload the signed copy after the Green Sheet has been submitted.")
+	if not frappe.has_permission(DOCTYPE, "create") and not can_override_status():
+		frappe.throw("You cannot upload the signed Green Sheet.", frappe.PermissionError)
+	doc.db_set("signed_copy_attachment", file_url or None)
+	doc.add_comment("Info", "Signed copy uploaded." if file_url else "Signed copy removed.")
+	return doc.signed_copy_attachment

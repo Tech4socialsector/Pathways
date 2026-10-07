@@ -23,6 +23,9 @@ export const scoringService = {
       office_order_reference: officeOrderReference,
     })
   },
+  sendRegretEmails(jobOpening, groups) {
+    return callMethod('pathways.api.scoring.send_regret_emails', { job_opening: jobOpening, groups })
+  },
   submitShortlistingScore(data) {
     return callMethod('pathways.api.scoring.submit_shortlisting_score', data)
   },

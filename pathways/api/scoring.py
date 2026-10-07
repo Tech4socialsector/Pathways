@@ -202,15 +202,17 @@ def apply_shortlisting_decision(score):
 	# The committee member deciding may not have write access to the
 	# Application itself; the decision is theirs to make.
 	app.save(ignore_permissions=True)
+	scored = " " + _("(score {0})").format(frappe.format(score.get("total_score"))) if score.get("criteria") else ""
 	app.add_comment(
 		"Info",
-		_("Shortlisting decision by {0}: {1} (score {2}). Status changed from {3} to {4}.").format(
+		_("Shortlisting decision by {0}: {1}{2}. Status changed from {3} to {4}.").format(
 			frappe.utils.get_fullname(frappe.session.user),
 			_("Shortlisted") if decision == "Shortlisted" else _("Rejected"),
-			frappe.format(score.get("total_score")),
+			scored,
 			previous,
 			decision,
-		),
+		)
+		+ (f" {_('Remarks')}: {frappe.utils.escape_html(score.remarks)}" if score.remarks else ""),
 	)
 	_candidate_event("candidate_shortlisted" if decision == "Shortlisted" else "candidate_not_shortlisted", app)
 	return app.status
@@ -393,9 +395,17 @@ def _set_eligibility(application, eligible, reason=None):
 	return app.status
 
 
+REGRET_EVENTS = ("candidate_not_eligible", "candidate_not_shortlisted", "shortlisting_regret")
+
+
 def _candidate_event(event, app):
 	from pathways.utils.communication import candidate_email_context, send_event
 
+	if event in REGRET_EVENTS:
+		if app.get("regret_sent_on") or not frappe.db.get_value("Recruitment Email Rule", event, "enabled"):
+			return
+		# One regret per application, however it is sent.
+		app.db_set("regret_sent_on", frappe.utils.now_datetime(), update_modified=False)
 	context, candidate = candidate_email_context(app)
 	send_event(event, "Application", app.name, context, candidate=candidate)
 
@@ -411,6 +421,50 @@ def bulk_set_eligibility(names, eligible, reason=None):
 	from pathways.utils.bulk import run_bulk
 
 	return run_bulk(names, lambda name: _set_eligibility(name, eligible, reason))
+
+
+# ------------------------------------------------------------ regret emails
+
+
+def _regret_filters(job_opening):
+	# Out of the pool at screening: not eligible, or rejected by the committee.
+	return {"job_opening": job_opening, "status": "Not Selected", "regret_sent_on": ["is", "not set"]}
+
+
+def regret_pending(job_opening):
+	from collections import Counter
+
+	rows = frappe.get_all("Application", filters=_regret_filters(job_opening), pluck="eligibility_status")
+	groups = Counter("not_eligible" if e == "Not Eligible" else "not_shortlisted" for e in rows)
+	return {
+		"not_eligible": groups.get("not_eligible", 0),
+		"not_shortlisted": groups.get("not_shortlisted", 0),
+		"sent": frappe.db.count("Application", {"job_opening": job_opening, "regret_sent_on": ["is", "set"]}),
+		"enabled": bool(frappe.db.get_value("Recruitment Email Rule", "shortlisting_regret", "enabled")),
+	}
+
+
+@frappe.whitelist(methods=["POST"])
+def send_regret_emails(job_opening, groups=None):
+	"""Workflow: regrets to everyone screened out of a job, sent together.
+	groups: ["not_eligible", "not_shortlisted"] (both by default). Applications
+	that already had a regret are skipped."""
+	if not can_shortlist(job_opening):
+		frappe.throw(_("Only the shortlisting committee for this job can send regrets."), frappe.PermissionError)
+	if not frappe.db.get_value("Recruitment Email Rule", "shortlisting_regret", "enabled"):
+		frappe.throw(_("The 'Regret after screening' email is switched off in Email Setup."))
+	groups = set(frappe.parse_json(groups) if isinstance(groups, str) else (groups or ["not_eligible", "not_shortlisted"]))
+
+	sent = []
+	for row in frappe.get_all("Application", filters=_regret_filters(job_opening), fields=["name", "eligibility_status"]):
+		group = "not_eligible" if row.eligibility_status == "Not Eligible" else "not_shortlisted"
+		if group not in groups:
+			continue
+		app = frappe.get_doc("Application", row.name)
+		_candidate_event("shortlisting_regret", app)
+		app.add_comment("Info", _("Regret email sent by {0}.").format(frappe.utils.get_fullname(frappe.session.user)))
+		sent.append(row.name)
+	return {"sent": len(sent), "applications": sent}
 
 
 # ------------------------------------------------------------ 1:N ratio
@@ -454,4 +508,5 @@ def shortlisting_summary(job):
 		"committee": {**committee, "members": members} if committee else None,
 		"can_create_committee": not committee and bool(frappe.has_permission("Shortlisting Committee", "create")),
 		"can_shortlist": can_shortlist(job.name),
+		"regret": regret_pending(job.name),
 	}

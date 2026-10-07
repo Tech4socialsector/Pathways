@@ -100,8 +100,8 @@ TEMPLATES = {
 	),
 }
 
-JOB_VARS = "job_title, job_code, department, vacancies, deadline, posting_link, job_link, recipient_name"
-CANDIDATE_VARS = "candidate_name, application_id, job_title, recipient_name"
+JOB_VARS = "job_title, job_code, department, vacancies, deadline, posting_link, job_link, recipient_name, contact_email"
+CANDIDATE_VARS = "candidate_name, application_id, job_title, recipient_name, contact_email"
 
 # (stage, event, label, when, template, recipients, automatic, enabled, variables)
 EVENTS = [
@@ -122,6 +122,9 @@ EVENTS = [
 		"Regret Mail", {"send_to_candidate": 1}, True, False, CANDIDATE_VARS),
 	("Screening & Shortlisting", "candidate_not_shortlisted", "Regret: not shortlisted (to candidate)", "The committee rejects a candidate at shortlisting. Off by default.",
 		"Regret Mail", {"send_to_candidate": 1}, True, False, CANDIDATE_VARS),
+	("Screening & Shortlisting", "shortlisting_regret", "Regret after screening (sent together)",
+		"Sent from a job's Shortlisting card to every not-eligible or not-shortlisted candidate who has not had a regret yet.",
+		"Regret Mail", {"send_to_candidate": 1}, False, True, CANDIDATE_VARS),
 	("Screening & Shortlisting", "candidate_shortlisted", "Shortlisted (to candidate)", "The committee shortlists a candidate. Off by default: the interview invite usually follows.",
 		"Shortlisted Notice", {"send_to_candidate": 1}, True, False, CANDIDATE_VARS),
 	("Interviews", "interview_invite_round1", "Interview invite: Round 1 / HR interaction", "Round 1 is scheduled (workflow step 13).",

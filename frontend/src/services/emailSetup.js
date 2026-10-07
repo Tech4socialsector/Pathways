@@ -25,6 +25,9 @@ export const emailSetupService = {
   deleteRule(event) {
     return callMethod('pathways.api.email_setup.delete_email_rule', { event })
   },
+  saveReplyTo(email) {
+    return callMethod('pathways.api.email_setup.save_reply_to', { email })
+  },
   toggleRule(event, enabled) {
     return callMethod('pathways.api.email_setup.toggle_email_rule', { event, enabled })
   },

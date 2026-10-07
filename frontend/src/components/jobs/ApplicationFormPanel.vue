@@ -24,6 +24,15 @@
     <!-- Read view -->
     <div v-if="!editing" class="flex flex-col gap-5 text-sm">
       <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div v-if="job.application_start" class="flex items-center gap-3 rounded-lg bg-gray-50 px-3 py-2.5 sm:col-span-2">
+          <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gray-200 text-gray-700">
+            <FeatherIcon name="unlock" class="h-4 w-4" />
+          </div>
+          <div>
+            <div class="text-xs text-gray-600">Applications open from</div>
+            <div class="font-semibold text-gray-900">{{ formatDateTime(job.application_start) }}</div>
+          </div>
+        </div>
         <div class="flex items-center gap-3 rounded-lg bg-brand-50 px-3 py-2.5">
           <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-100 text-brand-700">
             <FeatherIcon name="calendar" class="h-4 w-4" />
@@ -123,6 +132,12 @@
         This job is live. Changes apply to new applicants only; submitted applications keep the answers they gave.
       </div>
       <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <FormControl
+          label="Applications open from (optional)"
+          type="datetime-local"
+          v-model="form.application_start"
+          description="Empty: open as soon as the job is advertised."
+        />
         <FormControl label="Application Deadline" type="datetime-local" v-model="form.application_deadline" />
         <label class="flex items-center gap-2 self-end pb-2 text-sm text-gray-700">
           <input v-model="form.require_postgraduate" type="checkbox" class="rounded border-gray-300" />
@@ -250,6 +265,7 @@ const error = ref('')
 const documentTypes = ref([])
 const form = reactive({
   application_deadline: '',
+  application_start: '',
   require_postgraduate: false,
   application_instructions: '',
   screening_questions: [],
@@ -284,6 +300,7 @@ async function startEdit() {
       ? dayjs(props.job.application_deadline).format('YYYY-MM-DDTHH:mm')
       : '',
     require_postgraduate: !!props.job.require_postgraduate,
+    application_start: props.job.application_start ? dayjs(props.job.application_start).format('YYYY-MM-DDTHH:mm') : '',
     application_instructions: props.job.application_instructions || '',
     screening_questions: (props.job.screening_questions || []).map((q) => ({
       question: q.question,
@@ -358,6 +375,7 @@ async function save() {
         ? dayjs(form.application_deadline).format('YYYY-MM-DD HH:mm:ss')
         : null,
       require_postgraduate: form.require_postgraduate ? 1 : 0,
+      application_start: form.application_start ? dayjs(form.application_start).format('YYYY-MM-DD HH:mm:ss') : null,
       application_instructions: form.application_instructions,
       screening_questions: form.screening_questions.map((q, idx) => ({
         question: q.question.trim(),

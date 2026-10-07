@@ -86,7 +86,7 @@
             Who approves Green Sheets is set in Master Setup &rsaquo; Approval Chains, not here.
           </div>
 
-          <div class="min-h-0 flex-1 overflow-auto rounded-lg border bg-white">
+          <div class="isolate min-h-0 flex-1 overflow-auto rounded-lg border bg-white">
             <table class="w-full text-sm">
               <thead class="sticky top-0 z-10 bg-gray-50 text-left text-xs uppercase text-gray-500 shadow-[inset_0_-1px_0_theme(colors.gray.200)]">
                 <tr>
@@ -154,7 +154,7 @@
               <Autocomplete
                 placeholder="Search users by name or email"
                 :options="userOptions"
-                :model-value="userToAdd"
+                :model-value="userToAdd || ''"
                 @update:query="searchUsers"
                 @update:model-value="(opt) => (userToAdd = opt)"
               />

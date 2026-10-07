@@ -63,6 +63,30 @@
             <div class="mb-1 text-gray-500">Justification</div>
             <div class="prose prose-sm max-w-none text-gray-900" v-html="toHtml(current.justification_note)" />
           </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <a
+              v-for="doc in sheetDocuments"
+              :key="doc.label"
+              :href="doc.url"
+              target="_blank"
+              rel="noopener"
+              class="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium text-gray-700 hover:border-brand-200 hover:bg-brand-50 hover:text-brand-700"
+            >
+              <FeatherIcon name="paperclip" class="h-3.5 w-3.5" />{{ doc.label }}
+            </a>
+            <FileUploader
+              v-if="current.docstatus === 1 && (perms.can_create || perms.can_override_status)"
+              file-types=".pdf,.jpg,.jpeg,.png"
+              :upload-args="{ doctype: 'Pre-Recruitment Green Sheet', docname: current.name, private: true }"
+              @success="(f) => run('signed', () => greenSheetService.attachSignedCopy(current.name, f.file_url), 'Signed Green Sheet uploaded.')"
+            >
+              <template #default="{ openFileSelector, uploading }">
+                <Button size="sm" variant="outline" icon-left="upload" :loading="uploading || busy === 'signed'" @click="openFileSelector">
+                  {{ current.signed_copy_attachment ? 'Replace signed copy' : 'Upload signed copy' }}
+                </Button>
+              </template>
+            </FileUploader>
+          </div>
         </div>
 
         <div v-if="current.status === 'Returned for Revision' && lastReturn" class="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
@@ -179,6 +203,24 @@
             type="number"
             v-model="form.duration_of_ad_days"
           />
+          <div v-for="slot in FORM_UPLOADS" :key="slot.field">
+            <span class="mb-1.5 block text-sm text-gray-700">{{ slot.label }}</span>
+            <div class="flex flex-wrap items-center gap-2">
+              <a v-if="form[slot.field]" :href="form[slot.field]" target="_blank" class="max-w-xs truncate text-sm text-brand-700 hover:underline">
+                {{ form[slot.field].split('/').pop() }}
+              </a>
+              <FileUploader
+                :file-types="slot.types"
+                :upload-args="{ doctype: 'Job Opening', docname: job.name, private: true }"
+                @success="(f) => (form[slot.field] = f.file_url)"
+              >
+                <template #default="{ openFileSelector, uploading }">
+                  <Button size="sm" icon-left="paperclip" :loading="uploading" @click="openFileSelector">{{ form[slot.field] ? 'Replace' : 'Attach' }}</Button>
+                </template>
+              </FileUploader>
+              <Button v-if="form[slot.field]" size="sm" variant="ghost" @click="form[slot.field] = ''">Remove</Button>
+            </div>
+          </div>
         </div>
       </template>
       <template #actions>
@@ -246,7 +288,7 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { toast } from '@/utils/notify'
 import dayjs from 'dayjs'
-import { FeatherIcon } from 'frappe-ui'
+import { FeatherIcon, FileUploader } from 'frappe-ui'
 import StatusBadge from '@/components/common/StatusBadge.vue'
 import SectionCard from '@/components/common/SectionCard.vue'
 import RecruitmentTimeline from '@/components/common/RecruitmentTimeline.vue'
@@ -363,13 +405,28 @@ async function afterChange() {
 const showForm = ref(false)
 const saving = ref('')
 const formError = ref('')
-const form = reactive({ name: null, justification_note: '', duration_of_ad_days: '' })
+const form = reactive({ name: null, justification_note: '', duration_of_ad_days: '', jd_attachment: '', supporting_attachment: '' })
+
+const FORM_UPLOADS = [
+  { field: 'jd_attachment', label: 'Job Description (final, as per template)', types: '.pdf,.doc,.docx' },
+  { field: 'supporting_attachment', label: 'Other supporting document (optional)', types: '.pdf,.doc,.docx,.jpg,.jpeg,.png' },
+]
+
+const sheetDocuments = computed(() =>
+  [
+    { label: 'Job Description', url: current.value?.jd_attachment },
+    { label: 'Supporting document', url: current.value?.supporting_attachment },
+    { label: 'Signed Green Sheet', url: current.value?.signed_copy_attachment },
+  ].filter((d) => d.url),
+)
 
 function openForm(sheet = null) {
   Object.assign(form, {
     name: sheet?.name || null,
     justification_note: toPlainText(sheet?.justification_note),
     duration_of_ad_days: sheet?.duration_of_ad_days || '',
+    jd_attachment: sheet?.jd_attachment || '',
+    supporting_attachment: sheet?.supporting_attachment || '',
   })
   formError.value = ''
   showForm.value = true
@@ -390,7 +447,12 @@ async function saveForm(submit) {
   try {
     await greenSheetService.saveGreenSheet(
       props.job.name,
-      { justification_note: form.justification_note.trim(), duration_of_ad_days: days },
+      {
+        justification_note: form.justification_note.trim(),
+        duration_of_ad_days: days,
+        jd_attachment: form.jd_attachment,
+        supporting_attachment: form.supporting_attachment,
+      },
       { name: form.name, submit },
     )
     showForm.value = false

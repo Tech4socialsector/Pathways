@@ -52,6 +52,10 @@
             </div>
 
             <div class="rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm">
+              <div class="mb-2 font-semibold text-gray-900">Reply-to address</div>
+              <FormControl type="email" v-model="replyTo" placeholder="recruitment@nls.ac.in" autocomplete="off" name="reply-to" />
+              <Button class="mt-2 w-full" variant="outline" :loading="savingReplyTo" @click="saveReplyTo">Save reply-to</Button>
+              <p class="mt-1 mb-4 text-xs text-gray-500">Candidates' replies go here. Also usable in templates as {{ '{' + '{ contact_email }' + '}' }}.</p>
               <div class="mb-2 font-semibold text-gray-900">Send a test email</div>
               <FormControl type="email" v-model="testTo" placeholder="you@nls.ac.in" />
               <Button class="mt-2 w-full" variant="solid" icon-left="send" :class="BTN_DARK" :loading="sendingTest" :disabled="!setup.account" @click="sendTest">
@@ -103,6 +107,13 @@
               <div class="flex min-w-[10rem] flex-wrap gap-1">
                 <span v-for="r in recipientChips(row)" :key="r" class="rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-medium text-brand-700">{{ r }}</span>
                 <span v-if="!recipientChips(row).length" class="rounded-full bg-red-50 px-2 py-0.5 text-[11px] font-medium text-red-700">No recipients</span>
+                <span
+                  v-else-if="row.empty_roles?.length"
+                  class="rounded-full bg-orange-50 px-2 py-0.5 text-[11px] font-medium text-orange-800"
+                  :title="`No user holds: ${row.empty_roles.join(', ')}. Assign the role in Roles & Permissions.`"
+                >
+                  No one holds {{ row.empty_roles.map((r) => r.replace(/^Pathways /, '')).join(', ') }}
+                </span>
               </div>
             </template>
             <template #cell-sending="{ row }">
@@ -396,6 +407,7 @@ async function load() {
   try {
     setup.value = await emailSetupService.getSetup()
     fillAccount()
+    replyTo.value = setup.value.reply_to || ''
   } catch (e) {
     loadError.value = e?.messages?.[0] || 'Only administrators can change email settings.'
   } finally {
@@ -437,6 +449,20 @@ async function saveAccount() {
     accountError.value = e?.messages?.[0] || 'Could not connect to the mail server. Check the details and the password.'
   } finally {
     savingAccount.value = false
+  }
+}
+
+const replyTo = ref('')
+const savingReplyTo = ref(false)
+async function saveReplyTo() {
+  savingReplyTo.value = true
+  try {
+    replyTo.value = await emailSetupService.saveReplyTo(replyTo.value)
+    toast({ title: replyTo.value ? `Replies will go to ${replyTo.value}.` : 'Reply-to cleared.', icon: 'check', iconClasses: 'text-green-500' })
+  } catch (e) {
+    toast({ title: e?.messages?.[0] || 'Could not save it.', icon: 'alert-triangle', iconClasses: 'text-red-500' })
+  } finally {
+    savingReplyTo.value = false
   }
 }
 

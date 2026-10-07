@@ -112,7 +112,19 @@ def get_required_documents(job):
 def is_accepting_applications(job):
 	if job.status != "Advertised":
 		return False
-	return not job.application_deadline or get_datetime(job.application_deadline) > now_datetime()
+	now = now_datetime()
+	if job.get("application_start") and get_datetime(job.application_start) > now:
+		return False
+	return not job.application_deadline or get_datetime(job.application_deadline) > now
+
+
+def not_accepting_message(job):
+	"""Why a job is not taking applications, for error messages."""
+	if job.status == "Advertised" and job.get("application_start") and get_datetime(job.application_start) > now_datetime():
+		return _("Applications for this position open on {0}.").format(
+			frappe.utils.format_datetime(job.application_start, "dd MMM yyyy, h:mm a")
+		)
+	return _("Applications for this position are closed.")
 
 
 def get_form_config(job):
@@ -133,7 +145,10 @@ def get_form_config(job):
 	]
 	return {
 		"application_deadline": job.application_deadline,
+		"application_start": job.get("application_start"),
 		"is_open": is_accepting_applications(job),
+		# Advertised, but applications open later.
+		"opens_later": bool(job.get("application_start") and get_datetime(job.application_start) > now_datetime()),
 		"require_postgraduate": cint(job.require_postgraduate),
 		"screening_questions": questions,
 		"required_documents": get_required_documents(job),

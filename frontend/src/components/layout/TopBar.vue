@@ -55,18 +55,57 @@
       </div>
     </div>
 
-    <RouterLink
-      v-if="session.hasMenu('approvals')"
-      to="/approvals"
-      class="relative flex h-8 w-8 items-center justify-center rounded-md hover:bg-white/10"
-      :title="pendingCount ? `${pendingCount} pending approval${pendingCount === 1 ? '' : 's'}` : 'My Approvals'"
-    >
-      <FeatherIcon name="bell" class="h-4 w-4" />
-      <span
-        v-if="pendingCount"
-        class="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-white px-1 text-[10px] font-bold text-brand-700"
-      >{{ pendingCount > 9 ? '9+' : pendingCount }}</span>
-    </RouterLink>
+    <!-- Bell: what's waiting for me; click one to review it. -->
+    <div v-if="session.hasMenu('approvals')" ref="bellRoot" class="relative">
+      <button
+        type="button"
+        class="relative flex h-8 w-8 items-center justify-center rounded-md hover:bg-white/10"
+        :class="bellOpen && 'bg-white/10'"
+        :title="pendingCount ? `${pendingCount} pending approval${pendingCount === 1 ? '' : 's'}` : 'Notifications'"
+        @click="toggleBell"
+      >
+        <FeatherIcon name="bell" class="h-4 w-4" />
+        <span
+          v-if="pendingCount"
+          class="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-white px-1 text-[10px] font-bold text-brand-700"
+        >{{ pendingCount > 9 ? '9+' : pendingCount }}</span>
+      </button>
+
+      <div v-if="bellOpen" class="absolute right-0 top-10 z-40 w-96 overflow-hidden rounded-lg border bg-white text-gray-900 shadow-xl">
+        <div class="flex items-center justify-between border-b px-4 py-2.5">
+          <span class="font-semibold">Pending approvals</span>
+          <span v-if="pendingCount" class="rounded-full bg-brand-50 px-2 py-0.5 text-xs font-semibold text-brand-700">{{ pendingCount }}</span>
+        </div>
+        <div class="max-h-96 overflow-y-auto">
+          <div v-if="!pending.length" class="flex flex-col items-center gap-2 px-4 py-8 text-sm text-gray-500">
+            <FeatherIcon name="check-circle" class="h-6 w-6 text-green-500" />
+            You're all caught up.
+          </div>
+          <button
+            v-for="item in pending"
+            :key="`${item.doctype}::${item.name}`"
+            type="button"
+            class="flex w-full items-start gap-3 border-b px-4 py-3 text-left last:border-0 hover:bg-brand-50"
+            @click="openPending(item)"
+          >
+            <span class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-50 text-brand-700">
+              <FeatherIcon name="file-text" class="h-4 w-4" />
+            </span>
+            <span class="min-w-0 flex-1">
+              <span class="block truncate text-sm font-medium">{{ item.job_title || item.job_opening }}</span>
+              <span class="block truncate text-xs text-gray-500">{{ item.doctype }} · {{ item.name }}</span>
+              <span class="mt-0.5 block truncate text-xs text-brand-700">
+                Awaiting {{ item.approver_label }}<template v-if="item.is_override"> (on behalf)</template>
+              </span>
+            </span>
+            <span class="shrink-0 text-xs text-gray-400">{{ timeAgo(item.submitted_on) }}</span>
+          </button>
+        </div>
+        <RouterLink to="/approvals" class="block border-t bg-gray-50 px-4 py-2 text-center text-sm font-medium text-brand-700 hover:bg-gray-100" @click="bellOpen = false">
+          View all in My Approvals
+        </RouterLink>
+      </div>
+    </div>
 
     <Dropdown :options="appMenuOptions" placement="right">
       <template #default="{ open: menuOpen }">
@@ -83,7 +122,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { Avatar, Dropdown, FeatherIcon } from 'frappe-ui'
 import { useSessionStore } from '@/stores/session'
@@ -154,17 +193,44 @@ function closeSoon() {
 }
 
 // ----- pending approvals
-const pendingCount = ref(0)
+const pending = ref([])
+const pendingCount = computed(() => pending.value.length)
+const bellOpen = ref(false)
+const bellRoot = ref(null)
 
 async function loadPending() {
   if (!session.hasMenu('approvals')) return
   try {
-    const pending = await approvalService.getMyPendingApprovals()
-    pendingCount.value = Array.isArray(pending) ? pending.length : 0
+    const rows = await approvalService.getMyPendingApprovals()
+    pending.value = Array.isArray(rows) ? rows : []
   } catch {
-    pendingCount.value = 0
+    pending.value = []
   }
 }
+
+function toggleBell() {
+  bellOpen.value = !bellOpen.value
+  if (bellOpen.value) loadPending()
+}
+
+function openPending(item) {
+  bellOpen.value = false
+  router.push({ path: '/approvals', query: { open: `${item.doctype}::${item.name}` } })
+}
+
+function timeAgo(value) {
+  if (!value) return ''
+  const mins = Math.round((Date.now() - new Date(String(value).replace(' ', 'T'))) / 60000)
+  if (mins < 60) return `${Math.max(mins, 1)}m`
+  if (mins < 1440) return `${Math.round(mins / 60)}h`
+  return `${Math.round(mins / 1440)}d`
+}
+
+function onOutsideBell(e) {
+  if (bellOpen.value && bellRoot.value && !bellRoot.value.contains(e.target)) bellOpen.value = false
+}
+onMounted(() => document.addEventListener('mousedown', onOutsideBell))
+onBeforeUnmount(() => document.removeEventListener('mousedown', onOutsideBell))
 
 onMounted(async () => {
   await session.fetchRoles()

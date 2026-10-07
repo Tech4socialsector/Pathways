@@ -102,6 +102,9 @@ class JobOpening(Document):
 		self.set_advertisement_url()
 
 	def on_update(self):
+		if self.application_start and self.application_deadline and get_datetime(self.application_start) >= get_datetime(self.application_deadline):
+			frappe.throw(_("Applications must open before the Application Deadline."))
+
 		if self.status == "Advertised" and self.has_value_changed("status"):
 			from pathways.utils.communication import job_email_context, send_event
 

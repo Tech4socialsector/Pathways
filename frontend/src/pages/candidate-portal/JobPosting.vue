@@ -40,7 +40,7 @@
                 :disabled="!isOpen"
                 @click="apply"
               >
-                {{ isOpen ? 'Apply Now' : 'Applications closed' }}
+                {{ isOpen ? 'Apply Now' : closedLabel }}
                 <FeatherIcon v-if="isOpen" name="arrow-right" class="h-5 w-5" />
               </button>
               <p v-if="deadline" class="mt-2 text-center text-xs text-white/80">{{ deadline.short }}</p>
@@ -179,7 +179,7 @@
             </dl>
             <div class="flex flex-col gap-2 border-t p-5">
               <Button variant="solid" size="lg" :class="BTN_BRAND" :disabled="!isOpen" @click="apply">
-                {{ isOpen ? 'Apply Now' : 'Applications closed' }}
+                {{ isOpen ? 'Apply Now' : closedLabel }}
               </Button>
               <Button variant="outline" icon-left="link" :class="BTN_BRAND_OUTLINE" @click="copyLink">
                 {{ copied ? 'Link copied' : 'Copy link to this job' }}
@@ -210,6 +210,10 @@ const { job, loading, fetchJob } = useJobOpeningDetail()
 
 const form = computed(() => job.value?.form || {})
 const isOpen = computed(() => form.value.is_open !== false)
+const opensOn = computed(() =>
+  form.value.opens_later && form.value.application_start ? dayjs(form.value.application_start).format('D MMM YYYY, h:mm A') : '',
+)
+const closedLabel = computed(() => (opensOn.value ? `Opens ${opensOn.value}` : 'Applications closed'))
 
 const chips = computed(() =>
   [

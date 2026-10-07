@@ -55,6 +55,27 @@
         </div>
       </div>
 
+      <!-- Regret emails, sent together once screening is done -->
+      <div v-if="s.can_shortlist && s.regret">
+        <div class="mb-2 text-xs font-bold uppercase tracking-wide text-brand-700">Regret emails</div>
+        <div class="rounded-lg border px-3 py-2.5">
+          <div class="flex justify-between text-gray-700"><span>Not eligible, not yet sent</span><span class="font-semibold">{{ s.regret.not_eligible }}</span></div>
+          <div class="mt-1 flex justify-between text-gray-700"><span>Not shortlisted, not yet sent</span><span class="font-semibold">{{ s.regret.not_shortlisted }}</span></div>
+          <div class="mt-1 flex justify-between text-xs text-gray-500"><span>Already sent</span><span>{{ s.regret.sent }}</span></div>
+          <Button
+            class="mt-3 w-full"
+            size="sm"
+            variant="outline"
+            icon-left="send"
+            :disabled="!regretTotal || !s.regret.enabled"
+            @click="regretOpen = true"
+          >
+            Send regret emails ({{ regretTotal }})
+          </Button>
+          <p v-if="!s.regret.enabled" class="mt-1.5 text-xs text-orange-700">Switched off in Email Setup ("Regret after screening").</p>
+        </div>
+      </div>
+
       <!-- Documents by type -->
       <div v-if="s.can_shortlist && s.applications">
         <div class="mb-2 text-xs font-bold uppercase tracking-wide text-brand-700">Applicant documents</div>
@@ -74,19 +95,44 @@
       </div>
     </div>
 
+    <Dialog v-model="regretOpen" :options="{ title: 'Send regret emails', size: 'lg' }">
+      <template #body-content>
+        <div class="flex flex-col gap-3 text-sm">
+          <p class="text-gray-600">Each candidate gets the "Regret Mail" template once. Candidates who already had a regret are skipped.</p>
+          <label class="flex items-center gap-2.5">
+            <input v-model="regretGroups" type="checkbox" value="not_eligible" class="rounded border-gray-300 text-brand-700 focus:ring-brand-700" />
+            Not eligible ({{ s.regret?.not_eligible || 0 }})
+          </label>
+          <label class="flex items-center gap-2.5">
+            <input v-model="regretGroups" type="checkbox" value="not_shortlisted" class="rounded border-gray-300 text-brand-700 focus:ring-brand-700" />
+            Not shortlisted ({{ s.regret?.not_shortlisted || 0 }})
+          </label>
+        </div>
+      </template>
+      <template #actions>
+        <div class="flex justify-end gap-2">
+          <Button variant="ghost" @click="regretOpen = false">Cancel</Button>
+          <Button variant="solid" :class="BTN_BRAND" :loading="sendingRegret" :disabled="!regretSelected" @click="sendRegrets">
+            Send {{ regretSelected }} email{{ regretSelected === 1 ? '' : 's' }}
+          </Button>
+        </div>
+      </template>
+    </Dialog>
+
     <CommitteeSetupDialog v-model:open="committeeOpen" :job-opening="job.name" @created="emit('changed')" />
   </SectionCard>
 </template>
 
 <script setup>
 import { computed, ref } from 'vue'
-import { Button, FeatherIcon, FormControl } from 'frappe-ui'
+import { Button, Dialog, FeatherIcon, FormControl } from 'frappe-ui'
 import SectionCard from '@/components/common/SectionCard.vue'
 import CommitteeSetupDialog from '@/components/common/CommitteeSetupDialog.vue'
 import { BTN_BRAND } from '@/utils/buttonStyles'
 import { toast } from '@/utils/notify'
 import { applicationService } from '@/services/applications'
 import { jobOpeningService } from '@/services/jobOpenings'
+import { scoringService } from '@/services/scoring'
 
 const props = defineProps({
   job: { type: Object, required: true },
@@ -139,6 +185,27 @@ async function saveRatio() {
     toast({ title: e?.messages?.[0] || 'Could not save the ratio.', icon: 'alert-triangle', iconClasses: 'text-red-500' })
   } finally {
     savingRatio.value = false
+  }
+}
+
+// ----- regret emails
+const regretOpen = ref(false)
+const regretGroups = ref(['not_eligible', 'not_shortlisted'])
+const sendingRegret = ref(false)
+const regretTotal = computed(() => (s.value.regret?.not_eligible || 0) + (s.value.regret?.not_shortlisted || 0))
+const regretSelected = computed(() => regretGroups.value.reduce((n, g) => n + (s.value.regret?.[g] || 0), 0))
+
+async function sendRegrets() {
+  sendingRegret.value = true
+  try {
+    const r = await scoringService.sendRegretEmails(props.job.name, regretGroups.value)
+    regretOpen.value = false
+    toast({ title: `${r.sent} regret email${r.sent === 1 ? '' : 's'} queued.`, icon: 'check', iconClasses: 'text-green-500' })
+    emit('changed')
+  } catch (e) {
+    toast({ title: e?.messages?.[0] || 'Could not send the regrets.', icon: 'alert-triangle', iconClasses: 'text-red-500' })
+  } finally {
+    sendingRegret.value = false
   }
 }
 </script>

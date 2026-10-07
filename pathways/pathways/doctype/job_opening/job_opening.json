@@ -25,6 +25,7 @@
   "jd_attachment",
   "jd_text",
   "application_form_section",
+  "application_start",
   "application_deadline",
   "column_break_af",
   "require_postgraduate",
@@ -178,6 +179,12 @@
    "label": "Application Form"
   },
   {
+   "fieldname": "application_start",
+   "fieldtype": "Datetime",
+   "label": "Applications Open From",
+   "description": "Leave empty to accept applications as soon as the job is advertised."
+  },
+  {
    "description": "Applications are accepted until this date and time. Required before the job can be advertised.",
    "fieldname": "application_deadline",
    "fieldtype": "Datetime",
@@ -322,7 +329,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-10-07 14:00:00.000000",
+ "modified": "2026-10-07 16:30:00.000000",
  "modified_by": "Administrator",
  "module": "Pathways",
  "name": "Job Opening",

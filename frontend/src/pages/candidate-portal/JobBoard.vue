@@ -163,6 +163,9 @@ const visibleJobs = computed(() => {
 })
 
 function deadlineOf(job) {
+  if (job.application_start && dayjs(job.application_start).isAfter(dayjs())) {
+    return { text: `Opens ${dayjs(job.application_start).format('D MMM YYYY')}`, urgent: false }
+  }
   if (!job.application_deadline) return { text: 'Open until filled', urgent: false }
   const close = dayjs(job.application_deadline)
   const days = close.startOf('day').diff(dayjs().startOf('day'), 'day')

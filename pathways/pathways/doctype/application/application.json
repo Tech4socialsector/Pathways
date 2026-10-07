@@ -20,6 +20,7 @@
   "column_break_elig",
   "eligibility_checked_by",
   "eligibility_checked_on",
+  "regret_sent_on",
   "details_tab",
   "current_salary",
   "expected_salary",
@@ -179,6 +180,12 @@
    "fieldname": "eligibility_checked_on",
    "fieldtype": "Datetime",
    "label": "Checked On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "regret_sent_on",
+   "fieldtype": "Datetime",
+   "label": "Regret Email Sent On",
    "read_only": 1
   },
   {
@@ -466,7 +473,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-10-07 14:00:00.000000",
+ "modified": "2026-10-07 16:30:00.000000",
  "modified_by": "Administrator",
  "module": "Pathways",
  "name": "Application",

@@ -8,7 +8,7 @@
       <Autocomplete
         placeholder="Select a position"
         :options="positionOptions.options.value"
-        :model-value="form.position"
+        :model-value="form.position || ''"
         @update:model-value="(opt) => selectPosition(opt?.value ?? '')"
       />
       <p class="mt-1 text-xs text-gray-500">
@@ -22,7 +22,7 @@
         <Autocomplete
           placeholder="Select a track"
           :options="trackOptions.options.value"
-          :model-value="form.track"
+          :model-value="form.track || ''"
           @update:model-value="(opt) => (form.track = opt?.value ?? '')"
         />
       </div>
@@ -31,7 +31,7 @@
         <Autocomplete
           placeholder="Select a department"
           :options="departmentOptions.options.value"
-          :model-value="form.department"
+          :model-value="form.department || ''"
           @update:model-value="(opt) => (form.department = opt?.value ?? '')"
         />
       </div>
@@ -40,7 +40,7 @@
         <Autocomplete
           placeholder="Select a designation"
           :options="designationOptions.options.value"
-          :model-value="form.designation"
+          :model-value="form.designation || ''"
           @update:model-value="(opt) => (form.designation = opt?.value ?? '')"
         />
       </div>
