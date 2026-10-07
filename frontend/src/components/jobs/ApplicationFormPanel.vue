@@ -65,6 +65,9 @@
                 <span class="rounded bg-gray-100 px-1.5 py-0.5 text-gray-600">{{ q.answer_type }}</span>
                 <span v-if="q.is_mandatory" class="rounded bg-brand-100 px-1.5 py-0.5 font-medium text-brand-800">Required</span>
                 <span v-if="q.ask_details_if_yes" class="rounded px-1.5 py-0.5 font-medium text-brand-700">Details if Yes</span>
+                <span v-if="q.show_if_previous_answer" class="rounded bg-gray-100 px-1.5 py-0.5 text-gray-600">
+                  Only if previous answer is “{{ q.show_if_previous_answer }}”
+                </span>
               </div>
             </div>
           </li>
@@ -188,6 +191,14 @@
               v-model="q.details_label"
               placeholder="Please describe the relevant work experience in brief."
             />
+            <FormControl
+              v-if="idx > 0"
+              class="sm:col-span-2"
+              label="Show only if the previous answer is"
+              v-model="q.show_if_previous_answer"
+              :placeholder="previousOptions(idx) ? `e.g. ${previousOptions(idx)}` : 'Leave empty to always show'"
+              description="Leave empty to always show this question."
+            />
           </div>
         </div>
       </div>
@@ -253,6 +264,15 @@ const documentGroups = computed(() => {
   ].filter((group) => group.items.length)
 })
 
+// Answers the question above can have, as a hint for the condition.
+function previousOptions(idx) {
+  const prev = form.screening_questions[idx - 1]
+  if (!prev) return ''
+  if (prev.answer_type === 'Yes/No') return 'Yes'
+  if (prev.answer_type === 'Single Choice') return (prev.options || '').split('\n').filter(Boolean).slice(-1)[0] || ''
+  return ''
+}
+
 function formatDateTime(value) {
   return dayjs(value).format('DD MMM YYYY, h:mm A')
 }
@@ -272,6 +292,7 @@ async function startEdit() {
       is_mandatory: !!q.is_mandatory,
       ask_details_if_yes: !!q.ask_details_if_yes,
       details_label: q.details_label || '',
+      show_if_previous_answer: q.show_if_previous_answer || '',
     })),
     required_documents: (props.job.required_documents || []).map((d) => ({
       document_type: d.document_type,
@@ -300,6 +321,7 @@ function addQuestion() {
     is_mandatory: true,
     ask_details_if_yes: false,
     details_label: '',
+    show_if_previous_answer: '',
   })
 }
 
@@ -337,13 +359,14 @@ async function save() {
         : null,
       require_postgraduate: form.require_postgraduate ? 1 : 0,
       application_instructions: form.application_instructions,
-      screening_questions: form.screening_questions.map((q) => ({
+      screening_questions: form.screening_questions.map((q, idx) => ({
         question: q.question.trim(),
         answer_type: q.answer_type,
         options: q.answer_type === 'Single Choice' ? q.options : '',
         is_mandatory: q.is_mandatory ? 1 : 0,
         ask_details_if_yes: q.answer_type === 'Yes/No' && q.ask_details_if_yes ? 1 : 0,
         details_label: q.details_label,
+        show_if_previous_answer: idx > 0 ? (q.show_if_previous_answer || '').trim() : '',
       })),
       required_documents: form.required_documents.map((d) => ({
         document_type: d.document_type,

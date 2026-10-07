@@ -135,3 +135,19 @@ def get_job_opening_permissions(job_opening):
 		# (see JobOpening.validate_status_transition).
 		"can_override_status": can_override_status(),
 	}
+
+
+@frappe.whitelist(methods=["POST"])
+def bulk_set_job_status(names, status):
+	"""Change Status for several Job Openings; each keeps its own rules
+	(e.g. Advertised needs an approved Green Sheet and a deadline)."""
+	from pathways.utils.bulk import run_bulk
+
+	return run_bulk(names, lambda name: update_job_opening(name, {"status": status}))
+
+
+@frappe.whitelist(methods=["POST"])
+def bulk_delete_job_openings(names):
+	from pathways.utils.bulk import run_bulk
+
+	return run_bulk(names, lambda name: frappe.delete_doc("Job Opening", name))

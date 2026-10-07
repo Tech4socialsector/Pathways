@@ -19,6 +19,15 @@ export function mobileError(value) {
   return /^[6-9][0-9]{9}$/.test(number) ? '' : 'Enter a valid 10-digit mobile number.'
 }
 
+// Mirrors validate_submission: a question with show_if_previous_answer is
+// shown (and checked) only when the question above has that answer.
+export function isQuestionVisible(q, questions, answers) {
+  if (!q.show_if_previous_answer) return true
+  const index = questions.findIndex((x) => x.idx === q.idx)
+  const previous = questions[index - 1]
+  return !!previous && isQuestionVisible(previous, questions, answers) && answers[previous.idx]?.answer === q.show_if_previous_answer
+}
+
 const blank = (v) => v === null || v === undefined || String(v).trim() === ''
 const isNumber = (v) => !blank(v) && /^\d+(\.\d+)?$/.test(String(v).trim())
 
@@ -223,6 +232,7 @@ export function validateApplication({ data, answers, documents, form, viewer }) 
 
   // --- screening questions
   for (const q of form.screening_questions) {
+    if (!isQuestionVisible(q, form.screening_questions, answers)) continue
     const a = answers[q.idx] || {}
     const key = `screening.${q.idx}`
     if (blank(a.answer)) {

@@ -571,12 +571,9 @@ def get_application_detail(application_name):
 	if frappe.db.get_value("User", frappe.session.user, "user_type") != "System User":
 		frappe.throw(_("Not permitted."), frappe.PermissionError)
 
-	candidate = frappe.db.get_value(
-		"Candidate",
-		app.candidate,
-		["full_name", "email", "mobile_number", "date_of_birth", "gender", "address"],
-		as_dict=True,
-	)
+	# Every Candidate field the page shows (candidate_fields below), not a fixed list.
+	candidate_fields = _data_fields("Candidate")
+	candidate = frappe.db.get_value("Candidate", app.candidate, [df.fieldname for df in candidate_fields], as_dict=True)
 	out = app.as_dict(no_default_fields=True)
 	out["candidate_details"] = candidate
 	out["job_title"] = frappe.db.get_value("Job Opening", app.job_opening, "job_title")
@@ -609,7 +606,7 @@ def get_application_detail(application_name):
 	out["activity"] = _application_activity(app)
 
 	out["layout"] = form_layout("Application", visible=set(out))
-	out["candidate_fields"] = [_field_def(df) for df in _data_fields("Candidate")]
+	out["candidate_fields"] = [_field_def(df) for df in candidate_fields]
 	return out
 
 
@@ -717,3 +714,18 @@ def form_layout(doctype, visible=None):
 			sec["columns"] = [col for col in sec["columns"] if col]
 		tab["sections"] = [sec for sec in tab["sections"] if sec["columns"]]
 	return [tab for tab in tabs if tab["sections"]]
+
+
+@frappe.whitelist(methods=["POST"])
+def bulk_set_application_status(names, status, remarks=None):
+	"""Change Status for several applications (list page bulk action)."""
+	from pathways.utils.bulk import run_bulk
+
+	return run_bulk(names, lambda name: set_application_status(name, status, remarks))
+
+
+@frappe.whitelist(methods=["POST"])
+def bulk_delete_applications(names):
+	from pathways.utils.bulk import run_bulk
+
+	return run_bulk(names, lambda name: frappe.delete_doc("Application", name))

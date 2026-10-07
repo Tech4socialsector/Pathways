@@ -3,7 +3,17 @@ import { createListResource } from 'frappe-ui'
 export function useApplicationList() {
   return createListResource({
     doctype: 'Application',
-    fields: ['name', 'application_id', 'candidate', 'job_opening', 'status', 'application_date'],
+    // Names, not IDs: the linked candidate's name and the job's title.
+    fields: [
+      'name',
+      'application_id',
+      'candidate',
+      'candidate.full_name as candidate_name',
+      'job_opening',
+      'job_opening.job_title as job_title',
+      'status',
+      'application_date',
+    ],
     orderBy: 'creation desc',
     // DataTable searches, filters and paginates client-side, so load all rows.
     pageLength: 1000,

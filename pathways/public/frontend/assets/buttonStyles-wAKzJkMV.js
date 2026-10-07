@@ -1,0 +1,1 @@
+const e="!bg-brand-700 !text-white hover:!bg-brand-800",t="!bg-gray-900 !text-white hover:!bg-gray-800",r="!border-brand-200 !bg-white !text-brand-700 hover:!bg-brand-50",b="!bg-green-700 !text-white hover:!bg-green-800",g="!bg-red-700 !text-white hover:!bg-red-800";export{e as B,g as a,t as b,b as c,r as d};

@@ -26,6 +26,12 @@ export const applicationService = {
       redirect_to: redirectTo,
     })
   },
+  bulkSetStatus(names, status, remarks) {
+    return callMethod('pathways.api.application.bulk_set_application_status', { names, status, remarks })
+  },
+  bulkDelete(names) {
+    return callMethod('pathways.api.application.bulk_delete_applications', { names })
+  },
   listApplicationDocuments() {
     return callMethod('pathways.api.application.list_application_documents')
   },

@@ -11,6 +11,7 @@ declare module 'vue' {
     ApplicationFormPanel: typeof import('./src/components/jobs/ApplicationFormPanel.vue')['default']
     ApplicationSubmissionPanel: typeof import('./src/components/common/ApplicationSubmissionPanel.vue')['default']
     BackButton: typeof import('./src/components/common/BackButton.vue')['default']
+    BulkResultDialog: typeof import('./src/components/common/BulkResultDialog.vue')['default']
     DataTable: typeof import('./src/components/common/DataTable.vue')['default']
     DocumentViewer: typeof import('./src/components/common/DocumentViewer.vue')['default']
     DrilldownDialog: typeof import('./src/components/common/DrilldownDialog.vue')['default']

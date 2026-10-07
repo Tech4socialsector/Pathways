@@ -3,6 +3,7 @@
     <PageHeader title="Offers" />
     <div class="flex-1 overflow-y-auto p-6">
       <DataTable
+        export-name="offers"
         :columns="columns"
         :rows="offers.data || []"
         :loading="offers.loading"

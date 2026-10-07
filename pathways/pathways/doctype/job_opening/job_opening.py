@@ -41,6 +41,9 @@ def validate_form_rows(doc):
 				frappe.throw(_("Screening question {0}: choices must be unique.").format(q.idx))
 		if q.answer_type != "Yes/No":
 			q.ask_details_if_yes = 0
+		q.show_if_previous_answer = (q.show_if_previous_answer or "").strip()
+		if q.idx == 1 and q.show_if_previous_answer:
+			frappe.throw(_("Screening question 1 has no question above it, so it cannot depend on a previous answer."))
 
 	seen = set()
 	for row in doc.required_documents or []:
@@ -77,7 +80,15 @@ FORM_SWITCHES = (
 	"max_publications",
 )
 TABLE_ROW_FIELDS = {
-	"screening_questions": ("question", "answer_type", "options", "is_mandatory", "ask_details_if_yes", "details_label"),
+	"screening_questions": (
+		"question",
+		"answer_type",
+		"options",
+		"is_mandatory",
+		"ask_details_if_yes",
+		"details_label",
+		"show_if_previous_answer",
+	),
 	"required_documents": ("document_type", "is_mandatory"),
 }
 

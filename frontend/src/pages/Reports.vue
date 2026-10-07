@@ -5,6 +5,7 @@
       <div class="rounded-lg border bg-white p-4">
         <div class="mb-3 text-sm font-semibold text-gray-900">Recruitment Pipeline</div>
         <DataTable
+        export-name="report"
           :columns="columns"
           :rows="report.data || []"
           :loading="report.loading"

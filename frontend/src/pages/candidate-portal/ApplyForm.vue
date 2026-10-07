@@ -508,7 +508,7 @@
             <div class="flex flex-col gap-5">
               <!-- answers[] is filled right after the job loads; guard the render in between. -->
               <FormField
-                v-for="q in form.screening_questions.filter((x) => answers[x.idx])"
+                v-for="q in form.screening_questions.filter((x) => answers[x.idx] && isQuestionVisible(x, form.screening_questions, answers))"
                 :key="q.idx"
                 :name="`screening.${q.idx}`"
                 :error="errors[`screening.${q.idx}`]"
@@ -694,7 +694,7 @@ import CandidatePortalLayout from '@/layouts/CandidatePortalLayout.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import UploadField from '@/components/candidate/UploadField.vue'
 import FormField from '@/components/candidate/FormField.vue'
-import { validateApplication } from '@/utils/applicationValidation'
+import { isQuestionVisible, validateApplication } from '@/utils/applicationValidation'
 import { useJobOpeningDetail } from '@/composables/useJobOpenings'
 import { useApplicationForm } from '@/composables/useApplications'
 
@@ -811,6 +811,22 @@ const instructionFacts = computed(() => {
     },
   ].filter(Boolean)
 })
+
+// A question with "show only if previous answer is X" appears only then;
+// hiding it again clears what was typed, so nothing stale is submitted.
+watch(
+  answers,
+  () => {
+    for (const q of form.value.screening_questions || []) {
+      const a = answers[q.idx]
+      if (a && (a.answer || a.details) && !isQuestionVisible(q, form.value.screening_questions, answers)) {
+        a.answer = ''
+        a.details = ''
+      }
+    }
+  },
+  { deep: true },
+)
 
 const OTHER = '__other__'
 const RANKS = [

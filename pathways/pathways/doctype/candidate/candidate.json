@@ -82,7 +82,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-09-21 00:00:00.000000",
+ "modified": "2026-10-07 11:45:00.000000",
  "modified_by": "Administrator",
  "module": "Pathways",
  "name": "Candidate",
@@ -135,5 +135,8 @@
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],
- "track_changes": 1
+ "track_changes": 1,
+ "title_field": "full_name",
+ "show_title_field_in_link": 1,
+ "search_fields": "email,mobile_number"
 }

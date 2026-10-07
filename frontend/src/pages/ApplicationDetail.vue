@@ -79,10 +79,19 @@
           <div class="flex min-w-0 flex-col gap-6">
             <ApplicationSubmissionPanel :app="detail" :loading="detailLoading" :error="detailError" />
 
-            <SectionCard title="Activity" icon="clock" subtitle="Status changes and notes, newest first">
+            <SectionCard
+              title="Activity"
+              icon="clock"
+              :subtitle="activityOpen ? 'Status changes and notes, newest first' : 'Latest update'"
+            >
+              <template v-if="activity.length > 1" #actions>
+                <Button size="sm" variant="ghost" :icon-right="activityOpen ? 'chevron-up' : 'chevron-down'" @click="activityOpen = !activityOpen">
+                  {{ activityOpen ? 'Collapse' : `Show all (${activity.length})` }}
+                </Button>
+              </template>
               <div v-if="!activity.length" class="text-sm text-gray-500">No activity yet.</div>
               <ol v-else class="relative ml-3 border-l border-gray-200">
-                <li v-for="(event, idx) in activity" :key="idx" class="relative pb-5 pl-6 last:pb-0">
+                <li v-for="(event, idx) in shownActivity" :key="idx" class="relative pb-5 pl-6 last:pb-0">
                   <span
                     class="absolute -left-[13px] top-0 flex h-6 w-6 items-center justify-center rounded-full ring-4 ring-white"
                     :class="activityStyle(event).dot"
@@ -113,6 +122,7 @@
               :rubric="rubric"
               :show-summary="!detail"
               @scored="onScored"
+              @committee-created="loadReviewIfAllowed(props.id)"
             />
             <SectionCard title="At a Glance" icon="activity">
               <dl class="flex flex-col divide-y divide-gray-100 text-sm">
@@ -151,9 +161,6 @@
                       <span v-else class="font-medium text-gray-700">not started</span>
                     </span>
                   </dd>
-                  <Button class="mt-3 w-full" :class="BTN_DARK" variant="solid" icon-left="eye" @click="openDocuments">
-                    View documents
-                  </Button>
                 </div>
               </dl>
             </SectionCard>
@@ -309,6 +316,7 @@ async function loadStatusOptions(id) {
 
 // A shortlisting decision moves the status, which several parts show.
 function onScored() {
+  loadReviewIfAllowed(props.id)
   fetchStatus(props.id)
   loadDetail(props.id)
   loadStatusOptions(props.id)
@@ -342,6 +350,9 @@ const detailError = ref('')
 const candidate = computed(() => detail.value?.candidate_details || {})
 const otherApplications = computed(() => detail.value?.other_applications || [])
 const activity = computed(() => detail.value?.activity || [])
+// Collapsed by default: only the latest event until "Show all".
+const activityOpen = ref(false)
+const shownActivity = computed(() => (activityOpen.value ? activity.value : activity.value.slice(0, 1)))
 const showReview = computed(() => canReview.value && !!review.value)
 
 function activityStyle(event) {

@@ -20,9 +20,25 @@
         clickable
         empty-title="No job openings"
         search-placeholder="Search job openings..."
+        export-name="job-openings"
         @row-click="(job) => router.push(`/jobs/${job.name}`)"
       >
         <template #cell-status="{ value }"><StatusBadge :status="value" /></template>
+        <template v-if="session.can('Job Opening', 'write')" #bulk-actions="{ rows, clear }">
+          <Button size="sm" variant="solid" icon-left="refresh-cw" :class="BTN_BRAND" @click="openBulk('status', rows, clear)">
+            Change Status
+          </Button>
+          <Button
+            v-if="session.can('Job Opening', 'delete')"
+            size="sm"
+            variant="solid"
+            icon-left="trash-2"
+            :class="BTN_DANGER"
+            @click="openBulk('delete', rows, clear)"
+          >
+            Delete
+          </Button>
+        </template>
       </DataTable>
     </div>
 
@@ -34,6 +50,37 @@
         <Button variant="solid" :loading="submitting" @click="submitCreate">Create</Button>
       </template>
     </Dialog>
+    <Dialog v-model="bulk.statusOpen" :options="{ title: `Change status of ${bulk.rows.length} job opening(s)`, size: 'md' }">
+      <template #body-content>
+        <div class="flex flex-col gap-3">
+          <FormControl label="New Status" type="select" v-model="bulk.status" :options="['', ...JOB_STATUSES]" />
+          <p class="text-xs text-gray-500">
+            Each job keeps its own rules: Approved / Advertised need an approved Green Sheet (unless your role may override)
+            and Advertised needs a future deadline. Jobs that can't move are skipped and listed afterwards.
+          </p>
+        </div>
+      </template>
+      <template #actions>
+        <Button variant="solid" :class="BTN_BRAND" :loading="bulk.running" :disabled="!bulk.status" @click="runBulk('status')">
+          Update {{ bulk.rows.length }}
+        </Button>
+      </template>
+    </Dialog>
+
+    <Dialog
+      v-model="bulk.deleteOpen"
+      :options="{
+        title: `Delete ${bulk.rows.length} job opening(s)?`,
+        message: 'This cannot be undone. Jobs that have applications, green sheets or other linked records are skipped.',
+        size: 'sm',
+      }"
+    >
+      <template #actions>
+        <Button variant="solid" :class="BTN_DANGER" :loading="bulk.running" @click="runBulk('delete')">Delete {{ bulk.rows.length }}</Button>
+      </template>
+    </Dialog>
+
+    <BulkResultDialog :result="bulk.result" :label-for="labelFor" @close="bulk.result = null" />
   </StaffLayout>
 </template>
 
@@ -45,6 +92,8 @@ import StaffLayout from '@/layouts/StaffLayout.vue'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import DataTable from '@/components/common/DataTable.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
+import BulkResultDialog from '@/components/common/BulkResultDialog.vue'
+import { BTN_BRAND, BTN_DANGER } from '@/utils/buttonStyles'
 import JobOpeningForm, { emptyJobForm } from '@/components/jobs/JobOpeningForm.vue'
 import { useStaffJobOpenings } from '@/composables/useJobOpenings'
 import { jobOpeningService } from '@/services/jobOpenings'
@@ -76,6 +125,42 @@ onMounted(() => {
   session.fetchRoles()
   fetchJobs({}, { limit_page_length: 0 })
 })
+
+// ----- bulk actions
+const JOB_STATUSES = ['Draft', 'Pending Approval', 'Approved', 'Advertised', 'Closed', 'Filled', 'Cancelled']
+const bulk = reactive({ rows: [], clear: null, status: '', statusOpen: false, deleteOpen: false, running: false, result: null })
+
+function labelFor(name) {
+  const job = jobs.value.find((j) => j.name === name)
+  return job ? `${job.job_title} (${job.position || name})` : name
+}
+
+function openBulk(kind, rows, clear) {
+  Object.assign(bulk, { rows, clear, status: '', statusOpen: kind === 'status', deleteOpen: kind === 'delete' })
+}
+
+async function runBulk(kind) {
+  bulk.running = true
+  const names = bulk.rows.map((r) => r.name)
+  try {
+    const result =
+      kind === 'status' ? await jobOpeningService.bulkSetStatus(names, bulk.status) : await jobOpeningService.bulkDelete(names)
+    bulk.statusOpen = bulk.deleteOpen = false
+    bulk.clear?.()
+    const verb = kind === 'status' ? `moved to ${bulk.status}` : 'deleted'
+    toast({
+      title: `${result.done.length} job opening(s) ${verb}${result.failed.length ? `, ${result.failed.length} skipped` : ''}.`,
+      icon: result.failed.length ? 'alert-triangle' : 'check',
+      iconClasses: result.failed.length ? 'text-orange-500' : 'text-green-500',
+    })
+    if (result.failed.length) bulk.result = result
+    fetchJobs({}, { limit_page_length: 0 })
+  } catch (e) {
+    toast({ title: e?.messages?.[0] || 'The bulk action failed.', icon: 'alert-triangle', iconClasses: 'text-red-500' })
+  } finally {
+    bulk.running = false
+  }
+}
 
 const showCreateDialog = ref(false)
 const submitting = ref(false)

@@ -126,6 +126,8 @@ def get_form_config(job):
 			"mandatory": cint(q.is_mandatory),
 			"ask_details_if_yes": cint(q.ask_details_if_yes),
 			"details_label": q.details_label or _("Please describe the relevant experience in brief."),
+			# Shown only when the question above was answered this way.
+			"show_if_previous_answer": q.show_if_previous_answer or "",
 		}
 		for q in job.get("screening_questions") or []
 	]
@@ -497,9 +499,16 @@ def validate_submission(job, data, user, email=None):
 	# --- screening questions
 	answers_in = {cint(a.get("idx")): a for a in app.get("screening_answers") or []}
 	screening = []
+	previous_answer = None
 	for q in job.get("screening_questions") or []:
 		key = f"screening.{q.idx}"
 		given = answers_in.get(q.idx) or {}
+		hidden = bool(q.show_if_previous_answer) and previous_answer != q.show_if_previous_answer
+		previous_answer = _text(str(given.get("answer") if given.get("answer") is not None else "")) if not hidden else ""
+		if hidden:
+			# Not shown to the candidate, so never required and never stored.
+			screening.append({"question": q.question, "answer_type": q.answer_type, "answer": "", "details": ""})
+			continue
 		answer = _text(str(given.get("answer") if given.get("answer") is not None else ""))
 		details = _text(given.get("details"))
 		if not answer:

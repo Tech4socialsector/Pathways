@@ -11,7 +11,8 @@
   "options",
   "is_mandatory",
   "ask_details_if_yes",
-  "details_label"
+  "details_label",
+  "show_if_previous_answer"
  ],
  "fields": [
   {
@@ -58,12 +59,18 @@
    "fieldname": "details_label",
    "fieldtype": "Data",
    "label": "Details Prompt"
+  },
+  {
+   "fieldname": "show_if_previous_answer",
+   "fieldtype": "Data",
+   "label": "Show Only If Previous Answer Is",
+   "description": "Leave empty to always show. E.g. \"Other\": the question appears only when the question above is answered Other."
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2026-10-06 15:44:09.371312",
+ "modified": "2026-10-07 11:30:00.000000",
  "modified_by": "Administrator",
  "module": "Pathways",
  "name": "Job Screening Question",

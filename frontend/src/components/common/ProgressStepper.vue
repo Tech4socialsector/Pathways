@@ -1,7 +1,8 @@
 <template>
   <div>
     <!-- Wide screens: every step in one row -->
-    <ol class="hidden md:flex">
+    <!-- isolate: keeps the dots' z-index inside the stepper, so dialogs cover them. -->
+    <ol class="isolate hidden md:flex">
       <li v-for="(step, idx) in steps" :key="step.key" class="relative flex flex-1 flex-col items-center text-center">
         <span
           v-if="idx > 0"

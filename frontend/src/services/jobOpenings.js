@@ -27,6 +27,12 @@ export const jobOpeningService = {
   updateJob(jobOpening, data) {
     return callMethod('pathways.api.job_opening.update_job_opening', { job_opening: jobOpening, data })
   },
+  bulkSetStatus(names, status) {
+    return callMethod('pathways.api.job_opening.bulk_set_job_status', { names, status })
+  },
+  bulkDelete(names) {
+    return callMethod('pathways.api.job_opening.bulk_delete_job_openings', { names })
+  },
   deleteJob(jobOpening) {
     return callMethod('pathways.api.job_opening.delete_job_opening', { job_opening: jobOpening })
   },

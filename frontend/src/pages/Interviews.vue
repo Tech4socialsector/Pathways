@@ -3,6 +3,7 @@
     <PageHeader title="Interviews" />
     <div class="flex-1 overflow-y-auto p-6">
       <DataTable
+        export-name="interviews"
         :columns="columns"
         :rows="interviews.data || []"
         :loading="interviews.loading"

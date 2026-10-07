@@ -1,8 +1,7 @@
 {
  "actions": [],
- "allow_rename": 0,
  "autoname": "naming_series:",
- "creation": "2026-09-21 00:00:00.000000",
+ "creation": "2026-09-21 00:00:00",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
@@ -214,10 +213,10 @@
    "label": "Area of Specialization"
   },
   {
+   "description": "Comma-separated, from the Specialization Master",
    "fieldname": "specializations",
    "fieldtype": "Small Text",
-   "label": "Areas of Specialization",
-   "description": "Comma-separated, from the Specialization Master"
+   "label": "Areas of Specialization"
   },
   {
    "fieldname": "other_specialization",
@@ -245,11 +244,11 @@
    "label": "Doctoral Degree"
   },
   {
+   "description": "Doctoral degree details are in the Qualifications tab",
    "fieldname": "phd_awarded",
    "fieldtype": "Select",
    "label": "PhD Awarded",
-   "options": "\nYes\nNo",
-   "description": "Doctoral degree details are in the Qualifications tab"
+   "options": "\nYes\nNo"
   },
   {
    "fieldname": "net_section",
@@ -320,10 +319,10 @@
    "label": "Teaching Experience (Months)"
   },
   {
+   "description": "Excluding PhD, internships and stints shorter than 3 months",
    "fieldname": "research_experience_months",
    "fieldtype": "Int",
-   "label": "Research Experience (Months)",
-   "description": "Excluding PhD, internships and stints shorter than 3 months"
+   "label": "Research Experience (Months)"
   },
   {
    "fieldname": "column_break_months",
@@ -423,7 +422,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-10-06 21:00:00.000000",
+ "modified": "2026-10-07 11:37:44.581429",
  "modified_by": "Administrator",
  "module": "Pathways",
  "name": "Application",
@@ -485,6 +484,7 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],

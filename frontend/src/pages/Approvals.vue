@@ -3,6 +3,7 @@
     <PageHeader title="My Pending Approvals" />
     <div class="flex-1 overflow-y-auto p-6">
       <DataTable
+        export-name="approvals"
         :columns="columns"
         :rows="rows"
         :loading="loading"

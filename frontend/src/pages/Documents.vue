@@ -16,6 +16,7 @@
 
       <!-- Candidate documents: one row per application -->
       <DataTable
+        export-name="documents"
         v-if="tab === 'candidate'"
         :columns="columns"
         :rows="rows"
@@ -56,6 +57,7 @@
 
       <!-- Post-offer onboarding verification checklists -->
       <DataTable
+        export-name="documents"
         v-else
         :columns="collectionColumns"
         :rows="collections.data || []"

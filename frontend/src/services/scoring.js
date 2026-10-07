@@ -7,6 +7,16 @@ export const scoringService = {
   getRubricForJobOpening(jobOpening, stage) {
     return callMethod('pathways.api.scoring.get_rubric_for_job_opening', { job_opening: jobOpening, stage })
   },
+  getCommitteeOptions() {
+    return callMethod('pathways.api.scoring.get_committee_options')
+  },
+  createShortlistingCommittee(jobOpening, members, officeOrderReference) {
+    return callMethod('pathways.api.scoring.create_shortlisting_committee', {
+      job_opening: jobOpening,
+      members,
+      office_order_reference: officeOrderReference,
+    })
+  },
   submitShortlistingScore(data) {
     return callMethod('pathways.api.scoring.submit_shortlisting_score', data)
   },

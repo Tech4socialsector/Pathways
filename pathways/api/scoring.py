@@ -54,6 +54,8 @@ def get_application_for_review(application):
 		"track": app.track,
 		"status": app.status,
 		"shortlisting_committee": shortlisting_committee,
+		# Lets the score panel offer to set up the committee in place.
+		"can_create_committee": not shortlisting_committee and bool(frappe.has_permission("Shortlisting Committee", "create")),
 		"existing_shortlisting_score": existing_score,
 		"candidate": {
 			"full_name": candidate.full_name,
@@ -271,3 +273,44 @@ def consolidate_scores(interview):
 		"average": round(average, 2),
 		"panelist_count": len(assessments),
 	}
+
+
+def _committee_size():
+	settings = frappe.get_cached_doc("Pathways Settings")
+	return settings.min_shortlisting_committee_size or 2, settings.max_shortlisting_committee_size or 3
+
+
+@frappe.whitelist()
+def get_committee_options():
+	"""Staff who can sit on a shortlisting committee, and the size limits —
+	for the "Set up committee" dialog on the application page."""
+	if not frappe.has_permission("Shortlisting Committee", "create"):
+		frappe.throw(_("You cannot set up shortlisting committees."), frappe.PermissionError)
+	minimum, maximum = _committee_size()
+	users = frappe.get_all(
+		"User",
+		filters={"enabled": 1, "user_type": "System User", "name": ["not in", ["Guest"]]},
+		fields=["name", "full_name"],
+		order_by="full_name asc",
+	)
+	return {"min": minimum, "max": maximum, "users": users}
+
+
+@frappe.whitelist(methods=["POST"])
+def create_shortlisting_committee(job_opening, members, office_order_reference=None):
+	"""Create the job's Shortlisting Committee. insert() enforces create
+	permission and the committee-size rule."""
+	if isinstance(members, str):
+		members = frappe.parse_json(members)
+	existing = frappe.db.get_value("Shortlisting Committee", {"job_opening": job_opening}, "name")
+	if existing:
+		frappe.throw(_("Job Opening {0} already has a Shortlisting Committee ({1}).").format(job_opening, existing))
+	doc = frappe.get_doc(
+		{
+			"doctype": "Shortlisting Committee",
+			"job_opening": job_opening,
+			"office_order_reference": office_order_reference,
+			"members": [{"member": user} for user in dict.fromkeys(members or [])],
+		}
+	).insert()
+	return doc.name
