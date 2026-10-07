@@ -447,40 +447,170 @@ def _charts(filters, job_filters, from_date=None, to_date=None):
 		),
 		key=lambda s: (-s["value"], s["label"].lower()),
 	)
+	# 10. Positions: every job opening's applications under its position.
+	pos_of = dict(frappe.get_all("Job Opening", filters={"name": ["in", list(jobs) or [""]]}, fields=["name", "position"], as_list=True))
+	pos_titles = dict(frappe.get_all("Position", fields=["name", "position_title"], as_list=True))
+	per_position = {}
+	for s_ in job_slices:
+		pos = pos_of.get(s_["id"]) or _("No position")
+		per_position[pos] = per_position.get(pos, 0) + s_["value"]
+	position_slices = sorted(
+		(
+			{"label": f"{pos} · {pos_titles[pos]}" if pos in pos_titles else pos, "value": n, "color": theme.primary, "id": pos}
+			for pos, n in per_position.items()
+		),
+		key=lambda s_: (-s_["value"], s_["label"].lower()),
+	)
 	charts.append(
 		_slice_chart(
-			"job_opening", "bar", _("Applications by Job Opening"), _("Every job opening in this selection, most applications first."),
-			job_slices, _("Job Opening"),
+			"position", "bar", _("Applications by Position"), _("Every position in this selection, most applications first."),
+			position_slices, _("Position"),
 		)
 	)
 
+	# Status, Track x Stage, Ageing and Gender repeat the Dashboard (cards,
+	# Recruitment Pipeline, Needs Attention) or are too small to chart.
+	keep = ("timeline", "funnel", "eligibility", "position", "source", "category")
+	charts = sorted((c for c in charts if c["key"] in keep), key=lambda c: keep.index(c["key"]))
 	return {"total": len(apps), "charts": charts}
 
 
-@frappe.whitelist()
-def get_report_charts(track=None, job_opening=None, from_date=None, to_date=None):
-	"""Every Reports page chart for the filters, plus the filter options."""
-	require_pipeline_access()
-	data = _charts(_filters(track, job_opening, from_date, to_date), _job_filters(track, job_opening), from_date, to_date)
-	data["options"] = {
+LIST_FILTERS = (
+	("positions", "Position"),
+	("tracks", "Track"),
+	("departments", "Department"),
+	("employment_types", "Employment Type"),
+	("job_openings", "Job Opening"),
+	("statuses", "Application Status"),
+	("eligibility", "Eligibility"),
+)
+
+
+def _resolve(filters=None, track=None, job_opening=None, from_date=None, to_date=None):
+	"""(application filters, job filters, from, to, summary) for either the
+	filter bar (`filters`, as on the Dashboard) or the older single filters."""
+	from pathways.api.dashboard import build_filters
+
+	f = frappe.parse_json(filters) if isinstance(filters, str) else (filters or {})
+	if not f:
+		f = {
+			"tracks": [track] if track else [],
+			"job_openings": [job_opening] if job_opening else [],
+			"from_date": from_date,
+			"to_date": to_date,
+		}
+	start, end = f.get("from_date") or None, f.get("to_date") or None
+	if start and end and getdate(start) > getdate(end):
+		frappe.throw(_("The From date must be on or before the To date."))
+	app_filters, job_filters = build_filters({**f, "from_date": None, "to_date": None})
+	if start and end:
+		app_filters["application_date"] = ["between", [getdate(start), getdate(end)]]
+	elif start:
+		app_filters["application_date"] = [">=", getdate(start)]
+	elif end:
+		app_filters["application_date"] = ["<=", getdate(end)]
+
+	titles = dict(frappe.get_all("Job Opening", fields=["name", "job_title"], as_list=True))
+	rows = []
+	for key, label in LIST_FILTERS:
+		values = f.get(key) or []
+		if key == "job_openings":
+			values = [titles.get(v, v) for v in values]
+		rows.append((_(label), ", ".join(values) if values else _("All")))
+	rows.append((_("Applied From"), getdate(start) if start else _("Any date")))
+	rows.append((_("Applied To"), getdate(end) if end else _("Any date")))
+	return app_filters, job_filters, start, end, rows
+
+
+def _options():
+	# Positions that have a job opening: the others have nothing to report.
+	used = set(frappe.get_all("Job Opening", filters={"position": ["is", "set"]}, pluck="position"))
+	positions = [p for p in frappe.get_all("Position", fields=["name", "position_title"], order_by="name asc") if p.name in used]
+	return {
+		"positions": [{"value": p.name, "label": f"{p.name} · {p.position_title}"} for p in positions],
 		"tracks": frappe.get_all("Recruitment Track", pluck="name", order_by="name asc"),
+		"departments": frappe.get_all("Department", filters={"is_active": 1}, pluck="name", order_by="name asc"),
+		"employment_types": [o for o in (frappe.get_meta("Job Opening").get_field("employment_type").options or "").split("\n") if o],
+		"statuses": [o for o in (frappe.get_meta("Application").get_field("status").options or "").split("\n") if o],
+		"eligibility": ["Pending", "Eligible", "Not Eligible"],
 		"jobs": [
-			{"value": j.name, "label": j.job_title or j.name, "track": j.track}
-			for j in frappe.get_all("Job Opening", fields=["name", "job_title", "track"], order_by="job_title asc")
+			{"value": j.name, "label": j.job_title or j.name, "track": j.track, "department": j.department, "position": j.position,
+				"employment_type": j.employment_type}
+			for j in frappe.get_all("Job Opening", fields=["name", "job_title", "track", "department", "position", "employment_type"], order_by="job_title asc")
 		],
 	}
+
+
+@frappe.whitelist()
+def get_report_charts(filters=None, track=None, job_opening=None, from_date=None, to_date=None):
+	"""Every Reports page chart for the filters, plus the filter options."""
+	require_pipeline_access()
+	app_filters, job_filters, start, end, _rows = _resolve(filters, track, job_opening, from_date, to_date)
+	data = _charts(app_filters, job_filters, start, end)
+	data["options"] = _options()
 	return data
 
 
 @frappe.whitelist()
-def export_report(track=None, job_opening=None, from_date=None, to_date=None):
-	"""The charts as an Excel workbook: a Summary sheet, then one sheet per
-	chart (its table and a native Excel chart), then the pipeline table."""
+def export_report(filters=None, scope="all", positions=None, layout="single", include_charts=1, track=None, job_opening=None, from_date=None, to_date=None):
+	"""Excel export from the Reports page.
+
+	scope: "all" (everything the filters match) or "positions" (only the
+	chosen positions). layout: "single" (all applications on one sheet) or
+	"position_wise" (one sheet per position). include_charts adds the
+	Summary, one sheet per chart and the pipeline table first."""
+	from pathways.utils.application_export import add_application_sheets
+
 	require_pipeline_access()
-	data = _charts(_filters(track, job_opening, from_date, to_date), _job_filters(track, job_opening), from_date, to_date)
-	content = _workbook(data, {"track": track, "job_opening": job_opening, "from_date": from_date, "to_date": to_date})
-	frappe.local.response.filename = f"recruitment-report-{today()}.xlsx"
-	frappe.local.response.filecontent = content
+	f = frappe.parse_json(filters) if isinstance(filters, str) else dict(filters or {})
+	if scope == "positions":
+		positions = frappe.parse_json(positions) if isinstance(positions, str) else (positions or [])
+		if not positions:
+			frappe.throw(_("Choose at least one position to export."))
+		f["positions"] = positions
+	if layout not in ("single", "position_wise"):
+		frappe.throw(_("Unknown export layout."))
+
+	app_filters, job_filters, start, end, rows = _resolve(f, track, job_opening, from_date, to_date)
+	names = frappe.get_list("Application", filters=app_filters, pluck="name", order_by="creation desc", limit_page_length=0)
+	if not names:
+		frappe.throw(_("No applications match these filters."))
+
+	rows.append((_("Layout"), _("One sheet per position") if layout == "position_wise" else _("All applications on one sheet")))
+	jobs = set(frappe.get_all("Job Opening", filters=job_filters, pluck="name")) if job_filters else None
+	if frappe.utils.cint(include_charts):
+		data = _charts(app_filters, job_filters, start, end)
+		wb = _workbook(data, {"rows": rows, "jobs": jobs})
+	else:
+		from openpyxl import Workbook
+
+		wb = Workbook()
+		wb.active.title = _("Summary")
+		wb.active.append([_("Applications Export")])
+		for label, value in rows:
+			wb.active.append([label, value])
+	used = {name.lower() for name in wb.sheetnames}
+	sheets, total = add_application_sheets(wb, names, layout, used)
+
+	# List the data sheets on the Summary too.
+	from openpyxl.styles import Font
+	from openpyxl.worksheet.hyperlink import Hyperlink
+
+	summary = wb[_("Summary")]
+	summary.append([])
+	summary.append([_("Application data"), _("{0} applications").format(total)])
+	summary.cell(row=summary.max_row, column=1).font = Font(bold=True)
+	for sheet_name, _ref, title, count in sheets:
+		summary.append([sheet_name, f"{title} ({count})"])
+		link = summary.cell(row=summary.max_row, column=1)
+		link.hyperlink = Hyperlink(ref=link.coordinate, location=f"'{sheet_name.replace(chr(39), chr(39) * 2)}'!A1")
+		link.font = Font(color="0563C1", underline="single")
+
+	buffer = io.BytesIO()
+	wb.save(buffer)
+	suffix = "by-position" if layout == "position_wise" else "all"
+	frappe.local.response.filename = f"recruitment-report-{suffix}-{today()}.xlsx"
+	frappe.local.response.filecontent = buffer.getvalue()
 	frappe.local.response.type = "download"
 
 
@@ -569,13 +699,7 @@ def _workbook(data, applied):
 	summary.append([_("Exported On"), now_datetime()])
 	summary["B2"].number_format = "DD-MMM-YYYY HH:MM"
 	summary.append([_("Exported By"), frappe.utils.get_fullname(frappe.session.user)])
-	job_title = frappe.db.get_value("Job Opening", applied["job_opening"], "job_title") if applied["job_opening"] else None
-	for label, value in (
-		(_("Track"), applied["track"] or _("All")),
-		(_("Job Opening"), job_title or applied["job_opening"] or _("All")),
-		(_("Applied From"), getdate(applied["from_date"]) if applied["from_date"] else _("Any date")),
-		(_("Applied To"), getdate(applied["to_date"]) if applied["to_date"] else _("Any date")),
-	):
+	for label, value in applied["rows"]:
 		summary.append([label, None])
 		cell = summary.cell(row=summary.max_row, column=2)
 		if isinstance(value, datetime.date):
@@ -627,7 +751,7 @@ def _workbook(data, applied):
 	# The pipeline table, job titles instead of IDs.
 	ws = wb.create_sheet(_sheet_name(_("Pipeline by Job"), used))
 	columns = get_columns()
-	rows = get_data({k: v for k, v in applied.items() if k in ("track", "job_opening") and v})
+	rows = [r for r in get_data({}) if applied.get("jobs") is None or r["job_opening"] in applied["jobs"]]
 	header(ws, 1, [_(c["label"]) for c in columns])
 	for r, row in enumerate(rows, start=2):
 		for c, col in enumerate(columns, start=1):
@@ -643,6 +767,4 @@ def _workbook(data, applied):
 
 	summary.column_dimensions["A"].width = 30
 	summary.column_dimensions["B"].width = 60
-	buffer = io.BytesIO()
-	wb.save(buffer)
-	return buffer.getvalue()
+	return wb

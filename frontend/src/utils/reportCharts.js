@@ -311,8 +311,8 @@ function line(chart, { font, forExport }) {
         return tooltipHtml((chart.unit === 'week' ? 'Week of ' : '') + p.label, [plural(p.value)])
       },
     },
-    // Right padding: the last x label is centred on the plot's edge.
-    grid: { left: forExport ? EXPORT.pad + 8 : 8, right: forExport ? EXPORT.pad + 24 : 36, top, bottom: 8, containLabel: true },
+    // Side padding: the first and last x labels are centred on the plot's edges.
+    grid: { left: forExport ? EXPORT.pad + 24 : 36, right: forExport ? EXPORT.pad + 24 : 36, top, bottom: 8, containLabel: true },
     xAxis: {
       type: 'category',
       boundaryGap: false,

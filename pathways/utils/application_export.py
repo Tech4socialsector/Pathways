@@ -17,7 +17,7 @@ import frappe
 from frappe import _
 from frappe.utils import cint, flt, get_url, getdate, get_datetime
 
-MODES = ("single", "job_wise")
+MODES = ("single", "job_wise", "position_wise")
 
 # Pay is not for committee members (see get_application_detail).
 PAY_FIELDS = ("current_salary", "expected_salary")
@@ -25,6 +25,12 @@ PAY_FIELDS = ("current_salary", "expected_salary")
 SKIP_APPLICATION_FIELDS = {"naming_series", "candidate", "screening_answers", "documents"}
 # Always present, even when empty for every row in a sheet.
 CORE_KEYS = {"application_id", "job_opening", "status", "application_date", "cand:full_name", "cand:email", "cand:mobile_number"}
+
+LAYOUT_LABELS = {
+	"single": "Single sheet",
+	"job_wise": "One sheet per job opening",
+	"position_wise": "One sheet per position",
+}
 
 MAX_CELL = 32767  # Excel's limit on characters in a cell
 SHEET_NAME_BAD = re.compile(r"[\[\]:*?/\\]")
@@ -35,6 +41,21 @@ def build_workbook(names, mode):
 	"""Return (xlsx bytes, number of applications exported)."""
 	from openpyxl import Workbook
 
+	wb = Workbook()
+	summary = wb.active
+	summary.title = _("Summary")
+	summary_rows, total = add_application_sheets(wb, names, mode, used_names={summary.title.lower()})
+	_write_summary(summary, summary_rows, total, mode)
+
+	buffer = io.BytesIO()
+	wb.save(buffer)
+	return buffer.getvalue(), total
+
+
+def add_application_sheets(wb, names, mode, used_names):
+	"""Write the applications into wb: one sheet ("single"), one per job
+	opening ("job_wise") or one per position ("position_wise"). Returns
+	([(sheet, id, title, count)], total)."""
 	if mode not in MODES:
 		frappe.throw(_("Unknown export type."))
 
@@ -45,12 +66,18 @@ def build_workbook(names, mode):
 	ctx = _Context()
 	records = [_record(app, ctx) for app in apps]
 
-	wb = Workbook()
-	summary = wb.active
-	summary.title = _("Summary")
-
 	if mode == "single":
 		groups = [(_("All Applications"), None, records)]
+	elif mode == "position_wise":
+		jobs = {j.name: j.position for j in frappe.get_all("Job Opening", filters={"name": ["in", list({r["job_opening_id"] for r in records})]}, fields=["name", "position"])}
+		titles = dict(frappe.get_all("Position", fields=["name", "position_title"], as_list=True))
+		by_pos = {}
+		for rec in records:
+			by_pos.setdefault(jobs.get(rec["job_opening_id"]) or "", []).append(rec)
+		groups = sorted(
+			((f"{pos} {titles.get(pos) or ''}".strip() if pos else _("No position"), pos or _("No position"), recs) for pos, recs in by_pos.items()),
+			key=lambda g: g[0].lower(),
+		)
 	else:
 		by_job = {}
 		for rec in records:
@@ -60,18 +87,12 @@ def build_workbook(names, mode):
 			key=lambda g: (g[0] or "").lower(),
 		)
 
-	used_names = {summary.title.lower()}
 	summary_rows = []
-	for title, job, recs in groups:
+	for title, ref, recs in groups:
 		sheet_name = _sheet_name(title, used_names)
 		_write_sheet(wb.create_sheet(sheet_name), recs)
-		summary_rows.append((sheet_name, job or "", title if job else _("All job openings"), len(recs)))
-
-	_write_summary(summary, summary_rows, len(records), mode)
-
-	buffer = io.BytesIO()
-	wb.save(buffer)
-	return buffer.getvalue(), len(records)
+		summary_rows.append((sheet_name, ref or "", title if ref else _("All job openings"), len(recs)))
+	return summary_rows, len(records)
 
 
 def _load_applications(names):
@@ -312,10 +333,10 @@ def _write_summary(ws, rows, total, mode):
 	ws.append([_("Exported On"), frappe.utils.now_datetime()])
 	ws["B2"].number_format = "DD-MMM-YYYY HH:MM"
 	ws.append([_("Exported By"), frappe.utils.get_fullname(frappe.session.user)])
-	ws.append([_("Layout"), _("Single sheet") if mode == "single" else _("One sheet per job opening")])
+	ws.append([_("Layout"), LAYOUT_LABELS.get(mode, mode)])
 	ws.append([_("Total Applications"), total])
 	ws.append([])
-	ws.append([_("Sheet"), _("Job Opening ID"), _("Job Opening"), _("Applications")])
+	ws.append([_("Sheet"), _("Position") if mode == "position_wise" else _("Job Opening ID"), _("Position / Job Opening"), _("Applications")])
 	for cell in ws[ws.max_row]:
 		cell.font = Font(bold=True, color="FFFFFF")
 		cell.fill = PatternFill("solid", fgColor=HEADER_FILL)

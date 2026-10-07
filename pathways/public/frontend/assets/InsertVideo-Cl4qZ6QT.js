@@ -1,1 +1,0 @@
-import{W as s,O as t,aq as a,ar as d}from"./index-C3w09EiO.js";const p=s({__name:"InsertVideo",props:{editor:{}},setup(e){const o=e;function r(){o.editor.chain().focus().selectAndUploadVideo().run()}return(n,i)=>t(n.$slots,"default",a(d({onClick:r})))}});export{p as default};

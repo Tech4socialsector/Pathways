@@ -320,9 +320,12 @@ def _send_workbook(sheets, filename):
 # ------------------------------------------------------------- all jobs
 
 
-def _jobs_for_reports(track=None, job_opening=None):
+def _jobs_for_reports(track=None, job_opening=None, job_openings=None):
 	"""Job openings with applications that the user may shortlist."""
 	filters = {"name": job_opening} if job_opening else {}
+	if job_openings:
+		names = frappe.parse_json(job_openings) if isinstance(job_openings, str) else job_openings
+		filters["name"] = ["in", list(names) or [""]]
 	if track:
 		filters["track"] = track
 	jobs = frappe.get_all(
@@ -335,12 +338,12 @@ def _jobs_for_reports(track=None, job_opening=None):
 
 
 @frappe.whitelist()
-def list_shortlisting_sheets(track=None, job_opening=None):
+def list_shortlisting_sheets(track=None, job_opening=None, job_openings=None):
 	"""Reports page: each job's shortlisting position at a glance."""
 	from pathways.api.scoring import shortlisting_summary
 
 	out = []
-	for job in _jobs_for_reports(track, job_opening):
+	for job in _jobs_for_reports(track, job_opening, job_openings):
 		s = shortlisting_summary(frappe.get_doc("Job Opening", job.name))
 		out.append(
 			{
@@ -392,10 +395,10 @@ def _overall_sheet(jobs):
 
 
 @frappe.whitelist()
-def download_all_shortlisting_sheets(track=None, job_opening=None):
+def download_all_shortlisting_sheets(track=None, job_opening=None, job_openings=None):
 	"""One workbook: an Overall sheet with every candidate, then each job's
 	own shortlisting sheet(s)."""
-	jobs = _jobs_for_reports(track, job_opening)
+	jobs = _jobs_for_reports(track, job_opening, job_openings)
 	if not jobs:
 		frappe.throw(_("No job openings with applications match these filters."))
 	sheets = [_overall_sheet(jobs)]

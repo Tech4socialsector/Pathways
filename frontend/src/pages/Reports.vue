@@ -1,54 +1,42 @@
 <template>
   <StaffLayout>
-    <PageHeader title="Reports" subtitle="Recruitment at a glance. Filters apply to every chart and to the export.">
+    <PageHeader title="Reports" subtitle="Recruitment at a glance. Filters apply to every chart, the shortlisting sheets and the export.">
       <template #actions>
-        <Button
-          variant="solid"
-          icon-left="download"
-          :class="BTN_BRAND"
-          :loading="exporting"
-          :disabled="!!dateError || !charts.data"
-          @click="exportReport"
-        >
+        <Button variant="solid" icon-left="download" :class="BTN_BRAND" :disabled="!charts.data" @click="openExport">
           Export Report
         </Button>
       </template>
     </PageHeader>
 
     <div class="flex flex-1 flex-col gap-4 overflow-y-auto bg-gray-50 p-3 sm:p-6">
-      <!-- Filters: one row above the charts -->
-      <div class="flex flex-wrap items-end gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3">
-        <div class="w-full sm:w-44">
-          <FormControl
-            label="Track"
-            type="select"
-            :model-value="filters.track || ALL"
-            :options="[{ label: 'All tracks', value: ALL }, ...trackOptions]"
-            @update:model-value="(v) => (filters.track = v === ALL ? '' : v)"
-          />
+      <!-- Filters: chosen here, applied with Search -->
+      <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <MultiSelectFilter label="Position" :options="positionOptions" v-model="filters.positions" all-label="All positions" />
+          <MultiSelectFilter label="Track" :options="options.tracks || []" v-model="filters.tracks" all-label="All tracks" />
+          <MultiSelectFilter label="Department" :options="options.departments || []" v-model="filters.departments" all-label="All departments" />
+          <MultiSelectFilter label="Employment type" :options="options.employment_types || []" v-model="filters.employment_types" all-label="All types" />
+          <MultiSelectFilter label="Job opening" :options="jobOptions" v-model="filters.job_openings" all-label="All job openings" />
+          <MultiSelectFilter label="Application status" :options="options.statuses || []" v-model="filters.statuses" all-label="All statuses" />
+          <MultiSelectFilter label="Eligibility" :options="options.eligibility || []" v-model="filters.eligibility" all-label="Any eligibility" />
+          <div class="grid grid-cols-2 gap-2">
+            <FormControl label="Applied from" type="date" v-model="filters.from_date" :max="filters.to_date || undefined" />
+            <FormControl label="Applied to" type="date" v-model="filters.to_date" :min="filters.from_date || undefined" />
+          </div>
         </div>
-        <div class="w-full sm:w-72">
-          <FormControl
-            label="Job Opening"
-            type="select"
-            :model-value="filters.job_opening || ALL"
-            :options="[{ label: 'All job openings', value: ALL }, ...jobOptions]"
-            @update:model-value="(v) => (filters.job_opening = v === ALL ? '' : v)"
-          />
-        </div>
-        <div class="w-full sm:w-40">
-          <FormControl label="Applied From" type="date" v-model="filters.from_date" :max="filters.to_date || undefined" />
-        </div>
-        <div class="w-full sm:w-40">
-          <FormControl label="Applied To" type="date" v-model="filters.to_date" :min="filters.from_date || undefined" />
-        </div>
-        <Button v-if="isFiltered" variant="ghost" @click="clearFilters">Clear</Button>
-        <div class="ml-auto text-sm text-gray-600">
-          <span v-if="dateError" class="text-red-600">{{ dateError }}</span>
-          <template v-else-if="charts.data">
-            <span class="font-semibold text-gray-900">{{ charts.data.total }}</span>
-            application{{ charts.data.total === 1 ? '' : 's' }}
-          </template>
+        <div class="mt-3 flex flex-wrap items-center justify-between gap-3 border-t pt-3">
+          <div class="text-sm text-gray-600">
+            <span v-if="dateError" class="text-red-600">{{ dateError }}</span>
+            <span v-else-if="dirty" class="font-medium text-orange-700">Changes not applied yet. Click Search.</span>
+            <template v-else-if="charts.data">
+              <span class="font-semibold text-gray-900">{{ charts.data.total }}</span>
+              application{{ charts.data.total === 1 ? '' : 's' }}<template v-if="activeCount"> · {{ activeCount }} filter{{ activeCount === 1 ? '' : 's' }} applied</template>
+            </template>
+          </div>
+          <div class="flex gap-2">
+            <Button v-if="activeCount || dirty" variant="ghost" icon-left="x" @click="clearFilters">Clear all</Button>
+            <Button variant="solid" icon-left="search" :class="BTN_BRAND" :disabled="!!dateError" :loading="charts.loading" @click="applyFilters">Search</Button>
+          </div>
         </div>
       </div>
 
@@ -73,7 +61,7 @@
             <h2 class="text-base font-semibold text-gray-900">Shortlisting Sheets</h2>
             <p class="mt-0.5 text-sm text-gray-500">
               Each job's sheet in its track's layout: Admin, Research, or Faculty (Eligibility Check and Consolidated scores).
-              Follows the Track and Job Opening filters.
+              Follows the filters above.
             </p>
           </div>
           <Button
@@ -132,12 +120,77 @@
       :job-title="sheetDialog.title"
       :track="sheetDialog.track"
     />
+
+    <!-- Export: what to include, and how to lay it out -->
+    <Dialog v-model="exportDialog.open" :options="{ title: 'Export report', size: 'xl' }">
+      <template #body-content>
+        <div class="flex flex-col gap-5 text-sm">
+          <section>
+            <div class="mb-2 font-semibold text-gray-900">What to export</div>
+            <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <label v-for="opt in SCOPES" :key="opt.value" class="flex cursor-pointer gap-3 rounded-lg border p-3" :class="exportDialog.scope === opt.value ? 'border-brand-700 bg-brand-50' : 'hover:bg-gray-50'">
+                <input v-model="exportDialog.scope" type="radio" :value="opt.value" class="mt-0.5 text-brand-700 focus:ring-brand-700" />
+                <span><span class="block font-medium text-gray-900">{{ opt.label }}</span><span class="text-xs text-gray-500">{{ opt.hint }}</span></span>
+              </label>
+            </div>
+            <div v-if="exportDialog.scope === 'positions'" class="mt-3">
+              <div class="mb-1.5 flex items-center justify-between text-xs">
+                <span class="text-gray-600">Positions to export ({{ exportDialog.positions.length }} chosen)</span>
+                <span class="flex gap-3">
+                  <button type="button" class="font-medium text-brand-700 hover:underline" @click="exportDialog.positions = positionOptions.map((p) => p.value)">Select all</button>
+                  <button type="button" class="font-medium text-gray-600 hover:underline" @click="exportDialog.positions = []">Clear</button>
+                </span>
+              </div>
+              <div class="grid max-h-56 grid-cols-1 gap-1 overflow-y-auto rounded-lg border p-2 sm:grid-cols-2">
+                <label v-for="p in positionOptions" :key="p.value" class="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 hover:bg-gray-50">
+                  <input v-model="exportDialog.positions" type="checkbox" :value="p.value" class="rounded border-gray-300 text-brand-700 focus:ring-brand-700" />
+                  <span class="min-w-0 truncate" :title="p.label">{{ p.label }}</span>
+                </label>
+              </div>
+              <p v-if="!exportDialog.positions.length" class="mt-1 text-xs text-orange-700">Choose at least one position.</p>
+            </div>
+          </section>
+          <section>
+            <div class="mb-2 font-semibold text-gray-900">Layout</div>
+            <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <label v-for="opt in LAYOUTS" :key="opt.value" class="flex cursor-pointer gap-3 rounded-lg border p-3" :class="exportDialog.layout === opt.value ? 'border-brand-700 bg-brand-50' : 'hover:bg-gray-50'">
+                <input v-model="exportDialog.layout" type="radio" :value="opt.value" class="mt-0.5 text-brand-700 focus:ring-brand-700" />
+                <span><span class="block font-medium text-gray-900">{{ opt.label }}</span><span class="text-xs text-gray-500">{{ opt.hint }}</span></span>
+              </label>
+            </div>
+          </section>
+          <label class="flex items-center gap-2.5">
+            <input v-model="exportDialog.includeCharts" type="checkbox" class="rounded border-gray-300 text-brand-700 focus:ring-brand-700" />
+            Include the summary, the charts and the pipeline by job
+          </label>
+          <p class="rounded-md bg-gray-50 px-3 py-2 text-xs text-gray-600">
+            Uses the filters above<template v-if="activeCount"> ({{ activeCount }} applied)</template>. Each application sheet has every field of the application form.
+          </p>
+        </div>
+      </template>
+      <template #actions>
+        <div class="flex justify-end gap-2">
+          <Button variant="ghost" @click="exportDialog.open = false">Cancel</Button>
+          <Button
+            variant="solid"
+            icon-left="download"
+            :class="BTN_BRAND"
+            :loading="exporting"
+            :disabled="exportDialog.scope === 'positions' && !exportDialog.positions.length"
+            @click="exportReport"
+          >
+            Download Excel
+          </Button>
+        </div>
+      </template>
+    </Dialog>
   </StaffLayout>
 </template>
 
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { Button } from 'frappe-ui'
+import { Button, Dialog, FormControl } from 'frappe-ui'
+import MultiSelectFilter from '@/components/common/MultiSelectFilter.vue'
 import StaffLayout from '@/layouts/StaffLayout.vue'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import DataTable from '@/components/common/DataTable.vue'
@@ -149,37 +202,43 @@ import { BTN_BRAND } from '@/utils/buttonStyles'
 import { toast } from '@/utils/notify'
 
 // Charts that need the whole row: time on a wide axis, long job titles.
-const FULL_WIDTH = new Set(['timeline', 'job_opening'])
+const FULL_WIDTH = new Set(['timeline', 'position'])
 
-// frappe-ui's select cannot hold '' as an option value, so "All" uses a sentinel.
-const ALL = '__all__'
+const LIST_KEYS = ['positions', 'tracks', 'departments', 'employment_types', 'job_openings', 'statuses', 'eligibility']
+const emptyFilters = () => ({ ...Object.fromEntries(LIST_KEYS.map((k) => [k, []])), from_date: '', to_date: '' })
 
-const filters = reactive({ track: '', job_opening: '', from_date: '', to_date: '' })
-const isFiltered = computed(() => Object.values(filters).some(Boolean))
-
-function clearFilters() {
-  Object.assign(filters, { track: '', job_opening: '', from_date: '', to_date: '' })
-}
+// `filters` is being edited; `applied` is what the page shows.
+const filters = reactive(emptyFilters())
+const applied = reactive(emptyFilters())
+const dirty = computed(() => JSON.stringify(filters) !== JSON.stringify(applied))
+const activeCount = computed(() => LIST_KEYS.filter((k) => applied[k].length).length + (applied.from_date || applied.to_date ? 1 : 0))
 
 const dateError = computed(() =>
   filters.from_date && filters.to_date && filters.from_date > filters.to_date ? 'From date is after To date.' : '',
 )
 
-function params() {
-  return Object.fromEntries(Object.entries(filters).filter(([, v]) => v))
+function applyFilters() {
+  if (dateError.value) return
+  Object.assign(applied, JSON.parse(JSON.stringify(filters)))
+  load()
+  loadSheets()
 }
+function clearFilters() {
+  Object.assign(filters, emptyFilters())
+  applyFilters()
+}
+const apiFilters = () => JSON.parse(JSON.stringify(applied))
 
-// ----- charts (latest request wins, so fast filter changes never show stale data)
+// ----- charts (latest request wins)
 const charts = reactive({ data: null, loading: false, error: '' })
 let requestId = 0
 
 async function load() {
-  if (dateError.value) return
   const id = ++requestId
   charts.loading = true
   charts.error = ''
   try {
-    const data = await reportService.getReportCharts(params())
+    const data = await reportService.getReportCharts({ filters: apiFilters() })
     if (id === requestId) charts.data = data
   } catch (e) {
     if (id === requestId) charts.error = e?.messages?.[0] || 'Could not load the charts.'
@@ -188,36 +247,54 @@ async function load() {
   }
 }
 
-const trackOptions = computed(() => (charts.data?.options.tracks || []).map((t) => ({ label: t, value: t })))
+const options = computed(() => charts.data?.options || {})
+const positionOptions = computed(() => options.value.positions || [])
+// Job openings narrowed to the other chosen filters.
 const jobOptions = computed(() =>
-  (charts.data?.options.jobs || []).filter((j) => !filters.track || j.track === filters.track),
+  (options.value.jobs || [])
+    .filter(
+      (j) =>
+        (!filters.positions.length || filters.positions.includes(j.position)) &&
+        (!filters.tracks.length || filters.tracks.includes(j.track)) &&
+        (!filters.departments.length || filters.departments.includes(j.department)) &&
+        (!filters.employment_types.length || filters.employment_types.includes(j.employment_type)),
+    )
+    .map((j) => ({ value: j.value, label: j.label })),
 )
-
-// A job from another track cannot match: drop it when the track changes.
-watch(
-  () => filters.track,
-  () => {
-    if (filters.job_opening && !jobOptions.value.some((j) => j.value === filters.job_opening)) filters.job_opening = ''
-  },
-)
-watch(filters, load)
 
 // ----- export
+const SCOPES = [
+  { value: 'all', label: 'All data', hint: 'Everything that matches the filters.' },
+  { value: 'positions', label: 'Specific positions', hint: 'Only the positions you choose.' },
+]
+const LAYOUTS = [
+  { value: 'single', label: 'One sheet', hint: 'All applications together on one sheet.' },
+  { value: 'position_wise', label: 'A sheet per position', hint: 'Each position on its own sheet in the same Excel file.' },
+]
+const exportDialog = reactive({ open: false, scope: 'all', positions: [], layout: 'single', includeCharts: true })
 const exporting = ref(false)
+
+function openExport() {
+  Object.assign(exportDialog, { open: true, positions: [...applied.positions], scope: applied.positions.length ? 'positions' : 'all' })
+}
 
 async function exportReport() {
   exporting.value = true
   try {
-    await reportService.exportReport(params())
+    await reportService.exportReport({
+      filters: apiFilters(),
+      scope: exportDialog.scope,
+      positions: exportDialog.positions,
+      layout: exportDialog.layout,
+      include_charts: exportDialog.includeCharts ? 1 : 0,
+    })
+    exportDialog.open = false
   } catch (e) {
     toast({ title: e?.messages?.[0] || 'The export failed.', icon: 'alert-triangle', iconClasses: 'text-red-500' })
   } finally {
     exporting.value = false
   }
 }
-
-onMounted(load)
-
 
 // ----- shortlisting sheets
 const sheets = reactive({ rows: [], loading: false })
@@ -247,8 +324,7 @@ const sheetTotals = computed(() => {
 async function loadSheets() {
   sheets.loading = true
   try {
-    const p = params()
-    sheets.rows = await reportService.listShortlistingSheets({ track: p.track, job_opening: p.job_opening })
+    sheets.rows = await reportService.listShortlistingSheets({ job_openings: filteredJobNames() })
   } catch {
     sheets.rows = []
   } finally {
@@ -265,8 +341,7 @@ const exportingSheets = ref(false)
 async function downloadAllSheets() {
   exportingSheets.value = true
   try {
-    const p = params()
-    await reportService.downloadAllShortlistingSheets({ track: p.track, job_opening: p.job_opening })
+    await reportService.downloadAllShortlistingSheets({ job_openings: filteredJobNames() })
   } catch (e) {
     toast({ title: e?.messages?.[0] || 'Could not download the sheets.', icon: 'alert-triangle', iconClasses: 'text-red-500' })
   } finally {
@@ -274,6 +349,25 @@ async function downloadAllSheets() {
   }
 }
 
-watch(() => [filters.track, filters.job_opening], loadSheets)
-onMounted(loadSheets)
+// Jobs matching the applied job-level filters (null = all jobs).
+function filteredJobNames() {
+  const jobs = options.value.jobs
+  const jobLevel = ['positions', 'tracks', 'departments', 'employment_types', 'job_openings'].some((k) => applied[k].length)
+  if (!jobLevel || !jobs) return null
+  return jobs
+    .filter(
+      (j) =>
+        (!applied.positions.length || applied.positions.includes(j.position)) &&
+        (!applied.tracks.length || applied.tracks.includes(j.track)) &&
+        (!applied.departments.length || applied.departments.includes(j.department)) &&
+        (!applied.employment_types.length || applied.employment_types.includes(j.employment_type)) &&
+        (!applied.job_openings.length || applied.job_openings.includes(j.value)),
+    )
+    .map((j) => j.value)
+}
+
+onMounted(async () => {
+  await load()
+  loadSheets()
+})
 </script>
