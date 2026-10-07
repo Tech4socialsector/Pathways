@@ -6,16 +6,18 @@
           <template #prefix><FeatherIcon name="search" class="h-4 w-4 text-gray-500" /></template>
         </TextInput>
       </div>
-      <div v-for="filter in resolvedFilters" :key="filter.key" class="w-full sm:w-44">
-        <!-- frappe-ui's select cannot hold '' as an option value (it shows the
-             placeholder instead), so "All" uses a sentinel. -->
-        <FormControl
-          type="select"
-          :model-value="filterValues[filter.key] || ALL"
-          :options="[{ label: `All ${filter.label}`, value: ALL }, ...filter.options]"
-          @update:model-value="(v) => (filterValues[filter.key] = v === ALL ? '' : v)"
-        />
-      </div>
+      <!-- Each filter takes several values; a row matches any of them. -->
+      <MultiSelectFilter
+        v-for="filter in resolvedFilters"
+        :key="filter.key"
+        class="w-full sm:w-44"
+        hide-label
+        :label="filter.label"
+        :all-label="`All ${filter.label}`"
+        :options="filter.options"
+        :model-value="filterValues[filter.key] || []"
+        @update:model-value="(v) => (filterValues[filter.key] = v)"
+      />
       <Button v-if="isFiltered" variant="ghost" @click="clearFilters">Clear</Button>
       <div class="ml-auto flex items-center gap-2">
         <slot name="toolbar" />
@@ -173,6 +175,7 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { callMethod } from '@/services/api'
 import { Button, FeatherIcon, FormControl, TextInput } from 'frappe-ui'
 import EmptyState from '@/components/common/EmptyState.vue'
+import MultiSelectFilter from '@/components/common/MultiSelectFilter.vue'
 
 const props = defineProps({
   // [{ key, label, sortable?: true, align?: 'right', format?: (row) => string }]
@@ -202,7 +205,6 @@ const props = defineProps({
 const emit = defineEmits(['row-click'])
 
 const PAGE_SIZES = [10, 20, 50, 100]
-const ALL = '__all__'
 
 const search = ref('')
 const filterValues = reactive({})
@@ -219,22 +221,23 @@ function display(row, col) {
 const resolvedFilters = computed(() =>
   props.filters.map((f) => {
     const options = f.options || [...new Set(props.rows.map((r) => r[f.key]).filter((v) => v !== null && v !== undefined && v !== ''))].sort()
-    return { ...f, options: options.map((o) => (typeof o === 'object' ? o : { label: String(o), value: String(o) })) }
+    // Values are compared as strings against String(row[key]).
+    return { ...f, options: options.map((o) => (typeof o === 'object' ? { ...o, value: String(o.value) } : { label: String(o), value: String(o) })) }
   }),
 )
 
-const isFiltered = computed(() => !!search.value || Object.values(filterValues).some(Boolean))
+const isFiltered = computed(() => !!search.value || Object.values(filterValues).some((v) => v.length))
 
 function clearFilters() {
   search.value = ''
-  Object.keys(filterValues).forEach((k) => (filterValues[k] = ''))
+  Object.keys(filterValues).forEach((k) => (filterValues[k] = []))
 }
 
 const filteredRows = computed(() => {
   const term = search.value.trim().toLowerCase()
   return props.rows.filter((row) => {
-    for (const [key, value] of Object.entries(filterValues)) {
-      if (value && String(row[key] ?? '') !== value) return false
+    for (const [key, values] of Object.entries(filterValues)) {
+      if (values.length && !values.includes(String(row[key] ?? ''))) return false
     }
     if (!term) return true
     return allColumns.value.some((col) => String(display(row, col)).toLowerCase().includes(term))
