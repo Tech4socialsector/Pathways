@@ -1,1 +1,0 @@
-import{V as t,S as s,av as a,aw as i}from"./index-4rpMXZJz.js";const c=t({__name:"InsertLink",props:{editor:{}},setup(o){const e=o;function n(){e.editor.commands.openLinkEditor()}return(r,p)=>s(r.$slots,"default",a(i({onClick:n})))}});export{c as default};

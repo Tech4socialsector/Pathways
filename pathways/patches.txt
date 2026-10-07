@@ -9,3 +9,5 @@ pathways.patches.v1_0.seed_access_and_application_defaults
 pathways.patches.v1_0.candidate_role_without_desk_access
 pathways.patches.v1_0.seed_recruitment_masters
 pathways.patches.v1_0.seed_email_events
+pathways.patches.v1_0.candidate_portal_login
+pathways.patches.v1_0.candidate_owns_applications

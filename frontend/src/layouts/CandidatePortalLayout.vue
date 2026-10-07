@@ -25,6 +25,13 @@
             {{ link.label }}
             <span v-if="isActive(link.to)" class="absolute inset-x-3 -bottom-[13px] h-0.5 rounded-full bg-brand-700" />
           </router-link>
+          <router-link
+            v-if="session.isCandidate"
+            to="/portal/change-password"
+            class="hidden rounded-md px-3 py-2 font-medium text-gray-600 hover:text-gray-900 sm:block"
+          >
+            Change password
+          </router-link>
           <button
             v-if="session.isLoggedIn"
             class="rounded-md px-3 py-2 font-medium text-gray-600 hover:text-gray-900"

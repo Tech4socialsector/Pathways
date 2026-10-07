@@ -13,6 +13,19 @@ import frappe
 SIGN_OFF = "<p>Kind regards,<br>Recruitment Team<br>NLSIU, Bengaluru</p>"
 
 TEMPLATES = {
+	"Candidate Portal Login": (
+		"Your NLSIU Careers login: track your application",
+		"<p>Dear {{ candidate_name }},</p>"
+		"<p>Thank you for applying. You can now log in to the NLSIU Careers portal to track the status of your application(s) "
+		"and view what you submitted.</p>"
+		"<table style=\"border-collapse:collapse;margin:12px 0\">"
+		"<tr><td style=\"padding:4px 16px 4px 0;color:#555\">Login page</td><td><a href=\"{{ login_link }}\">{{ login_link }}</a></td></tr>"
+		"<tr><td style=\"padding:4px 16px 4px 0;color:#555\">Username</td><td><b>{{ username }}</b> (your Candidate ID)</td></tr>"
+		"<tr><td style=\"padding:4px 16px 4px 0;color:#555\">Temporary password</td><td><b>{{ temporary_password }}</b></td></tr>"
+		"</table>"
+		"<p>You will be asked to set your own password the first time you log in. You can also log in with your email address "
+		"instead of the username. Please do not share these details with anyone.</p>" + SIGN_OFF,
+	),
 	"Green Sheet Approval Request": (
 		"Approval needed: Green Sheet for {{ job_title }}",
 		"<p>Dear {{ recipient_name }},</p>"
@@ -116,6 +129,9 @@ EVENTS = [
 		"Advertisement Closing Soon", {"roles": ["Pathways Recruiter"]}, True, True, JOB_VARS + ", application_count"),
 	("Applications", "application_received", "Application received (to candidate)", "A candidate submits an application.",
 		"Application Acknowledgement", {"send_to_candidate": 1}, True, True, CANDIDATE_VARS),
+	("Applications", "candidate_portal_access", "Candidate portal login (to candidate)",
+		"A candidate's first application: their portal account is created and the username (Candidate ID) and a temporary password are emailed.",
+		"Candidate Portal Login", {"send_to_candidate": 1}, True, True, "candidate_name, candidate_id, username, temporary_password, login_link, contact_email"),
 	("Screening & Shortlisting", "committee_assigned", "Shortlisting committee invitation", "A job's Shortlisting Committee is set up (one email per member).",
 		"Shortlisting Committee Invitation", {"send_to_committee": 1}, True, True, JOB_VARS + ", application_count, ratio"),
 	("Screening & Shortlisting", "candidate_not_eligible", "Regret: not eligible (to candidate)", "A candidate is marked not eligible. Off by default: regrets are usually sent together later.",

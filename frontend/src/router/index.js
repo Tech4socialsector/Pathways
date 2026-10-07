@@ -119,6 +119,12 @@ const routes = [
     meta: { requiresCandidate: true },
   },
   {
+    path: '/portal/change-password',
+    name: 'ChangePassword',
+    component: () => import('@/pages/candidate-portal/ChangePassword.vue'),
+    meta: { requiresCandidate: true },
+  },
+  {
     path: '/login',
     name: 'Login',
     beforeEnter() {
@@ -142,6 +148,10 @@ router.beforeEach(async (to) => {
 
   if (session.isLoggedIn && !session.rolesLoaded) {
     await session.fetchRoles()
+  }
+
+  if (session.mustChangePassword && to.name !== 'ChangePassword') {
+    return { name: 'ChangePassword', query: { next: to.fullPath } }
   }
 
   if (to.meta.requiresStaff && !session.isStaff) {

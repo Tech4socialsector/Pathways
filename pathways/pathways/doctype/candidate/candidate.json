@@ -15,7 +15,8 @@
   "gender",
   "category",
   "address_section",
-  "address"
+  "address",
+  "password_change_required"
  ],
  "fields": [
   {
@@ -78,6 +79,15 @@
    "fieldname": "address",
    "fieldtype": "Small Text",
    "label": "Address for Correspondence"
+  },
+  {
+   "fieldname": "password_change_required",
+   "fieldtype": "Check",
+   "label": "Must Change Portal Password",
+   "default": "0",
+   "read_only": 1,
+   "hidden": 1,
+   "description": "Set when a temporary portal password was emailed; cleared when the candidate sets their own."
   }
  ],
  "index_web_pages_for_search": 1,

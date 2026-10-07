@@ -236,7 +236,24 @@ def submit_application(job_opening, data):
 		application_name=application.name,
 		enqueue_after_commit=True,
 	)
-	return {"application_id": application.application_id, "application_name": application.name, "email": email}
+	# First application from this email: a portal login is created and emailed.
+	new_account = user == "Guest" and not frappe.db.exists("User", email)
+	if not new_account:
+		from pathways.utils.candidate_account import claim_records
+
+		claim_records(candidate.name, email)
+	if new_account:
+		from pathways.utils.candidate_account import queue_portal_account
+
+		queue_portal_account(candidate.name)
+	return {
+		"application_id": application.application_id,
+		"application_name": application.name,
+		"email": email,
+		"candidate_id": candidate.name,
+		"login_sent": bool(new_account and frappe.db.get_value("Recruitment Email Rule", "candidate_portal_access", "enabled")),
+		"has_account": user != "Guest" or bool(frappe.db.exists("User", email)),
+	}
 
 
 def _email_error(message):
@@ -262,12 +279,26 @@ def get_my_applications():
 	if not candidate:
 		return []
 
-	return frappe.get_all(
+	apps = frappe.get_all(
 		"Application",
 		filters={"candidate": candidate},
-		fields=["name", "application_id", "job_opening", "status", "application_date"],
+		fields=["name", "application_id", "job_opening", "status", "application_date", "modified"],
 		order_by="creation desc",
 	)
+	jobs = {
+		j.name: j
+		for j in frappe.get_all(
+			"Job Opening",
+			filters={"name": ["in", [a.job_opening for a in apps]]},
+			fields=["name", "job_title", "department", "track"],
+		)
+	} if apps else {}
+	for a in apps:
+		if a.status == "Not Selected" and not frappe.db.get_value("Application", a.name, "regret_sent_on"):
+			a.status = "Under Review"
+		job = jobs.get(a.job_opening) or {}
+		a.update({"job_title": job.get("job_title"), "department": job.get("department"), "track": job.get("track")})
+	return apps
 
 
 @frappe.whitelist()
@@ -307,9 +338,13 @@ def get_application_status(application_name):
 		"Document Collection", {"application": application_name}, "overall_status"
 	)
 
+	status = app.status
+	if status == "Not Selected" and not app.get("regret_sent_on"):
+		# Screening outcomes reach candidates with the regret email, not before.
+		status = "Under Review"
 	return {
 		"application_id": app.application_id,
-		"status": app.status,
+		"status": status,
 		"job_title": job.job_title if job else None,
 		"department": job.department if job else None,
 		"application_date": app.application_date,
@@ -318,6 +353,29 @@ def get_application_status(application_name):
 		"acceptance_deadline": offer.acceptance_deadline if offer else None,
 		"document_status": doc_collection,
 	}
+
+
+# What a candidate never sees on their own application.
+CANDIDATE_HIDDEN = {
+	"candidate", "job_opening", "track", "source", "status", "application_date", "eligibility_status", "eligibility_reason",
+	"eligibility_checked_by", "eligibility_checked_on", "regret_sent_on",
+}
+
+
+@frappe.whitelist()
+def get_my_application_detail(application_name):
+	"""The candidate's own submitted application, read-only, in the same
+	tabbed layout staff see, without internal fields."""
+	app = frappe.get_doc("Application", application_name)
+	if frappe.db.get_value("Candidate", app.candidate, "email") != frappe.session.user:
+		frappe.throw(_("Not permitted."), frappe.PermissionError)
+
+	candidate_fields = [df for df in _data_fields("Candidate") if df.fieldname != "password_change_required"]
+	out = {k: v for k, v in app.as_dict(no_default_fields=True).items() if k not in CANDIDATE_HIDDEN}
+	out["candidate_details"] = frappe.db.get_value("Candidate", app.candidate, [df.fieldname for df in candidate_fields], as_dict=True)
+	out["layout"] = form_layout("Application", visible=set(out))
+	out["candidate_fields"] = [_field_def(df) for df in candidate_fields]
+	return out
 
 
 @frappe.whitelist()

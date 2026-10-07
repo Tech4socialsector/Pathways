@@ -69,6 +69,7 @@ def get_my_access():
 	user = frappe.session.user
 	if user == "Guest":
 		return {"user": None, "is_staff": False, "is_candidate": False}
+	from pathways.utils.candidate_account import must_change_password
 
 	all_roles = set(frappe.get_roles(user))
 	pathways_roles = get_pathways_roles()
@@ -107,6 +108,7 @@ def get_my_access():
 		"roles": roles,
 		"is_staff": is_staff,
 		"is_candidate": not is_system_user and CANDIDATE_ROLE in all_roles,
+		"must_change_password": (not is_system_user) and must_change_password(user),
 		"menu": menu,
 		"doctypes": doctypes,
 		"can_view_pipeline": pipeline,

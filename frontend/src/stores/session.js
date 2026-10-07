@@ -66,6 +66,8 @@ export const useSessionStore = defineStore('pathways-session', () => {
 
   const isStaff = computed(() => !!access.value.is_staff)
   const isCandidate = computed(() => !!access.value.is_candidate)
+  // A temporary password was emailed: the portal asks for a new one first.
+  const mustChangePassword = computed(() => !!access.value.must_change_password)
   const canManageAccess = computed(() => !!access.value.can_manage_access)
   const canManageSettings = computed(() => !!access.value.can_manage_settings)
   const canViewPipeline = computed(() => !!access.value.can_view_pipeline)
@@ -95,6 +97,7 @@ export const useSessionStore = defineStore('pathways-session', () => {
     hasMenu,
     isStaff,
     isCandidate,
+    mustChangePassword,
     canManageAccess,
     canManageSettings,
     canViewPipeline,

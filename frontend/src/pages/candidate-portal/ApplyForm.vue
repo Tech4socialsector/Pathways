@@ -111,6 +111,23 @@
               </div>
             </dl>
 
+            <div
+              v-if="loginSent"
+              class="rounded-lg border border-brand-200 bg-brand-50 px-4 py-3 text-sm text-brand-900 sm:col-span-2 sm:order-last"
+            >
+              <div class="flex items-center gap-2 font-semibold"><FeatherIcon name="key" class="h-4 w-4" />Track your application online</div>
+              <p class="mt-1">
+                We've emailed your portal login to <b>{{ submittedEmail }}</b>. Your username is your Candidate ID
+                <b class="font-mono">{{ candidateId }}</b>, with a temporary password you'll change on first login.
+              </p>
+            </div>
+            <div
+              v-else-if="hasAccount && !viewer.logged_in"
+              class="rounded-lg border bg-gray-50 px-4 py-3 text-sm text-gray-700 sm:col-span-2 sm:order-last"
+            >
+              You already have a portal login. <a :href="loginUrl" class="font-semibold text-brand-700 hover:underline">Log in</a> to track all your applications.
+            </div>
+
             <div>
               <div class="mb-3 text-sm font-semibold text-gray-900">What happens next</div>
               <ol class="flex flex-col gap-3 text-sm">
@@ -956,6 +973,10 @@ watch([() => data, answers, documents], () => {
 const submitted = ref(false)
 const applicationId = ref('')
 const submittedEmail = ref('')
+const candidateId = ref('')
+const loginSent = ref(false)
+const hasAccount = ref(false)
+const loginUrl = '/login?redirect-to=' + encodeURIComponent('/pathways/portal/applications')
 const submittedAt = ref('')
 const copied = ref(false)
 
@@ -1027,6 +1048,9 @@ async function handleSubmit() {
     const result = await submit(props.id, payload)
     applicationId.value = result.application_id
     submittedEmail.value = result.email
+    candidateId.value = result.candidate_id || ''
+    loginSent.value = !!result.login_sent
+    hasAccount.value = !!result.has_account
     submittedAt.value = dayjs().format('DD MMMM YYYY, h:mm A')
     submitted.value = true
     clearDraft()

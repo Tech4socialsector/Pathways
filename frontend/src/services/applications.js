@@ -70,6 +70,15 @@ export const applicationService = {
       remarks,
     })
   },
+  getMyApplicationDetail(applicationName) {
+    return callMethod('pathways.api.application.get_my_application_detail', { application_name: applicationName })
+  },
+  changePortalPassword(currentPassword, newPassword) {
+    return callMethod('pathways.utils.candidate_account.change_password', {
+      current_password: currentPassword,
+      new_password: newPassword,
+    })
+  },
   getMyApplications() {
     return callMethod('pathways.api.application.get_my_applications')
   },
