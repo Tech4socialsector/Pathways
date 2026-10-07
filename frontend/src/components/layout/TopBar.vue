@@ -129,7 +129,7 @@
       </template>
     </Dialog>
 
-    <SettingsDialog v-if="session.canManageSettings" v-model="showSettingsDialog" />
+    <SettingsDialog v-if="session.canManageSettings || session.canManageAccess" v-model="showSettingsDialog" />
   </header>
 </template>
 
@@ -257,14 +257,12 @@ const confirmLogout = ref(false)
 
 const appMenuOptions = computed(() => {
   const items = []
-  if (session.canManageSettings) {
+  // Settings holds the Roles & Permissions tab too, so access managers see it as well.
+  if (session.canManageSettings || session.canManageAccess) {
     items.push({ label: 'Settings', icon: 'settings', onClick: () => (showSettingsDialog.value = true) })
   }
   if (session.canManageSettings) {
     items.push({ label: 'Email Setup', icon: 'mail', onClick: () => router.push('/settings/email') })
-  }
-  if (session.canManageAccess) {
-    items.push({ label: 'Roles & Permissions', icon: 'shield', onClick: () => router.push('/settings/access') })
   }
   items.push(
     { label: 'Desk', icon: 'grid', onClick: () => (window.location.href = '/app') },

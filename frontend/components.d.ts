@@ -28,6 +28,7 @@ declare module 'vue' {
     RecruitmentTimeline: typeof import('./src/components/common/RecruitmentTimeline.vue')['default']
     ReportChartCard: typeof import('./src/components/reports/ReportChartCard.vue')['default']
     RoleAwareSidebar: typeof import('./src/components/layout/RoleAwareSidebar.vue')['default']
+    RolesPermissionsPanel: typeof import('./src/components/settings/RolesPermissionsPanel.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
     SectionCard: typeof import('./src/components/common/SectionCard.vue')['default']
