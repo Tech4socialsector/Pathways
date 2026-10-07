@@ -27,6 +27,7 @@
   "application_deadline",
   "column_break_af",
   "require_postgraduate",
+  "application_instructions",
   "screening_questions",
   "required_documents",
   "faculty_sections_section",
@@ -186,6 +187,12 @@
    "label": "Post Graduate Degree Required"
   },
   {
+   "fieldname": "application_instructions",
+   "fieldtype": "Text Editor",
+   "label": "Application Instructions",
+   "description": "Post-specific instructions for this job's application form (copied from the Position)."
+  },
+  {
    "fieldname": "screening_questions",
    "fieldtype": "Table",
    "label": "Screening Questions",
@@ -308,7 +315,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-10-06 21:00:00.000000",
+ "modified": "2026-10-07 11:00:00.000000",
  "modified_by": "Administrator",
  "module": "Pathways",
  "name": "Job Opening",

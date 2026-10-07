@@ -58,6 +58,7 @@ POSITION_DEFAULTS = {
 	"employment_type": "employment_type",
 	"pay_level": "pay_level",
 	"tenure_description": "tenure_description",
+	"application_instructions": "application_instructions",
 }
 POSITION_TABLES = ("screening_questions", "required_documents")
 # Which extra (academic) sections the apply form shows: taken from the

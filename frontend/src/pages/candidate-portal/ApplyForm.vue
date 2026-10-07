@@ -30,6 +30,19 @@
               Applications close {{ formatDateTime(form.application_deadline) }} (IST)
             </p>
           </div>
+          <div class="flex flex-wrap items-center justify-between gap-3 border-b bg-brand-700 px-5 py-3 text-white sm:px-6">
+            <div class="flex items-center gap-2.5 text-sm">
+              <FeatherIcon name="info" class="h-5 w-5 shrink-0" />
+              <span><strong>Important instructions</strong><span class="hidden sm:inline"> — please read these before you begin.</span></span>
+            </div>
+            <button
+              type="button"
+              class="inline-flex items-center gap-1.5 rounded-md bg-white px-3 py-1.5 text-sm font-semibold text-brand-700 hover:bg-brand-50"
+              @click="showInstructions = true"
+            >
+              <FeatherIcon name="book-open" class="h-4 w-4" /> View instructions
+            </button>
+          </div>
           <details v-if="job.jd_text || job.jd_attachment" class="group px-5 py-3 sm:px-6">
             <summary class="flex cursor-pointer list-none items-center justify-between text-sm font-bold text-gray-900">
               Job Description
@@ -631,13 +644,51 @@
         </form>
       </template>
     </div>
+    <Dialog v-model="showInstructions" :options="{ size: '3xl' }">
+      <template #body>
+        <div class="flex max-h-[85vh] flex-col">
+          <header class="flex shrink-0 items-start justify-between gap-3 bg-brand-700 px-6 py-4 text-white">
+            <div class="min-w-0">
+              <div class="text-xs font-semibold uppercase tracking-wider text-white/75">Important instructions</div>
+              <h2 class="truncate text-lg font-bold">{{ job?.job_title }}</h2>
+            </div>
+            <button class="rounded-md p-1.5 text-white/80 hover:bg-white/15 hover:text-white" aria-label="Close" @click="showInstructions = false">
+              <FeatherIcon name="x" class="h-5 w-5" />
+            </button>
+          </header>
+          <div class="min-h-0 flex-1 overflow-y-auto px-6 py-5">
+            <ul class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <li v-for="fact in instructionFacts" :key="fact.label" class="flex items-start gap-3 rounded-lg bg-brand-50 px-3 py-2.5">
+                <FeatherIcon :name="fact.icon" class="mt-0.5 h-4 w-4 shrink-0 text-brand-700" />
+                <div class="min-w-0 text-sm">
+                  <div class="text-xs text-gray-600">{{ fact.label }}</div>
+                  <div class="font-semibold text-gray-900">{{ fact.value }}</div>
+                </div>
+              </li>
+            </ul>
+            <section v-if="form.instructions?.general" class="mt-6">
+              <h3 class="mb-2 text-xs font-bold uppercase tracking-wide text-brand-700">General</h3>
+              <div class="prose prose-sm max-w-none text-gray-700" v-html="form.instructions.general" />
+            </section>
+            <section v-if="form.instructions?.job" class="mt-6">
+              <h3 class="mb-2 text-xs font-bold uppercase tracking-wide text-brand-700">For this post</h3>
+              <div class="prose prose-sm max-w-none text-gray-700" v-html="form.instructions.job" />
+            </section>
+          </div>
+          <footer class="flex shrink-0 justify-end border-t bg-gray-50 px-6 py-3">
+            <Button variant="solid" :class="BTN_BRAND" @click="showInstructions = false">I have read these — start</Button>
+          </footer>
+        </div>
+      </template>
+    </Dialog>
   </CandidatePortalLayout>
 </template>
 
 <script setup>
 import BackButton from '@/components/common/BackButton.vue'
 import { computed, h, nextTick, onMounted, provide, reactive, ref, watch } from 'vue'
-import { Autocomplete, Button, FeatherIcon, FormControl } from 'frappe-ui'
+import { Autocomplete, Button, Dialog, FeatherIcon, FormControl } from 'frappe-ui'
+import { BTN_BRAND } from '@/utils/buttonStyles'
 import dayjs from 'dayjs'
 import CandidatePortalLayout from '@/layouts/CandidatePortalLayout.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
@@ -740,6 +791,26 @@ function emptyData() {
 const data = reactive(emptyData())
 const answers = reactive({})
 const documents = reactive({})
+
+// ----- instructions (general from Settings, post-specific from the job,
+// plus facts the app knows: deadline, time, file rules)
+const showInstructions = ref(false)
+const instructionFacts = computed(() => {
+  const rule = form.value.upload_rule || {}
+  return [
+    form.value.application_deadline && {
+      icon: 'clock',
+      label: 'Deadline',
+      value: `${dayjs(form.value.application_deadline).format('D MMM YYYY, h:mm A')} (IST)`,
+    },
+    { icon: 'watch', label: 'Time needed', value: academicForm.value ? 'About 90 minutes' : 'About 30 minutes' },
+    {
+      icon: 'paperclip',
+      label: 'Uploads',
+      value: `${(rule.formats || []).map((f) => f.toUpperCase()).join(', ') || 'PDF'} · up to ${rule.max_size_mb || 5} MB each`,
+    },
+  ].filter(Boolean)
+})
 
 const OTHER = '__other__'
 const RANKS = [

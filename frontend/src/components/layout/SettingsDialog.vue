@@ -231,6 +231,18 @@
             <FormControl label="Allowed Upload Formats" v-model="form.application_allowed_formats" />
           </div>
           <FormControl label="Application Declaration" type="textarea" :rows="6" v-model="form.application_declaration" />
+          <div>
+            <span class="mb-1.5 block text-sm text-gray-700">General Application Instructions</span>
+            <TextEditor
+              :content="form.application_instructions"
+              placeholder="Shown on every application form under the Instructions button..."
+              :fixed-menu="true"
+              editor-class="prose-sm max-w-none min-h-[10rem] px-3 py-2"
+              class="rounded border border-gray-300 bg-white"
+              @change="(html) => (form.application_instructions = html)"
+            />
+            <p class="mt-1 text-xs text-gray-500">Post-specific instructions are added on each Position and Job Opening.</p>
+          </div>
         </div>
       </div>
     </template>
@@ -242,7 +254,7 @@
 
 <script setup>
 import { computed, reactive, ref, watch } from 'vue'
-import { Dialog, Button, FeatherIcon, FileUploader, FormControl, ErrorMessage } from 'frappe-ui'
+import { Dialog, Button, FeatherIcon, FileUploader, FormControl, ErrorMessage, TextEditor } from 'frappe-ui'
 import { BTN_BRAND } from '@/utils/buttonStyles'
 import {
   COLOR_PRESETS,

@@ -27,6 +27,7 @@ EDITABLE_FIELDS = (
 	"application_max_file_size_mb",
 	"application_allowed_formats",
 	"application_declaration",
+	"application_instructions",
 )
 
 

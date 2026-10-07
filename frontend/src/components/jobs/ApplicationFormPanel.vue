@@ -73,6 +73,19 @@
       </div>
 
       <div>
+        <details class="group mb-5 rounded-lg border border-gray-200">
+          <summary class="flex cursor-pointer list-none items-center justify-between px-3 py-2.5 font-semibold text-gray-900">
+            <span class="flex items-center gap-2">
+              <FeatherIcon name="book-open" class="h-4 w-4 text-brand-700" />Instructions for this post
+              <span v-if="!job.application_instructions" class="text-xs font-normal text-gray-500">(none — only the general ones)</span>
+            </span>
+            <FeatherIcon name="chevron-down" class="h-4 w-4 text-gray-500 transition group-open:rotate-180" />
+          </summary>
+          <div class="border-t px-3 py-3">
+            <div v-if="job.application_instructions" class="prose prose-sm max-w-none" v-html="job.application_instructions" />
+            <p class="mt-2 text-xs text-gray-500">General instructions for every form are set in Settings &rsaquo; General.</p>
+          </div>
+        </details>
         <div class="mb-2 font-semibold text-gray-900">Supporting documents</div>
         <div v-if="job.required_documents?.length" class="flex flex-col gap-3">
           <div v-for="group in documentGroups" :key="group.label">
@@ -112,6 +125,18 @@
           <input v-model="form.require_postgraduate" type="checkbox" class="rounded border-gray-300" />
           Post Graduate degree is required
         </label>
+      </div>
+
+      <div>
+        <span class="mb-1.5 block text-sm text-gray-700">Instructions for this post</span>
+        <TextEditor
+          :content="form.application_instructions"
+          placeholder="Shown with the general instructions when candidates open the form..."
+          :fixed-menu="true"
+          editor-class="prose-sm max-w-none min-h-[8rem] px-3 py-2"
+          class="rounded border border-gray-300 bg-white"
+          @change="(html) => (form.application_instructions = html)"
+        />
       </div>
 
       <div>
@@ -196,7 +221,7 @@
 
 <script setup>
 import { computed, reactive, ref } from 'vue'
-import { Button, ErrorMessage, FeatherIcon, FormControl, call } from 'frappe-ui'
+import { Button, ErrorMessage, FeatherIcon, FormControl, TextEditor, call } from 'frappe-ui'
 import { toast } from '@/utils/notify'
 import dayjs from 'dayjs'
 import { jobOpeningService } from '@/services/jobOpenings'
@@ -212,7 +237,13 @@ const editing = ref(false)
 const saving = ref(false)
 const error = ref('')
 const documentTypes = ref([])
-const form = reactive({ application_deadline: '', require_postgraduate: false, screening_questions: [], required_documents: [] })
+const form = reactive({
+  application_deadline: '',
+  require_postgraduate: false,
+  application_instructions: '',
+  screening_questions: [],
+  required_documents: [],
+})
 
 const documentGroups = computed(() => {
   const docs = props.job.required_documents || []
@@ -233,6 +264,7 @@ async function startEdit() {
       ? dayjs(props.job.application_deadline).format('YYYY-MM-DDTHH:mm')
       : '',
     require_postgraduate: !!props.job.require_postgraduate,
+    application_instructions: props.job.application_instructions || '',
     screening_questions: (props.job.screening_questions || []).map((q) => ({
       question: q.question,
       answer_type: q.answer_type,
@@ -304,6 +336,7 @@ async function save() {
         ? dayjs(form.application_deadline).format('YYYY-MM-DD HH:mm:ss')
         : null,
       require_postgraduate: form.require_postgraduate ? 1 : 0,
+      application_instructions: form.application_instructions,
       screening_questions: form.screening_questions.map((q) => ({
         question: q.question.trim(),
         answer_type: q.answer_type,

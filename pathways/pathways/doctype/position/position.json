@@ -35,6 +35,8 @@
   "ask_publications",
   "min_publications",
   "max_publications",
+  "instructions_section",
+  "application_instructions",
   "screening_section",
   "screening_questions",
   "documents_section",
@@ -231,6 +233,17 @@
    "depends_on": "eval:doc.ask_publications"
   },
   {
+   "fieldname": "instructions_section",
+   "fieldtype": "Section Break",
+   "label": "Post-specific Instructions"
+  },
+  {
+   "fieldname": "application_instructions",
+   "fieldtype": "Text Editor",
+   "label": "Application Instructions",
+   "description": "Shown with the general instructions on this post's application form; copied to new Job Openings."
+  },
+  {
    "fieldname": "screening_section",
    "fieldtype": "Section Break",
    "label": "Eligibility Questions"
@@ -261,7 +274,7 @@
    "link_fieldname": "position"
   }
  ],
- "modified": "2026-10-06 20:00:00.000000",
+ "modified": "2026-10-07 11:00:00.000000",
  "modified_by": "Administrator",
  "module": "Pathways",
  "name": "Position",

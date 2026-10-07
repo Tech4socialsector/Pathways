@@ -140,6 +140,10 @@ def get_form_config(job):
 			"Candidate Source", filters={"is_active": 1}, pluck="name", order_by="creation asc"
 		),
 		"declaration": _settings().get("application_declaration") or "",
+		"instructions": {
+			"general": _settings().get("application_instructions") or "",
+			"job": job.get("application_instructions") or "",
+		},
 		"sections": get_form_sections(job),
 		"options": _form_options(job),
 	}
