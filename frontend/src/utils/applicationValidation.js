@@ -34,6 +34,21 @@ export function validateApplication({ data, answers, documents, form, viewer }) 
   const today = dayjs().startOf('day')
   const c = data.candidate
   const app = data.application
+  const sec = form.sections || {}
+  const opt = form.options || {}
+  const wholeNumber = (key, value, label, { min = 0, max = 720, optional = false } = {}) => {
+    if (blank(value)) return optional || add(key, `${label} is required.`)
+    const n = Number(String(value).trim())
+    if (!/^\d+$/.test(String(value).trim()) || n < min || n > max) add(key, `${label}: enter a whole number${max ? ` up to ${max}` : ''}.`)
+  }
+  const yesNo = (key, value) => {
+    if (value !== 'Yes' && value !== 'No') add(key, 'Please answer Yes or No.')
+  }
+
+  // --- area of specialization
+  if (sec.specialization && !app.specializations?.length && blank(app.other_specialization)) {
+    add('academic.specializations', 'Choose at least one area of specialization.')
+  }
 
   // --- personal details
   if (!viewer.logged_in && required('candidate.email', c.email, 'Email') && !EMAIL_RE.test(c.email.trim())) {
@@ -55,9 +70,16 @@ export function validateApplication({ data, answers, documents, form, viewer }) 
   }
   required('candidate.gender', c.gender, 'Gender')
   required('candidate.address', c.address, 'Address for Correspondence')
+  if (sec.category_disability) {
+    required('candidate.category', c.category, 'Category')
+    if (app.disability_type) {
+      wholeNumber('application.disability_percentage', app.disability_percentage, 'Percentage of disability', { min: 1, max: 100 })
+    }
+  }
 
   // --- qualifications
   for (const q of app.qualifications) {
+    if (q.degree_level === 'Doctoral') continue
     const isUG = q.degree_level === 'Undergraduate'
     const label = isUG ? 'Graduate Degree' : 'Post Graduate Degree'
     const mandatory = isUG || !!form.require_postgraduate
@@ -79,24 +101,72 @@ export function validateApplication({ data, answers, documents, form, viewer }) 
       if (!isNumber(pct)) add(k('percentage_or_cgpa'), 'Enter the percentage as a number (convert CGPA first).')
       else if (Number(pct) > 100) add(k('percentage_or_cgpa'), 'Percentage must be between 0 and 100.')
     }
+    if (!blank(q.cgpa) || !blank(q.cgpa_scale)) {
+      if (!isNumber(q.cgpa) || !isNumber(q.cgpa_scale)) add(k('cgpa'), 'Enter the CGPA and its scale as numbers, e.g. 7.5 and 10.')
+      else if (Number(q.cgpa) > Number(q.cgpa_scale) || Number(q.cgpa_scale) <= 0) add(k('cgpa'), 'The CGPA must be between 0 and the scale.')
+    }
     required(k('division_grade'), q.division_grade, 'Division / Grade')
     required(k('specialization'), q.specialization, 'Specialization')
     required(k('transcript_attachment'), q.transcript_attachment, 'Transcript')
     required(k('certificate_attachment'), q.certificate_attachment, 'Degree Certificate')
   }
 
-  // --- experience
-  const years = (key, value, label) => {
-    if (blank(value)) return add(key, `${label} is required (enter 0 if none).`)
-    if (!isNumber(value) || Number(value) > 60) return add(key, `${label}: enter years as a number, e.g. 4 or 4.5.`)
-  }
-  years('application.overall_experience_years', app.overall_experience_years, 'Overall work experience')
-  years('application.relevant_experience_years', app.relevant_experience_years, 'Relevant work experience')
-  if (isNumber(app.overall_experience_years) && isNumber(app.relevant_experience_years)) {
-    if (Number(app.relevant_experience_years) > Number(app.overall_experience_years)) {
-      add('application.relevant_experience_years', 'Relevant experience cannot exceed overall experience.')
+  // --- PhD
+  if (sec.phd) {
+    yesNo('application.phd_awarded', app.phd_awarded)
+    const d = app.qualifications.find((q) => q.degree_level === 'Doctoral') || {}
+    if (app.phd_awarded === 'Yes') {
+      required('qual.Doctoral.degree_name', d.degree_name, 'Name of the Doctoral Degree')
+      required('qual.Doctoral.other_institution', d.other_institution, 'University')
+      if (required('qual.Doctoral.year_of_graduation', d.year_of_graduation, 'Year of Award')) {
+        const year = Number(d.year_of_graduation)
+        if (!/^\d{4}$/.test(String(d.year_of_graduation).trim()) || year < 1950 || year > today.year()) {
+          add('qual.Doctoral.year_of_graduation', 'Enter a valid year (YYYY).')
+        }
+      }
+      required('qual.Doctoral.specialization', d.specialization, 'Specialization')
+      for (const rank of ['qs_rank', 'the_rank', 'arwu_rank']) {
+        wholeNumber(`qual.Doctoral.${rank}`, d[rank], 'Ranking', { min: 1, max: 100000, optional: true })
+      }
     }
   }
+
+  // --- NET / SLET / SET
+  if (sec.net) {
+    yesNo('application.net_qualified', app.net_qualified)
+    if (app.net_qualified === 'Yes') {
+      required('application.net_exam', app.net_exam, 'Exam qualified')
+      if (blank(app.net_subject) && blank(app.net_other_subject)) add('application.net_subject', 'Subject is required (or enter it under Other).')
+      if (required('application.net_award_date', app.net_award_date, 'Date of Award') && dayjs(app.net_award_date).isAfter(today)) {
+        add('application.net_award_date', 'Date of Award cannot be in the future.')
+      }
+      required('application.net_roll_number', app.net_roll_number, 'Roll Number')
+    }
+  }
+
+  // --- experience
+  if (sec.experience_months) {
+    wholeNumber('application.overall_experience_months', app.overall_experience_months, 'Overall work experience')
+    wholeNumber('application.teaching_experience_months', app.teaching_experience_months, 'Teaching experience')
+    wholeNumber('application.research_experience_months', app.research_experience_months, 'Research experience', { optional: true })
+    wholeNumber('application.legal_experience_months', app.legal_experience_months, 'Professional legal experience', { optional: true })
+    if (Number(app.teaching_experience_months) > Number(app.overall_experience_months)) {
+      add('application.teaching_experience_months', 'Teaching experience cannot exceed overall experience.')
+    }
+  } else {
+    const years = (key, value, label) => {
+      if (blank(value)) return add(key, `${label} is required (enter 0 if none).`)
+      if (!isNumber(value) || Number(value) > 60) return add(key, `${label}: enter years as a number, e.g. 4 or 4.5.`)
+    }
+    years('application.overall_experience_years', app.overall_experience_years, 'Overall work experience')
+    years('application.relevant_experience_years', app.relevant_experience_years, 'Relevant work experience')
+    if (isNumber(app.overall_experience_years) && isNumber(app.relevant_experience_years)) {
+      if (Number(app.relevant_experience_years) > Number(app.overall_experience_years)) {
+        add('application.relevant_experience_years', 'Relevant experience cannot exceed overall experience.')
+      }
+    }
+  }
+  const overallYears = sec.experience_months ? Number(app.overall_experience_months) / 12 : Number(app.overall_experience_years)
 
   let employmentRows = 0
   app.employment_history.forEach((e, idx) => {
@@ -117,10 +187,39 @@ export function validateApplication({ data, answers, documents, form, viewer }) 
     }
     if (idx === 0) required(k('key_responsibilities'), e.key_responsibilities, 'Key Responsibilities')
   })
-  if (Number(app.overall_experience_years) > 0 && !employmentRows) {
+  if (overallYears > 0 && !employmentRows) {
     add('emp.0.designation', 'Add at least your most recent organisation.')
   }
   if (employmentRows) required('application.notice_period', app.notice_period, 'Current Notice Period')
+
+  // --- administrative responsibilities
+  if (sec.admin_responsibilities) {
+    yesNo('application.held_admin_responsibility', app.held_admin_responsibility)
+    if (app.held_admin_responsibility === 'Yes') {
+      const rows = app.administrative_responsibilities || []
+      const filled = rows.filter((r) => ['responsibility_type', 'duration_months', 'details'].some((f) => !blank(r[f])))
+      if (!filled.length) add('admin.0.responsibility_type', 'Add at least one administrative responsibility.')
+      rows.forEach((r, idx) => {
+        if (!filled.includes(r)) return
+        required(`admin.${idx}.responsibility_type`, r.responsibility_type, 'Type of responsibility')
+        wholeNumber(`admin.${idx}.duration_months`, r.duration_months, 'Duration', { min: 1 })
+        required(`admin.${idx}.details`, r.details, 'Details of the position')
+      })
+    }
+  }
+
+  // --- publications
+  if (sec.publications) {
+    const pubs = app.publications || []
+    const isFilled = (p) => ['title', 'journal_name', 'doi_link', 'pdf_attachment'].some((f) => !blank(p[f]))
+    pubs.forEach((p, idx) => {
+      if (idx >= sec.min_publications && !isFilled(p)) return
+      required(`pub.${idx}.title`, p.title, 'Title')
+      required(`pub.${idx}.journal_name`, p.journal_name, 'Name of the journal / publisher')
+      required(`pub.${idx}.doi_link`, p.doi_link, 'Link / DOI')
+      required(`pub.${idx}.pdf_attachment`, p.pdf_attachment, 'PDF')
+    })
+  }
 
   // --- screening questions
   for (const q of form.screening_questions) {

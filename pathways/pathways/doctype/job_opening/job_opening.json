@@ -29,6 +29,20 @@
   "require_postgraduate",
   "screening_questions",
   "required_documents",
+  "faculty_sections_section",
+  "institution_list",
+  "jo_column_break_3",
+  "ask_specialization",
+  "specialization_discipline",
+  "ask_category_disability",
+  "ask_phd",
+  "ask_net",
+  "jo_column_break_4",
+  "ask_experience_months",
+  "ask_admin_responsibilities",
+  "ask_publications",
+  "min_publications",
+  "max_publications",
   "links_section",
   "pre_recruitment_green_sheet",
   "advertisement_url"
@@ -185,6 +199,92 @@
    "options": "Job Required Document"
   },
   {
+   "fieldname": "faculty_sections_section",
+   "fieldtype": "Section Break",
+   "label": "Academic Form Sections",
+   "description": "Copied from the Position. Turn on the extra sections faculty forms ask for."
+  },
+  {
+   "fieldname": "institution_list",
+   "fieldtype": "Select",
+   "label": "Institution Dropdown",
+   "options": "Free Text\nLaw\nSocial Science",
+   "default": "Free Text",
+   "description": "Which Institution Master list candidates pick their college / university from"
+  },
+  {
+   "fieldname": "jo_column_break_3",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "ask_specialization",
+   "fieldtype": "Check",
+   "label": "Ask Area of Specialization",
+   "default": "0"
+  },
+  {
+   "fieldname": "specialization_discipline",
+   "fieldtype": "Select",
+   "label": "Specialization Discipline",
+   "options": "\nLaw\nSocial Science",
+   "depends_on": "eval:doc.ask_specialization",
+   "mandatory_depends_on": "eval:doc.ask_specialization"
+  },
+  {
+   "fieldname": "ask_category_disability",
+   "fieldtype": "Check",
+   "label": "Ask Category & Disability",
+   "default": "0"
+  },
+  {
+   "fieldname": "ask_phd",
+   "fieldtype": "Check",
+   "label": "Ask PhD Details",
+   "default": "0"
+  },
+  {
+   "fieldname": "ask_net",
+   "fieldtype": "Check",
+   "label": "Ask NET / SLET / SET Details",
+   "default": "0"
+  },
+  {
+   "fieldname": "jo_column_break_4",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "ask_experience_months",
+   "fieldtype": "Check",
+   "label": "Ask Teaching / Research Experience in Months",
+   "default": "0"
+  },
+  {
+   "fieldname": "ask_admin_responsibilities",
+   "fieldtype": "Check",
+   "label": "Ask Administrative Responsibilities",
+   "default": "0"
+  },
+  {
+   "fieldname": "ask_publications",
+   "fieldtype": "Check",
+   "label": "Ask Publications",
+   "default": "0"
+  },
+  {
+   "fieldname": "min_publications",
+   "fieldtype": "Int",
+   "label": "Minimum Publications",
+   "default": "1",
+   "depends_on": "eval:doc.ask_publications"
+  },
+  {
+   "fieldname": "max_publications",
+   "fieldtype": "Int",
+   "label": "Maximum Publications",
+   "default": "3",
+   "depends_on": "eval:doc.ask_publications"
+  },
+  {
    "fieldname": "links_section",
    "fieldtype": "Section Break",
    "label": "Approvals"
@@ -208,7 +308,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-10-06 20:00:00.000000",
+ "modified": "2026-10-06 21:00:00.000000",
  "modified_by": "Administrator",
  "module": "Pathways",
  "name": "Job Opening",

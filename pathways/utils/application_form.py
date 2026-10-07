@@ -140,7 +140,60 @@ def get_form_config(job):
 			"Candidate Source", filters={"is_active": 1}, pluck="name", order_by="creation asc"
 		),
 		"declaration": _settings().get("application_declaration") or "",
+		"sections": get_form_sections(job),
+		"options": _form_options(job),
 	}
+
+
+def get_form_sections(job):
+	"""The academic sections this job's form shows (Job Opening switches)."""
+	return {
+		"institution_list": job.get("institution_list") or "Free Text",
+		"specialization": cint(job.get("ask_specialization")),
+		"category_disability": cint(job.get("ask_category_disability")),
+		"phd": cint(job.get("ask_phd")),
+		"net": cint(job.get("ask_net")),
+		"experience_months": cint(job.get("ask_experience_months")),
+		"admin_responsibilities": cint(job.get("ask_admin_responsibilities")),
+		"publications": cint(job.get("ask_publications")),
+		"min_publications": cint(job.get("min_publications")) if cint(job.get("ask_publications")) else 0,
+		"max_publications": max(cint(job.get("max_publications")), 1) if cint(job.get("ask_publications")) else 0,
+	}
+
+
+def _select_options(doctype, fieldname):
+	return [o for o in (frappe.get_meta(doctype).get_field(fieldname).options or "").split("\n") if o]
+
+
+def _form_options(job):
+	"""Dropdown lists for the sections this job turns on (empty otherwise)."""
+	sections = get_form_sections(job)
+	options = {}
+	if sections["institution_list"] != "Free Text":
+		options["institutions"] = frappe.get_all(
+			"Institution Master",
+			filters={"is_active": 1, "list_type": ["in", [sections["institution_list"], "Both"]]},
+			pluck="institution_name",
+			order_by="institution_name asc",
+		)
+	if sections["specialization"]:
+		options["specializations"] = frappe.get_all(
+			"Specialization Master",
+			filters={"is_active": 1, "discipline": job.get("specialization_discipline") or ""},
+			pluck="specialization_name",
+			order_by="creation asc",
+		)
+	if sections["category_disability"]:
+		options["categories"] = _select_options("Candidate", "category")
+		options["disability_types"] = _select_options("Application", "disability_type")
+	if sections["net"]:
+		options["net_exams"] = _select_options("Application", "net_exam")
+		options["net_subjects"] = frappe.get_all(
+			"UGC NET Subject Master", filters={"is_active": 1}, pluck="name", order_by="name asc"
+		)
+	if sections["admin_responsibilities"]:
+		options["admin_responsibility_types"] = _select_options("Application Administrative Responsibility", "responsibility_type")
+	return options
 
 
 # --------------------------------------------------------------- validation
@@ -280,6 +333,8 @@ def validate_submission(job, data, user, email=None):
 	the typed address for a guest (user == "Guest")."""
 	errors = FormErrors()
 	rule = default_upload_rule()
+	sections = get_form_sections(job)
+	options = _form_options(job)
 	files = []
 	email = email or user
 	upload_tokens = data.get("upload_tokens") or {}
@@ -317,6 +372,11 @@ def validate_submission(job, data, user, email=None):
 		errors.add(_("Gender is required."), "candidate.gender")
 	address = _text(personal.get("address"))
 	errors.require(address, _("Address for Correspondence"), "candidate.address")
+	category = None
+	if sections["category_disability"]:
+		category = personal.get("category")
+		if category not in options["categories"]:
+			errors.add(_("Category is required."), "candidate.category")
 
 	# --- qualifications
 	app = data.get("application") or {}
@@ -338,6 +398,7 @@ def validate_submission(job, data, user, email=None):
 		if dob and cint(row.get("year_of_graduation")) and cint(row.get("year_of_graduation")) < dob.year + 15:
 			errors.add(_("{0}: year of graduation does not match your Date of Birth.").format(label), f"{key}.year_of_graduation")
 		_percentage(row.get("percentage_or_cgpa"), label, errors, f"{key}.percentage_or_cgpa")
+		cgpa, cgpa_scale = _cgpa(row, label, errors, key)
 		errors.require(_text(row.get("division_grade")), _("{0}: Division / Grade").format(label), f"{key}.division_grade")
 		errors.require(_text(row.get("specialization")), _("{0}: Specialization").format(label), f"{key}.specialization")
 		qualifications.append(
@@ -347,6 +408,8 @@ def validate_submission(job, data, user, email=None):
 				"other_institution": _text(row.get("other_institution")),
 				"year_of_graduation": cint(row.get("year_of_graduation")),
 				"percentage_or_cgpa": str(row.get("percentage_or_cgpa") or "").strip(),
+				"cgpa": cgpa,
+				"cgpa_scale": cgpa_scale,
 				"division_grade": _text(row.get("division_grade")),
 				"specialization": _text(row.get("specialization")),
 				"transcript_attachment": upload(
@@ -362,11 +425,31 @@ def validate_submission(job, data, user, email=None):
 		)
 
 	# --- experience
-	overall = _number(app.get("overall_experience_years"), _("Overall work experience"), errors, "application.overall_experience_years", maximum=60)
-	relevant = _number(app.get("relevant_experience_years"), _("Relevant work experience"), errors, "application.relevant_experience_years", maximum=60)
-	overall, relevant = flt(overall, 1), flt(relevant, 1)
-	if relevant > overall:
-		errors.add(_("Relevant experience cannot exceed overall experience."), "application.relevant_experience_years")
+	months = {}
+	if sections["experience_months"]:
+		# Faculty forms ask in months; years are derived for the shared fields.
+		for field, label, required in (
+			("overall_experience_months", _("Overall work experience (months)"), True),
+			("teaching_experience_months", _("Teaching experience (months)"), True),
+			("research_experience_months", _("Research experience (months)"), False),
+			("legal_experience_months", _("Professional legal experience (months)"), False),
+		):
+			value = app.get(field)
+			if value in (None, "") and not required:
+				months[field] = 0
+				continue
+			months[field] = cint(_number(value, label, errors, f"application.{field}", maximum=720))
+		if months.get("teaching_experience_months", 0) > months.get("overall_experience_months", 0):
+			errors.add(_("Teaching experience cannot exceed overall experience."), "application.teaching_experience_months")
+		months["legal_experience_details"] = _text(app.get("legal_experience_details"))
+		overall = flt(months["overall_experience_months"] / 12, 1)
+		relevant = flt(months["teaching_experience_months"] / 12, 1)
+	else:
+		overall = _number(app.get("overall_experience_years"), _("Overall work experience"), errors, "application.overall_experience_years", maximum=60)
+		relevant = _number(app.get("relevant_experience_years"), _("Relevant work experience"), errors, "application.relevant_experience_years", maximum=60)
+		overall, relevant = flt(overall, 1), flt(relevant, 1)
+		if relevant > overall:
+			errors.add(_("Relevant experience cannot exceed overall experience."), "application.relevant_experience_years")
 
 	employment = []
 	for i, row in enumerate(app.get("employment_history") or [], start=1):
@@ -515,12 +598,16 @@ def validate_submission(job, data, user, email=None):
 			}
 		)
 
+	academic = _validate_academic_sections(sections, options, app, errors, upload, dob)
+	qualifications += academic.pop("doctoral", [])
+
 	if not cint(data.get("declaration_accepted")):
 		errors.add(_("You must accept the declaration to submit."), "declaration")
 
 	errors.raise_if_any()
 
 	candidate_fields = {
+		"category": category,
 		"full_name": full_name,
 		"mobile_number": mobile,
 		"date_of_birth": dob,
@@ -547,8 +634,161 @@ def validate_submission(job, data, user, email=None):
 		"documents": documents,
 		"declaration_accepted": 1,
 		"declaration_accepted_on": now_datetime(),
+		**months,
+		**academic,
 	}
+	if not sections["category_disability"]:
+		candidate_fields.pop("category")
 	return candidate_fields, application_fields, files
+
+
+def _cgpa(row, label, errors, key):
+	"""Optional CGPA with its scale (e.g. 7.5 on 10): both or neither."""
+	cgpa, scale = str(row.get("cgpa") or "").strip(), str(row.get("cgpa_scale") or "").strip()
+	if not cgpa and not scale:
+		return None, None
+	try:
+		cgpa_value, scale_value = float(cgpa), float(scale)
+	except ValueError:
+		errors.add(_("{0}: enter the CGPA and its scale as numbers, e.g. 7.5 and 10.").format(label), f"{key}.cgpa")
+		return cgpa, scale
+	if not 0 < scale_value <= 100 or not 0 <= cgpa_value <= scale_value:
+		errors.add(_("{0}: the CGPA must be between 0 and the scale.").format(label), f"{key}.cgpa")
+	return cgpa, scale
+
+
+def _yes_no(value, label, errors, field):
+	if value not in YES_NO:
+		errors.add(_("Please answer: {0}").format(label), field)
+		return None
+	return value
+
+
+def _validate_academic_sections(sections, options, app, errors, upload, dob):
+	"""Faculty-form sections, each only when the job switches it on.
+	Returns Application fields (plus "doctoral": [qualification row])."""
+	out = {}
+
+	if sections["specialization"]:
+		allowed = set(options.get("specializations") or [])
+		chosen = [s for s in app.get("specializations") or [] if s in allowed]
+		other = _text(app.get("other_specialization"))
+		if not chosen and not other:
+			errors.add(_("Choose at least one area of specialization."), "academic.specializations")
+		out.update({"specializations": ", ".join(chosen), "other_specialization": other})
+
+	if sections["category_disability"]:
+		disability = app.get("disability_type") or ""
+		if disability and disability not in options["disability_types"]:
+			errors.add(_("Choose a type of disability from the list."), "application.disability_type")
+		percentage = None
+		if disability:
+			percentage = cint(_number(app.get("disability_percentage"), _("Percentage of disability"), errors, "application.disability_percentage", minimum=1, maximum=100))
+		out.update({"disability_type": disability, "disability_percentage": percentage})
+
+	if sections["phd"]:
+		awarded = _yes_no(app.get("phd_awarded"), _("Have you been awarded your PhD?"), errors, "application.phd_awarded")
+		out["phd_awarded"] = awarded
+		out["doctoral"] = []
+		if awarded == "Yes":
+			row = next((q for q in app.get("qualifications") or [] if q.get("degree_level") == "Doctoral"), None) or {}
+			key, label = "qual.Doctoral", _("Doctoral Degree")
+			errors.require(_text(row.get("degree_name")), _("{0}: Name of the Degree").format(label), f"{key}.degree_name")
+			errors.require(_text(row.get("other_institution")), _("{0}: University").format(label), f"{key}.other_institution")
+			year = _year(row.get("year_of_graduation"), label, errors, f"{key}.year_of_graduation")
+			if dob and year and year < dob.year + 18:
+				errors.add(_("{0}: year of award does not match your Date of Birth.").format(label), f"{key}.year_of_graduation")
+			errors.require(_text(row.get("specialization")), _("{0}: Specialization").format(label), f"{key}.specialization")
+			ranks = {}
+			for field in ("qs_rank", "the_rank", "arwu_rank"):
+				value = row.get(field)
+				ranks[field] = cint(_number(value, label, errors, f"{key}.{field}", minimum=1)) if value not in (None, "") else None
+			out["doctoral"].append(
+				{
+					"degree_level": "Doctoral",
+					"degree_name": _text(row.get("degree_name")),
+					"other_institution": _text(row.get("other_institution")),
+					"year_of_graduation": year,
+					"specialization": _text(row.get("specialization")),
+					"certificate_attachment": upload(row.get("certificate_attachment"), _("PhD Certificate"), False, f"{key}.certificate_attachment"),
+					**ranks,
+				}
+			)
+
+	if sections["net"]:
+		qualified = _yes_no(app.get("net_qualified"), _("Have you cleared NET / SLET / SET?"), errors, "application.net_qualified")
+		out["net_qualified"] = qualified
+		if qualified == "Yes":
+			exam = app.get("net_exam")
+			if exam not in options["net_exams"]:
+				errors.add(_("Choose the exam you qualified."), "application.net_exam")
+			subject = app.get("net_subject") or ""
+			other_subject = _text(app.get("net_other_subject"))
+			if subject and subject not in options["net_subjects"]:
+				errors.add(_("Choose a subject from the list."), "application.net_subject")
+			if not subject and not other_subject:
+				errors.add(_("Subject is required (or enter it under Other)."), "application.net_subject")
+			award = _date(app.get("net_award_date"), _("Date of Award"), errors, "application.net_award_date")
+			if not app.get("net_award_date"):
+				errors.add(_("Date of Award is required."), "application.net_award_date")
+			elif award and award > getdate(today()):
+				errors.add(_("Date of Award cannot be in the future."), "application.net_award_date")
+			roll = _text(app.get("net_roll_number"))
+			errors.require(roll, _("Roll Number"), "application.net_roll_number")
+			out.update(
+				{"net_exam": exam, "net_subject": subject or None, "net_other_subject": other_subject, "net_award_date": award, "net_roll_number": roll}
+			)
+
+	if sections["admin_responsibilities"]:
+		held = _yes_no(
+			app.get("held_admin_responsibility"),
+			_("Did you undertake administrative responsibilities?"),
+			errors,
+			"application.held_admin_responsibility",
+		)
+		out["held_admin_responsibility"] = held
+		rows = []
+		if held == "Yes":
+			given = [r for r in app.get("administrative_responsibilities") or [] if any(_text(str(r.get(k) or "")) for k in ("responsibility_type", "duration_months", "details"))]
+			if not given:
+				errors.add(_("Add at least one administrative responsibility."), "admin.0.responsibility_type")
+			for i, row in enumerate(given[:5]):
+				key = f"admin.{i}"
+				kind = row.get("responsibility_type")
+				if kind not in options["admin_responsibility_types"]:
+					errors.add(_("Choose the type of responsibility."), f"{key}.responsibility_type")
+				duration = cint(_number(row.get("duration_months"), _("Duration (months)"), errors, f"{key}.duration_months", minimum=1, maximum=720))
+				details = _text(row.get("details"))
+				errors.require(details, _("Details of the position"), f"{key}.details")
+				rows.append({"responsibility_type": kind, "duration_months": duration, "details": details})
+		out["administrative_responsibilities"] = rows
+
+	if sections["publications"]:
+		given = [p for p in app.get("publications") or [] if any(_text(p.get(k)) for k in ("title", "journal_name", "doi_link", "pdf_attachment"))]
+		minimum, maximum = sections["min_publications"], sections["max_publications"]
+		if len(given) < minimum:
+			errors.add(
+				_("Add at least {0} publication(s).").format(minimum), f"pub.{len(given)}.title"
+			)
+		if len(given) > maximum:
+			errors.add(_("Add at most {0} publications.").format(maximum), f"pub.{maximum}.title")
+		rows = []
+		for i, pub in enumerate(given[:maximum]):
+			key, label = f"pub.{i}", _("Publication #{0}").format(i + 1)
+			for field, field_label in (("title", _("Title of the article")), ("journal_name", _("Name of the journal")), ("doi_link", _("Link / DOI"))):
+				errors.require(_text(pub.get(field)), f"{label}: {field_label}", f"{key}.{field}")
+			rows.append(
+				{
+					"title": _text(pub.get("title")),
+					"journal_name": _text(pub.get("journal_name")),
+					"volume": _text(pub.get("volume")),
+					"doi_link": _text(pub.get("doi_link")),
+					"pdf_attachment": upload(pub.get("pdf_attachment"), f"{label}: PDF", True, f"{key}.pdf_attachment"),
+				}
+			)
+		out["publications"] = rows
+
+	return out
 
 
 # --------------------------------------------------------- stored file names
@@ -557,6 +797,7 @@ URL_FIELDS = ("resume_attachment", "sop_attachment", "additional_attachment")
 CHILD_URL_FIELDS = {
 	"qualifications": ("transcript_attachment", "certificate_attachment"),
 	"documents": ("attachment",),
+	"publications": ("pdf_attachment",),
 }
 
 

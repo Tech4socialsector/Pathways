@@ -13,8 +13,8 @@
       <template v-else>
         <BackButton :fallback="`/portal/jobs/${props.id}`" class="mb-4" />
         <header class="overflow-hidden rounded-xl border bg-white shadow-sm">
-          <div class="border-b bg-gradient-to-r from-indigo-50 to-white px-5 py-5 sm:px-6">
-            <div class="text-xs font-bold uppercase tracking-wider text-indigo-600">Application Form</div>
+          <div class="border-b bg-gradient-to-r from-brand-50 to-white px-5 py-5 sm:px-6">
+            <div class="text-xs font-bold uppercase tracking-wider text-brand-700">Application Form</div>
             <h1 class="mt-1 text-2xl font-bold text-gray-900">{{ job.job_title }}</h1>
             <div class="mt-3 flex flex-wrap gap-2 text-xs text-gray-700">
               <span v-for="chip in jobChips" :key="chip.text" class="inline-flex items-center gap-1.5 rounded-full border bg-white px-2.5 py-1">
@@ -40,7 +40,7 @@
               v-if="job.jd_attachment"
               :href="job.jd_attachment"
               target="_blank"
-              class="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-indigo-600 hover:underline"
+              class="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-brand-700 hover:underline"
             >
               <FeatherIcon name="download" class="h-4 w-4" /> Download the full notification
             </a>
@@ -144,6 +144,22 @@
             submit.
           </p>
 
+          <Section v-if="sec.specialization" title="Area of Specialization" subtitle="Must be relevant to the area notified in the advertisement. Choose all that apply.">
+            <FormField name="academic.specializations" :error="errors['academic.specializations']">
+              <div class="grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-2 lg:grid-cols-3">
+                <label v-for="name in opt.specializations || []" :key="name" class="flex items-center gap-2 text-sm text-gray-700">
+                  <input v-model="data.application.specializations" type="checkbox" :value="name" class="rounded border-gray-300" />
+                  {{ name }}
+                </label>
+              </div>
+              <FormControl
+                class="mt-4 sm:w-1/2"
+                label="Other specialization (if not listed)"
+                v-model="data.application.other_specialization"
+              />
+            </FormField>
+          </Section>
+
           <Section title="Personal Details">
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <FormField name="candidate.email" :error="errors['candidate.email']">
@@ -177,6 +193,26 @@
                   required
                 />
               </FormField>
+              <template v-if="sec.category_disability">
+                <FormField name="candidate.category" :error="errors['candidate.category']">
+                  <FormControl label="Category" type="select" v-model="data.candidate.category" :options="['', ...(opt.categories || [])]" required />
+                </FormField>
+                <FormField name="application.disability_type" :error="errors['application.disability_type']">
+                  <FormControl
+                    label="Type of Disability (if any)"
+                    type="select"
+                    v-model="data.application.disability_type"
+                    :options="['', ...(opt.disability_types || [])]"
+                  />
+                </FormField>
+                <FormField
+                  v-if="data.application.disability_type"
+                  name="application.disability_percentage"
+                  :error="errors['application.disability_percentage']"
+                >
+                  <FormControl label="Percentage of Disability" inputmode="numeric" v-model="data.application.disability_percentage" required />
+                </FormField>
+              </template>
             </div>
             <FormField class="mt-4" name="candidate.address" :error="errors['candidate.address']">
               <FormControl label="Address for Correspondence" type="textarea" v-model="data.candidate.address" required />
@@ -184,7 +220,7 @@
           </Section>
 
           <Section
-            v-for="q in data.application.qualifications"
+            v-for="q in data.application.qualifications.filter((x) => x.degree_level !== 'Doctoral')"
             :key="q.degree_level"
             :title="q.degree_level === 'Undergraduate' ? 'Graduate Degree' : 'Post Graduate Degree'"
             :badge="q.degree_level === 'Postgraduate' && !form.require_postgraduate ? 'optional' : ''"
@@ -194,7 +230,19 @@
                 <FormControl label="Name of the Degree" v-model="q.degree_name" :required="isRequiredDegree(q)" />
               </FormField>
               <FormField :name="`qual.${q.degree_level}.other_institution`" :error="errors[`qual.${q.degree_level}.other_institution`]">
-                <FormControl label="College / University" v-model="q.other_institution" :required="isRequiredDegree(q)" />
+                <template v-if="opt.institutions">
+                  <span class="mb-1.5 block text-sm text-gray-700">
+                    College / University<span v-if="isRequiredDegree(q)" class="text-red-500"> *</span>
+                  </span>
+                  <Autocomplete
+                    placeholder="Search your university"
+                    :options="institutionOptions"
+                    :model-value="q._other ? OTHER : q.other_institution"
+                    @update:model-value="(o) => pickInstitution(q, o?.value)"
+                  />
+                  <FormControl v-if="q._other" class="mt-2" placeholder="Name of your College / University" v-model="q.other_institution" />
+                </template>
+                <FormControl v-else label="College / University" v-model="q.other_institution" :required="isRequiredDegree(q)" />
               </FormField>
               <FormField :name="`qual.${q.degree_level}.year_of_graduation`" :error="errors[`qual.${q.degree_level}.year_of_graduation`]">
                 <FormControl
@@ -214,6 +262,12 @@
                   :required="isRequiredDegree(q)"
                   description="Exact percentage. If you have a CGPA, convert it using your university's table."
                 />
+              </FormField>
+              <FormField v-if="academicForm" :name="`qual.${q.degree_level}.cgpa`" :error="errors[`qual.${q.degree_level}.cgpa`]">
+                <div class="grid grid-cols-2 gap-3">
+                  <FormControl label="CGPA (if applicable)" inputmode="decimal" v-model="q.cgpa" placeholder="e.g. 7.5" />
+                  <FormControl label="CGPA scale" inputmode="decimal" v-model="q.cgpa_scale" placeholder="e.g. 10" />
+                </div>
               </FormField>
               <FormField :name="`qual.${q.degree_level}.division_grade`" :error="errors[`qual.${q.degree_level}.division_grade`]">
                 <FormControl label="Division / Grade" v-model="q.division_grade" :required="isRequiredDegree(q)" />
@@ -235,8 +289,84 @@
             </div>
           </Section>
 
+          <Section v-if="sec.phd" title="Doctoral Degree">
+            <FormField name="application.phd_awarded" :error="errors['application.phd_awarded']">
+              <YesNo v-model="data.application.phd_awarded" label="Have you been awarded your PhD degree?" />
+            </FormField>
+            <div v-if="data.application.phd_awarded === 'Yes'" class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <FormField name="qual.Doctoral.degree_name" :error="errors['qual.Doctoral.degree_name']">
+                <FormControl label="Name of the Doctoral Degree" v-model="doctoral.degree_name" placeholder="e.g. PhD in Law" required />
+              </FormField>
+              <FormField name="qual.Doctoral.other_institution" :error="errors['qual.Doctoral.other_institution']">
+                <FormControl label="University" v-model="doctoral.other_institution" required />
+              </FormField>
+              <FormField name="qual.Doctoral.year_of_graduation" :error="errors['qual.Doctoral.year_of_graduation']">
+                <FormControl label="Year of Award" inputmode="numeric" maxlength="4" placeholder="YYYY" v-model="doctoral.year_of_graduation" required />
+              </FormField>
+              <FormField name="qual.Doctoral.specialization" :error="errors['qual.Doctoral.specialization']">
+                <FormControl label="Specialization" v-model="doctoral.specialization" required />
+              </FormField>
+              <div class="sm:col-span-2">
+                <div class="mb-2 text-sm text-gray-700">If your PhD is from a foreign university, its world ranking:</div>
+                <div class="grid grid-cols-3 gap-3">
+                  <FormField v-for="r in RANKS" :key="r.field" :name="`qual.Doctoral.${r.field}`" :error="errors[`qual.Doctoral.${r.field}`]">
+                    <FormControl :label="r.label" inputmode="numeric" v-model="doctoral[r.field]" placeholder="e.g. 500" />
+                  </FormField>
+                </div>
+              </div>
+              <FormField name="qual.Doctoral.certificate_attachment" :error="errors['qual.Doctoral.certificate_attachment']">
+                <UploadField v-model="doctoral.certificate_attachment" label="PhD Certificate" :rule="form.upload_rule" />
+              </FormField>
+            </div>
+          </Section>
+
+          <Section v-if="sec.net" title="NET / SLET / SET">
+            <FormField name="application.net_qualified" :error="errors['application.net_qualified']">
+              <YesNo v-model="data.application.net_qualified" label="Have you successfully cleared the NET / SLET / SET?" />
+            </FormField>
+            <div v-if="data.application.net_qualified === 'Yes'" class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <FormField name="application.net_exam" :error="errors['application.net_exam']">
+                <FormControl label="Exam qualified" type="select" v-model="data.application.net_exam" :options="['', ...(opt.net_exams || [])]" required />
+              </FormField>
+              <FormField name="application.net_subject" :error="errors['application.net_subject']">
+                <span class="mb-1.5 block text-sm text-gray-700">Subject<span class="text-red-500"> *</span></span>
+                <Autocomplete
+                  placeholder="Search subject"
+                  :options="netSubjectOptions"
+                  :model-value="data.application.net_subject"
+                  @update:model-value="(o) => (data.application.net_subject = o?.value || '')"
+                />
+                <FormControl
+                  class="mt-2"
+                  placeholder="Other subject (if not listed)"
+                  v-model="data.application.net_other_subject"
+                />
+              </FormField>
+              <FormField name="application.net_award_date" :error="errors['application.net_award_date']">
+                <FormControl label="Date of Award" type="date" :max="today" v-model="data.application.net_award_date" required />
+              </FormField>
+              <FormField name="application.net_roll_number" :error="errors['application.net_roll_number']">
+                <FormControl label="Roll Number" v-model="data.application.net_roll_number" required />
+              </FormField>
+            </div>
+          </Section>
+
           <Section title="Professional Experience" subtitle="In reverse chronological order — most recent first.">
-            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div v-if="sec.experience_months" class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <FormField v-for="m in MONTH_FIELDS" :key="m.field" :name="`application.${m.field}`" :error="errors[`application.${m.field}`]">
+                <FormControl
+                  :label="m.label"
+                  inputmode="numeric"
+                  v-model="data.application[m.field]"
+                  :required="m.required"
+                  :description="m.hint"
+                />
+              </FormField>
+              <FormField class="sm:col-span-2" name="application.legal_experience_details" :error="errors['application.legal_experience_details']">
+                <FormControl label="Nature of professional legal experience" type="textarea" v-model="data.application.legal_experience_details" />
+              </FormField>
+            </div>
+            <div v-else class="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <FormField name="application.overall_experience_years" :error="errors['application.overall_experience_years']">
                 <FormControl label="Overall work experience (years)" inputmode="decimal" v-model="data.application.overall_experience_years" required />
               </FormField>
@@ -274,6 +404,91 @@
             <FormField class="mt-4 sm:w-1/2" name="application.notice_period" :error="errors['application.notice_period']">
               <FormControl label="Current Notice Period" v-model="data.application.notice_period" placeholder="e.g. 60 days" />
             </FormField>
+          </Section>
+
+          <Section v-if="sec.admin_responsibilities" title="Administrative Responsibilities at a University">
+            <FormField name="application.held_admin_responsibility" :error="errors['application.held_admin_responsibility']">
+              <YesNo
+                v-model="data.application.held_admin_responsibility"
+                label="In your previous academic positions, did you undertake any administrative responsibilities?"
+              />
+            </FormField>
+            <template v-if="data.application.held_admin_responsibility === 'Yes'">
+              <div v-for="(r, idx) in data.application.administrative_responsibilities" :key="idx" class="mt-4 rounded border p-3">
+                <div class="mb-3 flex items-center justify-between">
+                  <span class="text-sm font-medium text-gray-900">Responsibility #{{ idx + 1 }}</span>
+                  <Button v-if="idx > 0" size="sm" variant="ghost" @click="data.application.administrative_responsibilities.splice(idx, 1)">Remove</Button>
+                </div>
+                <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <FormField :name="`admin.${idx}.responsibility_type`" :error="errors[`admin.${idx}.responsibility_type`]">
+                    <FormControl
+                      label="Type of responsibility"
+                      type="select"
+                      v-model="r.responsibility_type"
+                      :options="['', ...(opt.admin_responsibility_types || [])]"
+                      required
+                    />
+                  </FormField>
+                  <FormField :name="`admin.${idx}.duration_months`" :error="errors[`admin.${idx}.duration_months`]">
+                    <FormControl label="Duration (months)" inputmode="numeric" v-model="r.duration_months" required />
+                  </FormField>
+                  <FormField class="sm:col-span-2" :name="`admin.${idx}.details`" :error="errors[`admin.${idx}.details`]">
+                    <FormControl label="Details of the position" type="textarea" v-model="r.details" required />
+                  </FormField>
+                </div>
+              </div>
+              <Button
+                v-if="data.application.administrative_responsibilities.length < 5"
+                class="mt-3"
+                size="sm"
+                variant="ghost"
+                @click="data.application.administrative_responsibilities.push({})"
+              >
+                + Add another responsibility
+              </Button>
+            </template>
+          </Section>
+
+          <Section
+            v-if="sec.publications"
+            title="Publications"
+            :subtitle="`Your best ${sec.max_publications} publication(s) from peer-reviewed or Scopus-indexed journals, books or chapters.${sec.min_publications ? ` At least ${sec.min_publications} required.` : ''}`"
+          >
+            <div v-for="(pub, idx) in data.application.publications" :key="idx" class="mb-4 rounded border p-3 last:mb-0">
+              <div class="mb-3 flex items-center justify-between">
+                <span class="text-sm font-medium text-gray-900">
+                  Publication #{{ idx + 1 }}<span v-if="idx < sec.min_publications" class="text-red-500"> *</span>
+                </span>
+                <Button v-if="idx >= Math.max(sec.min_publications, 1)" size="sm" variant="ghost" @click="data.application.publications.splice(idx, 1)">
+                  Remove
+                </Button>
+              </div>
+              <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <FormField class="sm:col-span-2" :name="`pub.${idx}.title`" :error="errors[`pub.${idx}.title`]">
+                  <FormControl label="Title of the article / book / chapter" v-model="pub.title" :required="idx < sec.min_publications" />
+                </FormField>
+                <FormField :name="`pub.${idx}.journal_name`" :error="errors[`pub.${idx}.journal_name`]">
+                  <FormControl label="Name of the journal / publisher" v-model="pub.journal_name" :required="idx < sec.min_publications" />
+                </FormField>
+                <FormField :name="`pub.${idx}.volume`" :error="errors[`pub.${idx}.volume`]">
+                  <FormControl label="Volume" v-model="pub.volume" />
+                </FormField>
+                <FormField :name="`pub.${idx}.doi_link`" :error="errors[`pub.${idx}.doi_link`]">
+                  <FormControl label="Link of the article / DOI" v-model="pub.doi_link" :required="idx < sec.min_publications" />
+                </FormField>
+                <FormField :name="`pub.${idx}.pdf_attachment`" :error="errors[`pub.${idx}.pdf_attachment`]">
+                  <UploadField v-model="pub.pdf_attachment" label="PDF" :required="idx < sec.min_publications" :rule="form.upload_rule" />
+                </FormField>
+              </div>
+            </div>
+            <Button
+              v-if="data.application.publications.length < sec.max_publications"
+              size="sm"
+              variant="ghost"
+              @click="data.application.publications.push({})"
+            >
+              + Add another publication
+            </Button>
           </Section>
 
           <Section v-if="form.screening_questions.length" title="Eligibility">
@@ -422,7 +637,7 @@
 <script setup>
 import BackButton from '@/components/common/BackButton.vue'
 import { computed, h, nextTick, onMounted, provide, reactive, ref, watch } from 'vue'
-import { Button, FeatherIcon, FormControl } from 'frappe-ui'
+import { Autocomplete, Button, FeatherIcon, FormControl } from 'frappe-ui'
 import dayjs from 'dayjs'
 import CandidatePortalLayout from '@/layouts/CandidatePortalLayout.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
@@ -445,8 +660,14 @@ const form = computed(
       required_documents: [],
       sources: [],
       upload_rule: { formats: [], max_size_mb: 5 },
+      sections: {},
+      options: {},
     },
 )
+// Academic sections this job switches on, and their dropdown lists.
+const sec = computed(() => form.value.sections || {})
+const opt = computed(() => form.value.options || {})
+const academicForm = computed(() => !!(sec.value.phd || sec.value.net || sec.value.publications))
 const viewer = computed(() => job.value?.viewer || {})
 
 const jobChips = computed(() =>
@@ -472,12 +693,33 @@ provide('guestUpload', {
 // ----- form state
 function emptyData() {
   return {
-    candidate: { full_name: '', email: '', mobile_number: '', date_of_birth: '', gender: '', address: '' },
+    candidate: { full_name: '', email: '', mobile_number: '', date_of_birth: '', gender: '', address: '', category: '' },
     application: {
       qualifications: [
         { degree_level: 'Undergraduate' },
         { degree_level: 'Postgraduate' },
+        { degree_level: 'Doctoral' },
       ],
+      // academic sections (sent only to jobs that ask for them; the server ignores the rest)
+      specializations: [],
+      other_specialization: '',
+      disability_type: '',
+      disability_percentage: '',
+      phd_awarded: '',
+      net_qualified: '',
+      net_exam: '',
+      net_subject: '',
+      net_other_subject: '',
+      net_award_date: '',
+      net_roll_number: '',
+      overall_experience_months: '',
+      teaching_experience_months: '',
+      research_experience_months: '',
+      legal_experience_months: '',
+      legal_experience_details: '',
+      held_admin_responsibility: '',
+      administrative_responsibilities: [{}],
+      publications: [],
       overall_experience_years: '',
       relevant_experience_years: '',
       notice_period: '',
@@ -498,6 +740,52 @@ function emptyData() {
 const data = reactive(emptyData())
 const answers = reactive({})
 const documents = reactive({})
+
+const OTHER = '__other__'
+const RANKS = [
+  { field: 'qs_rank', label: 'QS' },
+  { field: 'the_rank', label: 'THE' },
+  { field: 'arwu_rank', label: 'ARWU' },
+]
+const MONTH_FIELDS = [
+  { field: 'overall_experience_months', label: 'Overall work experience (months)', required: true },
+  { field: 'teaching_experience_months', label: 'Teaching experience (months)', required: true },
+  {
+    field: 'research_experience_months',
+    label: 'Research experience (months)',
+    hint: 'Excluding PhD, internships and any stint shorter than 3 months.',
+  },
+  { field: 'legal_experience_months', label: 'Professional legal experience (months)', hint: 'Excluding internships.' },
+]
+
+const institutionOptions = computed(() => [
+  ...(opt.value.institutions || []).map((name) => ({ label: name, value: name })),
+  { label: 'Other (not in the list)', value: OTHER },
+])
+const netSubjectOptions = computed(() => (opt.value.net_subjects || []).map((name) => ({ label: name, value: name })))
+
+function pickInstitution(q, value) {
+  q._other = value === OTHER
+  q.other_institution = value && value !== OTHER ? value : ''
+}
+
+// The PhD row lives in qualifications with the other degrees (added on
+// load if an older draft has none).
+const doctoral = computed(() => data.application.qualifications.find((q) => q.degree_level === 'Doctoral') || {})
+
+// Publications start with as many rows as the job requires (at least one).
+function ensurePublicationRows() {
+  const want = Math.max(sec.value.min_publications || 0, sec.value.publications ? 1 : 0)
+  while (data.application.publications.length < want) data.application.publications.push({})
+}
+
+// A university restored from a draft that is not in the list was typed under "Other".
+function markOtherInstitutions() {
+  const listed = new Set(opt.value.institutions || [])
+  for (const q of data.application.qualifications) {
+    if (q.degree_level !== 'Doctoral' && opt.value.institutions && q.other_institution && !listed.has(q.other_institution)) q._other = true
+  }
+}
 
 function isRequiredDegree(q) {
   return q.degree_level === 'Undergraduate' || !!form.value.require_postgraduate
@@ -561,6 +849,11 @@ function restore() {
   } catch {
     // corrupt or unavailable draft — start clean
   }
+  if (!data.application.qualifications.some((q) => q.degree_level === 'Doctoral')) {
+    data.application.qualifications.push({ degree_level: 'Doctoral' })
+  }
+  ensurePublicationRows()
+  markOtherInstitutions()
 }
 
 let draftTimer = null
@@ -677,7 +970,7 @@ const Section = (p, { slots }) =>
       // Numbered automatically (CSS counter), so optional sections never leave gaps.
       h('span', {
         class:
-          "flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-indigo-600 text-xs font-bold text-white before:content-[counter(section)]",
+          "flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-700 text-xs font-bold text-white before:content-[counter(section)]",
       }),
       h('div', [
         h('div', { class: 'flex items-center gap-2' }, [
@@ -690,4 +983,27 @@ const Section = (p, { slots }) =>
     slots.default?.(),
   ])
 Section.props = ['title', 'subtitle', 'badge']
+
+// A required Yes / No question as two radio buttons.
+const YesNo = (p, { emit }) =>
+  h('div', [
+    h('div', { class: 'mb-1.5 text-sm text-gray-800' }, [p.label, h('span', { class: 'text-red-500' }, ' *')]),
+    h(
+      'div',
+      { class: 'flex gap-5' },
+      ['Yes', 'No'].map((value) =>
+        h('label', { class: 'flex items-center gap-2 text-sm text-gray-700' }, [
+          h('input', {
+            type: 'radio',
+            value,
+            checked: p.modelValue === value,
+            onChange: () => emit('update:modelValue', value),
+          }),
+          value,
+        ]),
+      ),
+    ),
+  ])
+YesNo.props = ['modelValue', 'label']
+YesNo.emits = ['update:modelValue']
 </script>

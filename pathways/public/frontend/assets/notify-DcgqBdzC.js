@@ -1,0 +1,1 @@
+import{bt as r}from"./index-BlpM8EWh.js";function i({title:s,message:o,icon:e,iconClasses:a}={}){const t=s||o||"";return e==="alert-triangle"||/red/.test(a||"")?r.error(t):r.success(t)}export{i as t};

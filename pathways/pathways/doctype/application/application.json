@@ -28,8 +28,32 @@
   "additional_attachment",
   "qualifications_tab",
   "qualifications",
+  "academic_tab",
+  "specialization_section",
+  "specializations",
+  "other_specialization",
+  "column_break_spec",
+  "disability_type",
+  "disability_percentage",
+  "phd_section",
+  "phd_awarded",
+  "net_section",
+  "net_qualified",
+  "net_exam",
+  "net_subject",
+  "column_break_net",
+  "net_other_subject",
+  "net_award_date",
+  "net_roll_number",
   "employment_tab",
   "employment_history",
+  "experience_months_section",
+  "overall_experience_months",
+  "teaching_experience_months",
+  "research_experience_months",
+  "column_break_months",
+  "legal_experience_months",
+  "legal_experience_details",
   "references_tab",
   "references",
   "screening_tab",
@@ -37,6 +61,7 @@
   "publications_tab",
   "publications",
   "admin_responsibility_tab",
+  "held_admin_responsibility",
   "administrative_responsibilities",
   "documents_tab",
   "documents",
@@ -179,6 +204,96 @@
    "options": "Application Qualification"
   },
   {
+   "fieldname": "academic_tab",
+   "fieldtype": "Tab Break",
+   "label": "Academic Profile"
+  },
+  {
+   "fieldname": "specialization_section",
+   "fieldtype": "Section Break",
+   "label": "Area of Specialization"
+  },
+  {
+   "fieldname": "specializations",
+   "fieldtype": "Small Text",
+   "label": "Areas of Specialization",
+   "description": "Comma-separated, from the Specialization Master"
+  },
+  {
+   "fieldname": "other_specialization",
+   "fieldtype": "Data",
+   "label": "Other Specialization"
+  },
+  {
+   "fieldname": "column_break_spec",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "disability_type",
+   "fieldtype": "Select",
+   "label": "Type of Disability",
+   "options": "\nBlindness or Low Vision\nHearing Impairment\nLocomotor Disability or Cerebral Palsy\nOther"
+  },
+  {
+   "fieldname": "disability_percentage",
+   "fieldtype": "Int",
+   "label": "Percentage of Disability"
+  },
+  {
+   "fieldname": "phd_section",
+   "fieldtype": "Section Break",
+   "label": "Doctoral Degree"
+  },
+  {
+   "fieldname": "phd_awarded",
+   "fieldtype": "Select",
+   "label": "PhD Awarded",
+   "options": "\nYes\nNo",
+   "description": "Doctoral degree details are in the Qualifications tab"
+  },
+  {
+   "fieldname": "net_section",
+   "fieldtype": "Section Break",
+   "label": "NET / SLET / SET"
+  },
+  {
+   "fieldname": "net_qualified",
+   "fieldtype": "Select",
+   "label": "Qualified NET / SLET / SET",
+   "options": "\nYes\nNo"
+  },
+  {
+   "fieldname": "net_exam",
+   "fieldtype": "Select",
+   "label": "Exam Qualified",
+   "options": "\nNET\nSLET\nSET"
+  },
+  {
+   "fieldname": "net_subject",
+   "fieldtype": "Link",
+   "label": "Subject",
+   "options": "UGC NET Subject Master"
+  },
+  {
+   "fieldname": "column_break_net",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "net_other_subject",
+   "fieldtype": "Data",
+   "label": "Other Subject"
+  },
+  {
+   "fieldname": "net_award_date",
+   "fieldtype": "Date",
+   "label": "Date of Award"
+  },
+  {
+   "fieldname": "net_roll_number",
+   "fieldtype": "Data",
+   "label": "Roll Number"
+  },
+  {
    "fieldname": "employment_tab",
    "fieldtype": "Tab Break",
    "label": "Employment"
@@ -188,6 +303,41 @@
    "fieldtype": "Table",
    "label": "Professional Experience",
    "options": "Application Employment History"
+  },
+  {
+   "fieldname": "experience_months_section",
+   "fieldtype": "Section Break",
+   "label": "Experience in Months"
+  },
+  {
+   "fieldname": "overall_experience_months",
+   "fieldtype": "Int",
+   "label": "Overall Work Experience (Months)"
+  },
+  {
+   "fieldname": "teaching_experience_months",
+   "fieldtype": "Int",
+   "label": "Teaching Experience (Months)"
+  },
+  {
+   "fieldname": "research_experience_months",
+   "fieldtype": "Int",
+   "label": "Research Experience (Months)",
+   "description": "Excluding PhD, internships and stints shorter than 3 months"
+  },
+  {
+   "fieldname": "column_break_months",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "legal_experience_months",
+   "fieldtype": "Int",
+   "label": "Professional Legal Experience (Months)"
+  },
+  {
+   "fieldname": "legal_experience_details",
+   "fieldtype": "Small Text",
+   "label": "Nature of Professional Legal Experience"
   },
   {
    "fieldname": "references_tab",
@@ -230,6 +380,12 @@
    "label": "Administrative Responsibilities"
   },
   {
+   "fieldname": "held_admin_responsibility",
+   "fieldtype": "Select",
+   "label": "Held Administrative Responsibilities",
+   "options": "\nYes\nNo"
+  },
+  {
    "fieldname": "administrative_responsibilities",
    "fieldtype": "Table",
    "label": "Administrative Responsibilities",
@@ -267,7 +423,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-10-06 15:44:09.371312",
+ "modified": "2026-10-06 21:00:00.000000",
  "modified_by": "Administrator",
  "module": "Pathways",
  "name": "Application",

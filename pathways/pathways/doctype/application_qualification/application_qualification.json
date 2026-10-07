@@ -12,8 +12,13 @@
   "other_institution",
   "year_of_graduation",
   "percentage_or_cgpa",
+  "cgpa",
+  "cgpa_scale",
   "division_grade",
   "specialization",
+  "qs_rank",
+  "the_rank",
+  "arwu_rank",
   "transcript_attachment",
   "certificate_attachment"
  ],
@@ -41,10 +46,9 @@
    "options": "Institution Master"
   },
   {
-   "depends_on": "eval:!doc.institution",
    "fieldname": "other_institution",
    "fieldtype": "Data",
-   "label": "If Other, Name the College/University"
+   "label": "College / University (as entered)"
   },
   {
    "fieldname": "year_of_graduation",
@@ -59,6 +63,16 @@
    "label": "Percentage / CGPA"
   },
   {
+   "fieldname": "cgpa",
+   "fieldtype": "Data",
+   "label": "CGPA"
+  },
+  {
+   "fieldname": "cgpa_scale",
+   "fieldtype": "Data",
+   "label": "CGPA Scale"
+  },
+  {
    "fieldname": "division_grade",
    "fieldtype": "Data",
    "label": "Division / Grade"
@@ -67,6 +81,21 @@
    "fieldname": "specialization",
    "fieldtype": "Data",
    "label": "Specialization / Major"
+  },
+  {
+   "fieldname": "qs_rank",
+   "fieldtype": "Int",
+   "label": "QS Ranking (foreign PhD)"
+  },
+  {
+   "fieldname": "the_rank",
+   "fieldtype": "Int",
+   "label": "THE Ranking (foreign PhD)"
+  },
+  {
+   "fieldname": "arwu_rank",
+   "fieldtype": "Int",
+   "label": "ARWU Ranking (foreign PhD)"
   },
   {
    "fieldname": "transcript_attachment",
@@ -82,7 +111,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2026-10-06 15:44:09.371312",
+ "modified": "2026-10-06 21:00:00.000000",
  "modified_by": "Administrator",
  "module": "Pathways",
  "name": "Application Qualification",

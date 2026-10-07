@@ -60,6 +60,21 @@ POSITION_DEFAULTS = {
 	"tenure_description": "tenure_description",
 }
 POSITION_TABLES = ("screening_questions", "required_documents")
+# Which extra (academic) sections the apply form shows: taken from the
+# Position whenever one is picked, then editable on the job.
+FORM_SWITCHES = (
+	"institution_list",
+	"ask_specialization",
+	"specialization_discipline",
+	"ask_category_disability",
+	"ask_phd",
+	"ask_net",
+	"ask_experience_months",
+	"ask_admin_responsibilities",
+	"ask_publications",
+	"min_publications",
+	"max_publications",
+)
 TABLE_ROW_FIELDS = {
 	"screening_questions": ("question", "answer_type", "options", "is_mandatory", "ask_details_if_yes", "details_label"),
 	"required_documents": ("document_type", "is_mandatory"),
@@ -86,6 +101,8 @@ class JobOpening(Document):
 				self.set(target, position.get(source))
 		if self.is_new() and position.require_postgraduate:
 			self.require_postgraduate = 1
+		for field in FORM_SWITCHES:
+			self.set(field, position.get(field))
 
 		for table in POSITION_TABLES:
 			if self.get(table):
