@@ -17,6 +17,9 @@ export const reportService = {
   exportReport(params = {}) {
     return downloadMethod('pathways.api.reports.export_report', params, 'recruitment-report.xlsx')
   },
+  getDashboard(params = {}) {
+    return callMethod('pathways.api.dashboard.get_dashboard', params)
+  },
   getRecruiterSummary() {
     return callMethod('pathways.api.dashboard.get_recruiter_summary')
   },

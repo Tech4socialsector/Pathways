@@ -35,6 +35,41 @@ def _application_filters(track=None, job_opening=None, department=None, from_dat
 	return filters
 
 
+# Dashboard filters: every key optional; list values are "any of".
+JOB_FILTER_FIELDS = (
+	("tracks", "track"),
+	("departments", "department"),
+	("positions", "position"),
+	("employment_types", "employment_type"),
+	("job_openings", "name"),
+)
+
+
+def build_filters(filters):
+	"""(application filters, job filters) from the dashboard filter bar."""
+	f = frappe.parse_json(filters) if isinstance(filters, str) else (filters or {})
+	job_filters = {field: ["in", f[key]] for key, field in JOB_FILTER_FIELDS if f.get(key)}
+	if f.get("deadline_from") and f.get("deadline_to"):
+		job_filters["application_deadline"] = ["between", [f"{f['deadline_from']} 00:00:00", f"{f['deadline_to']} 23:59:59"]]
+
+	app_filters = {}
+	if job_filters:
+		app_filters["job_opening"] = ["in", frappe.get_all("Job Opening", filters=job_filters, pluck="name") or [""]]
+	if f.get("from_date") and f.get("to_date"):
+		app_filters["application_date"] = ["between", [f["from_date"], f["to_date"]]]
+	if f.get("statuses"):
+		app_filters["status"] = ["in", f["statuses"]]
+	if f.get("eligibility"):
+		app_filters["eligibility_status"] = ["in", f["eligibility"]]
+	return app_filters, job_filters
+
+
+def _status_counts(app_filters):
+	from collections import Counter
+
+	return Counter(frappe.get_all("Application", filters=app_filters, pluck="status"))
+
+
 @frappe.whitelist()
 def get_admin_summary(track=None, job_opening=None, department=None, from_date=None, to_date=None):
 	"""Server-side aggregated counts for the Admin Dashboard — never
@@ -205,7 +240,7 @@ DRILLDOWN_LIMIT = 500
 
 
 @frappe.whitelist()
-def get_drilldown(bucket, track=None, job_opening=None, department=None, from_date=None, to_date=None):
+def get_drilldown(bucket, track=None, job_opening=None, department=None, from_date=None, to_date=None, filters=None):
 	"""The applications behind one dashboard number.
 
 	bucket: a get_admin_summary key, "funnel:<stage label>", or a Needs
@@ -214,24 +249,32 @@ def get_drilldown(bucket, track=None, job_opening=None, department=None, from_da
 	date, plus a `detail` line where the bucket has one.
 	"""
 	require_pipeline_access()
-	filters = _application_filters(track, job_opening, department, from_date, to_date)
+	if filters:
+		filters, _ = build_filters(filters)
+	else:
+		filters = _application_filters(track, job_opening, department, from_date, to_date)
+
+	def with_statuses(statuses):
+		"""Bucket statuses, narrowed by a status filter if one is set."""
+		chosen = filters.get("status", [None, None])[1]
+		return [s for s in statuses if s in chosen] if chosen else statuses
 
 	if bucket in CARD_STATUSES:
 		statuses = CARD_STATUSES[bucket]
 		if statuses:
-			filters["status"] = ["in", statuses]
+			filters["status"] = ["in", with_statuses(statuses) or [""]]
 		return _application_rows(filters)
 
 	if bucket.startswith("funnel:"):
 		stage = dict(FUNNEL_STAGES).get(bucket.split(":", 1)[1])
 		if stage is None:
 			frappe.throw(_("Unknown pipeline stage."))
-		return _application_rows({**filters, "status": ["in", stage]})
+		return _application_rows({**filters, "status": ["in", with_statuses(stage) or [""]]})
 
 	details = _attention_details(bucket)
 	if not details:
 		return []
-	rows = _application_rows({"name": ["in", list(details)]})
+	rows = _application_rows({**filters, "name": ["in", list(details)]})
 	for row in rows:
 		row["detail"] = details.get(row["name"])
 	return rows
@@ -295,3 +338,120 @@ def _application_rows(filters):
 		}
 		for a in apps
 	]
+
+
+# ------------------------------------------------------------ dashboard page
+# Lists rather than charts: what is due, what is new, what needs a decision.
+
+
+@frappe.whitelist()
+def get_dashboard(filters=None):
+	require_pipeline_access()
+	from frappe.utils import getdate, now_datetime
+
+	from pathways.api.scoring import shortlisting_summary
+
+	app_filters, job_filters = build_filters(filters)
+	jobs = frappe.get_all(
+		"Job Opening",
+		filters={**job_filters, "status": ["not in", ["Cancelled", "Filled"]]},
+		fields=["name", "job_title", "position", "department", "track", "status", "vacancies", "application_deadline", "shortlisting_ratio"],
+		order_by="application_deadline asc",
+	)
+	now = now_datetime()
+
+	# Jobs at a glance (with the 1:N target)
+	glance = []
+	for job in jobs:
+		s = shortlisting_summary(frappe._dict(job))
+		days = (getdate(job.application_deadline) - getdate(now)).days if job.application_deadline else None
+		glance.append({**job, **{k: s[k] for k in ("applications", "pending", "eligible", "not_eligible", "shortlisted", "target", "ratio")},
+			"days_left": days, "has_committee": bool(s["committee"])})
+
+	# Deadlines: the next ad closing dates and committee deadlines, soonest first
+	deadlines = [
+		{"kind": "Ad closes", "job": j["name"], "title": j["job_title"], "date": j["application_deadline"], "days_left": j["days_left"],
+			"detail": f"{j['applications']} application(s)"}
+		for j in glance
+		if j["status"] == "Advertised" and j["days_left"] is not None and j["days_left"] >= 0
+	]
+	for c in frappe.get_all("Shortlisting Committee", filters={"shortlisting_deadline": [">=", getdate(now)]},
+		fields=["job_opening", "shortlisting_deadline"]):
+		job = next((j for j in glance if j["name"] == c.job_opening), None)
+		if job:
+			deadlines.append({"kind": "Shortlisting due", "job": job["name"], "title": job["job_title"], "date": c.shortlisting_deadline,
+				"days_left": (getdate(c.shortlisting_deadline) - getdate(now)).days,
+				"detail": f"{job['shortlisted']} of {job['target']} shortlisted"})
+	deadlines.sort(key=lambda d: str(d["date"]))
+
+	# Needs attention
+	pending_sheets = frappe.get_all("Pre-Recruitment Green Sheet", filters={"docstatus": 1, "status": "Under Approval",
+		**({"job_opening": ["in", [j.name for j in jobs]]} if job_filters else {})}, pluck="job_opening")
+	attention = [
+		{"key": "eligibility_pending", "count": frappe.db.count("Application", {**app_filters, "eligibility_status": "Pending",
+			"status": ["not in", ["Withdrawn", "Not Selected"]]}), "label": "application(s) awaiting eligibility check", "link": "/applications"},
+		{"key": "green_sheets", "count": len(pending_sheets), "label": "green sheet(s) awaiting approval", "link": "/approvals"},
+		{"key": "closing_soon", "count": sum(1 for j in glance if j["status"] == "Advertised" and j["days_left"] is not None and 0 <= j["days_left"] <= 3),
+			"label": "ad(s) closing within 3 days", "link": "/jobs"},
+		{"key": "no_committee", "count": sum(1 for j in glance if j["applications"] and not j["has_committee"]),
+			"label": "job(s) with applications but no shortlisting committee", "link": "/jobs"},
+		{"key": "below_target", "count": sum(1 for j in glance if j["status"] == "Closed" and j["shortlisted"] < j["target"] and j["eligible"] > j["shortlisted"]),
+			"label": "closed ad(s) still below the shortlisting target", "link": "/jobs"},
+	]
+
+	# Recent applications
+	recent_apps = frappe.get_all("Application", filters=app_filters,
+		fields=["name", "application_id", "candidate.full_name as candidate_name", "job_opening.job_title as job_title", "status",
+			"eligibility_status", "application_date", "creation"],
+		order_by="creation desc", limit_page_length=10)
+
+	# Recent activity: status changes, eligibility notes, corrigenda, approvals
+	app_names = frappe.get_all("Application", filters=app_filters, pluck="name") if (app_filters or job_filters) else None
+	hist_filters = {"application": ["in", app_names or [""]]} if app_names is not None else {}
+	activity = [
+		{"at": h.changed_on, "kind": "status", "text": f"{h.previous_status} → {h.new_status}", "who": frappe.utils.get_fullname(h.changed_by),
+			"link": f"/applications/{h.application}", "ref": h.application}
+		for h in frappe.get_all("Application Status History", filters=hist_filters,
+			fields=["application", "previous_status", "new_status", "changed_by", "changed_on"], order_by="changed_on desc", limit_page_length=12)
+	]
+	corr_filters = {"job_opening": ["in", [j.name for j in jobs]]} if job_filters else {}
+	activity += [
+		{"at": c.creation, "kind": "corrigendum", "text": f"Corrigendum: {'deadline extended' if c.changed_field == 'Closing Date' else c.new_value}",
+			"who": frappe.utils.get_fullname(c.signed_by), "link": f"/jobs/{c.job_opening}", "ref": c.job_opening}
+		for c in frappe.get_all("Corrigendum", filters=corr_filters, fields=["creation", "changed_field", "new_value", "signed_by", "job_opening"],
+			order_by="creation desc", limit_page_length=5)
+	]
+	names = {a.name: a for a in frappe.get_all("Application", filters={"name": ["in", [x["ref"] for x in activity if x["kind"] == "status"] or [""]]},
+		fields=["name", "application_id", "candidate.full_name as candidate_name", "job_opening.job_title as job_title"])}
+	for item in activity:
+		if item["kind"] == "status" and item["ref"] in names:
+			a = names[item["ref"]]
+			item["subject"] = f"{a.candidate_name} · {a.job_title}"
+		elif item["kind"] == "corrigendum":
+			item["subject"] = frappe.db.get_value("Job Opening", item["ref"], "job_title")
+	activity.sort(key=lambda x: str(x["at"]), reverse=True)
+
+	counts = _status_counts(app_filters)
+	summary = {
+		"total_applications": sum(counts.values()),
+		**{key: sum(counts.get(s, 0) for s in statuses) for key, statuses in CARD_STATUSES.items() if statuses},
+	}
+	positions = frappe.get_all("Position", filters={"is_active": 1}, fields=["name", "position_title"], order_by="name asc")
+	return {
+		"summary": summary,
+		"attention": attention,
+		"deadlines": deadlines[:12],
+		"jobs": glance,
+		"recent_applications": recent_apps,
+		"activity": activity[:12],
+		"options": {
+			"tracks": frappe.get_all("Recruitment Track", filters={"is_active": 1}, pluck="name", order_by="name asc"),
+			"departments": frappe.get_all("Department", filters={"is_active": 1}, pluck="name", order_by="name asc"),
+			"positions": [{"value": p.name, "label": f"{p.name} · {p.position_title}"} for p in positions],
+			"employment_types": [o for o in frappe.get_meta("Job Opening").get_field("employment_type").options.split("\n") if o],
+			"statuses": [o for o in frappe.get_meta("Application").get_field("status").options.split("\n") if o],
+			"eligibility": ["Pending", "Eligible", "Not Eligible"],
+			# All jobs with their attributes, so the page can narrow the list to the other filters.
+			"jobs": frappe.get_all("Job Opening", fields=["name", "job_title", "track", "department", "position", "employment_type"], order_by="job_title asc"),
+		},
+	}

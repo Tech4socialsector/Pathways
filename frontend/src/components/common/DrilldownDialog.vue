@@ -68,6 +68,8 @@ const props = defineProps({
   description: { type: String, default: '' },
   // pathways.api.dashboard.get_drilldown bucket
   bucket: { type: String, default: '' },
+  // Dashboard filters (track, department, job_opening, from_date, to_date).
+  filters: { type: Object, default: () => ({}) },
 })
 const emit = defineEmits(['update:open'])
 const router = useRouter()
@@ -84,7 +86,7 @@ watch(
     error.value = ''
     rows.value = []
     try {
-      rows.value = (await reportService.getDrilldown(bucket)) || []
+      rows.value = (await reportService.getDrilldown(bucket, props.filters)) || []
     } catch (e) {
       error.value = e?.messages?.[0] || 'Could not load the applications.'
     } finally {
