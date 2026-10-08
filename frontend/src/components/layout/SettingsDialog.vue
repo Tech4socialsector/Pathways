@@ -251,6 +251,68 @@
           </div>
         </template>
 
+        <!-- Google Meet: Meet links for interviews, through Frappe's Google Calendar integration -->
+        <div v-if="!loading" v-show="tab === 'meet'" class="flex flex-col gap-5 text-sm">
+          <div
+            class="flex items-start gap-3 rounded-lg border px-4 py-3"
+            :class="meet?.ready ? 'border-green-200 bg-green-50 text-green-900' : 'border-orange-200 bg-orange-50 text-orange-900'"
+          >
+            <FeatherIcon :name="meet?.ready ? 'check-circle' : 'alert-circle'" class="mt-0.5 h-4 w-4 shrink-0" />
+            <div>
+              <p class="font-medium">{{ meet?.ready ? 'Google Meet links are created automatically.' : 'Google Meet is not set up yet.' }}</p>
+              <p class="mt-0.5">
+                <template v-if="meet?.ready">When an interview is scheduled with Google Meet, Pathways creates the calendar event and the Meet link, and invites the candidate (and the panel for final interviews).</template>
+                <template v-else>{{ meet?.reason || 'Checking…' }} Until then, paste the meeting link when scheduling.</template>
+              </p>
+            </div>
+          </div>
+
+          <ol class="flex flex-col gap-3">
+            <li class="flex gap-3 rounded-lg border p-4">
+              <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gray-100 text-xs font-bold text-gray-700">1</span>
+              <div class="min-w-0 flex-1">
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                  <p class="font-medium text-gray-900">Google Settings</p>
+                  <span class="text-xs font-medium" :class="meet?.google_enabled ? 'text-green-700' : 'text-orange-700'">{{ meet?.google_enabled ? 'Enabled' : 'Not enabled' }}</span>
+                </div>
+                <p class="mt-0.5 text-gray-600">
+                  In a Google Cloud project, enable the Google Calendar API and create an OAuth client (web application). Enter its Client ID and
+                  Client Secret here and tick Enable. Authorised redirect URI:
+                  <code class="rounded bg-gray-100 px-1 text-xs">{{ redirectUri }}</code>
+                </p>
+                <a href="/desk/google-settings" target="_blank" class="mt-2 inline-flex items-center gap-1 font-medium text-brand-700 hover:underline">Open Google Settings <FeatherIcon name="external-link" class="h-3.5 w-3.5" /></a>
+              </div>
+            </li>
+            <li class="flex gap-3 rounded-lg border p-4">
+              <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gray-100 text-xs font-bold text-gray-700">2</span>
+              <div class="min-w-0 flex-1">
+                <p class="font-medium text-gray-900">Connect the Google account that owns the meetings</p>
+                <p class="mt-0.5 text-gray-600">
+                  Add a Google Calendar (e.g. the recruitment mailbox), tick <b>Push to Google Calendar</b>, save, then click <b>Authorize Google Calendar Access</b>.
+                </p>
+                <ul v-if="meet?.calendars?.length" class="mt-2 flex flex-col gap-1">
+                  <li v-for="c in meet.calendars" :key="c.name" class="flex flex-wrap items-center gap-2 text-gray-700">
+                    <FeatherIcon name="calendar" class="h-3.5 w-3.5 text-gray-400" />{{ c.calendar_name || c.name }} <span class="text-xs text-gray-500">{{ c.user }}</span>
+                    <span class="rounded px-1.5 text-[11px] font-medium" :class="c.authorised && c.push_to_google_calendar && c.enable ? 'bg-green-50 text-green-700' : 'bg-orange-50 text-orange-700'">
+                      {{ !c.authorised ? 'Not authorised' : !c.push_to_google_calendar ? 'Push off' : !c.enable ? 'Disabled' : 'Ready' }}
+                    </span>
+                  </li>
+                </ul>
+                <a href="/desk/google-calendar/new" target="_blank" class="mt-2 inline-flex items-center gap-1 font-medium text-brand-700 hover:underline">Add a Google Calendar <FeatherIcon name="external-link" class="h-3.5 w-3.5" /></a>
+              </div>
+            </li>
+            <li class="flex gap-3 rounded-lg border p-4">
+              <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gray-100 text-xs font-bold text-gray-700">3</span>
+              <div class="min-w-0 flex-1">
+                <p class="font-medium text-gray-900">Calendar for interview meetings</p>
+                <FormControl class="mt-2 max-w-sm" type="select" v-model="form.interview_google_calendar" :options="calendarOptions" />
+                <p class="mt-1 text-xs text-gray-500">Saved with the Save button below.</p>
+              </div>
+            </li>
+          </ol>
+          <Button class="self-start" variant="ghost" icon-left="refresh-cw" :loading="meetLoading" @click="loadMeet">Check again</Button>
+        </div>
+
         <!-- Roles & Permissions: changes save as they are made, so the tab has no Save button.
              Mounted on first visit and kept while the dialog is open so the selected role survives tab switches. -->
         <div
@@ -269,6 +331,7 @@
 </template>
 
 <script setup>
+import { interviewService } from '@/services/interviews'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { Dialog, Button, FeatherIcon, FileUploader, FormControl, ErrorMessage, TextEditor, TextInput } from 'frappe-ui'
@@ -304,6 +367,7 @@ const tabs = computed(() => [
     ? [
         { key: 'appearance', label: 'Appearance', icon: 'droplet' },
         { key: 'general', label: 'General', icon: 'settings' },
+        { key: 'meet', label: 'Google Meet', icon: 'video' },
       ]
     : []),
   ...(canManageAccess.value ? [{ key: 'access', label: 'Roles & Permissions', icon: 'shield' }] : []),
@@ -440,8 +504,31 @@ watch(isOpen, async (open) => {
   if (form.app_logo === DEFAULT_APPEARANCE.app_logo) form.app_logo = ''
   savedAppearance = { ...appearance }
   for (const field of ROLE_FIELDS) form[field] = values[field] || NONE
+  form.interview_google_calendar = values.interview_google_calendar || NONE
   form.document_verifier_roles = [...(values.document_verifier_roles || [])]
   form.corrigendum_signer_roles = [...(values.corrigendum_signer_roles || [])]
+})
+
+// ----- Google Meet
+const meet = ref(null)
+const meetLoading = ref(false)
+const redirectUri = `${window.location.origin}/api/method/frappe.integrations.doctype.google_calendar.google_calendar.google_callback`
+const calendarOptions = computed(() => [
+  { label: '(None: paste meeting links by hand)', value: NONE },
+  ...(meet.value?.calendars || []).map((c) => ({ label: `${c.calendar_name || c.name}${c.user ? ' · ' + c.user : ''}`, value: c.name })),
+])
+async function loadMeet() {
+  meetLoading.value = true
+  try {
+    meet.value = await interviewService.getMeetStatus()
+  } catch {
+    meet.value = null
+  } finally {
+    meetLoading.value = false
+  }
+}
+watch(tab, (key) => {
+  if (key === 'meet') loadMeet()
 })
 
 const NUMBER_FIELDS = [
@@ -465,6 +552,7 @@ async function submit() {
   }
   const payload = { ...form }
   for (const field of ROLE_FIELDS) if (payload[field] === NONE) payload[field] = ''
+  if (payload.interview_google_calendar === NONE) payload.interview_google_calendar = ''
   for (const field of NUMBER_FIELDS) payload[field] = num(payload[field])
   const ok = await saveSettings(payload)
   if (ok) {

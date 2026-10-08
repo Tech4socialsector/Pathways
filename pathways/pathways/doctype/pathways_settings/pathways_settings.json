@@ -37,7 +37,9 @@
   "application_declaration",
   "application_instructions",
   "roles_section",
-  "pathways_roles"
+  "pathways_roles",
+  "google_meet_section",
+  "interview_google_calendar"
  ],
  "fields": [
   {
@@ -241,6 +243,18 @@
    "fieldtype": "Table",
    "label": "Pathways Roles",
    "options": "Pathways Role"
+  },
+  {
+   "fieldname": "google_meet_section",
+   "fieldtype": "Section Break",
+   "label": "Google Meet"
+  },
+  {
+   "fieldname": "interview_google_calendar",
+   "fieldtype": "Link",
+   "options": "Google Calendar",
+   "label": "Calendar for Interview Meetings",
+   "description": "Interviews scheduled with Google Meet create an event in this Google Calendar, with a Meet link, inviting the candidate (and the panel for final interviews)."
   }
  ],
  "index_web_pages_for_search": 1,

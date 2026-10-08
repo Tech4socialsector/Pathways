@@ -323,7 +323,7 @@ def get_application_status(application_name):
 	interviews = frappe.get_all(
 		"Interview",
 		filters={"application": application_name},
-		fields=["round_type", "status", "scheduled_datetime", "mode", "meeting_link", "rsvp_status"],
+		fields=["name", "round_type", "status", "scheduled_datetime", "mode", "meeting_platform", "meeting_link", "location", "rsvp_status"],
 		order_by="scheduled_datetime asc",
 	)
 

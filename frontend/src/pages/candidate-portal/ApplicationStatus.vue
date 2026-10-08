@@ -67,12 +67,23 @@
 
             <div v-if="status.interviews?.length" class="rounded-xl border bg-white p-5 shadow-sm">
               <div class="mb-3 text-xs font-bold uppercase tracking-wide text-brand-700">Interviews</div>
-              <div v-for="(iv, idx) in status.interviews" :key="idx" class="mb-3 text-sm last:mb-0">
-                <div class="font-medium text-gray-900">{{ iv.round_type }}</div>
-                <div class="text-gray-600">{{ formatDate(iv.scheduled_datetime) }} · {{ iv.mode }}</div>
-                <a v-if="iv.meeting_link" :href="iv.meeting_link" target="_blank" rel="noopener" class="text-brand-700 hover:underline">
-                  Join meeting
+              <div v-for="(iv, idx) in status.interviews" :key="iv.name || idx" class="mb-4 rounded-lg border p-3 text-sm last:mb-0">
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                  <span class="font-semibold text-gray-900">{{ iv.round_type === 'HR Interaction' ? 'Round 1 · HR interaction' : 'Final interview' }}</span>
+                  <span class="rounded-full px-2 py-0.5 text-xs font-medium" :class="ivTone(iv)">{{ ivLabel(iv) }}</span>
+                </div>
+                <div class="mt-1 text-gray-700">{{ dayjs(iv.scheduled_datetime).format('dddd, DD MMM YYYY · h:mm A') }} · {{ iv.mode === 'In-Person' ? 'In person' : 'Online' }}</div>
+                <div v-if="iv.location" class="mt-1 flex items-center gap-1 text-gray-700">
+                  <FeatherIcon name="map-pin" class="h-3.5 w-3.5 text-gray-400" />{{ iv.location }}
+                </div>
+                <a v-if="iv.meeting_link && isOpen(iv)" :href="iv.meeting_link" target="_blank" rel="noopener" class="mt-1 inline-flex items-center gap-1 text-brand-700 hover:underline">
+                  <FeatherIcon name="video" class="h-3.5 w-3.5" />Join {{ iv.meeting_platform || 'meeting' }}
                 </a>
+                <div v-if="isOpen(iv) && (iv.rsvp_status || 'Pending') === 'Pending'" class="mt-3 flex flex-wrap items-center gap-2 border-t pt-3">
+                  <span class="text-gray-600">Will you attend?</span>
+                  <Button size="sm" variant="solid" :class="BTN_BRAND" :loading="rsvpBusy === iv.name + 'Confirmed'" @click="rsvp(iv, 'Confirmed')">Confirm</Button>
+                  <Button size="sm" variant="outline" :loading="rsvpBusy === iv.name + 'Declined'" @click="rsvp(iv, 'Declined')">Decline</Button>
+                </div>
               </div>
             </div>
 
@@ -121,6 +132,8 @@
 import BackButton from '@/components/common/BackButton.vue'
 import { computed, onMounted, ref, watch } from 'vue'
 import { Button, FeatherIcon, FormControl } from 'frappe-ui'
+import { BTN_BRAND } from '@/utils/buttonStyles'
+import { interviewService } from '@/services/interviews'
 import dayjs from 'dayjs'
 import ApplicationSubmissionPanel from '@/components/common/ApplicationSubmissionPanel.vue'
 import DocumentViewer from '@/components/common/DocumentViewer.vue'
@@ -233,6 +246,33 @@ async function fetchSubmission(id) {
     submissionError.value = e?.messages?.[0] || 'Could not load your application.'
   } finally {
     submissionLoading.value = false
+  }
+}
+
+// ----- interviews: RSVP
+const rsvpBusy = ref('')
+const isOpen = (iv) => ['Scheduled', 'Rescheduled'].includes(iv.status) && dayjs(iv.scheduled_datetime).isAfter(dayjs())
+function ivLabel(iv) {
+  if (iv.status === 'Completed') return 'Completed'
+  if (iv.status === 'Cancelled') return 'Cancelled'
+  if (!isOpen(iv)) return iv.status
+  return { Confirmed: 'You confirmed', Declined: 'You declined' }[iv.rsvp_status] || 'Please reply'
+}
+function ivTone(iv) {
+  if (iv.status === 'Completed') return 'bg-green-50 text-green-700'
+  if (iv.status === 'Cancelled') return 'bg-gray-100 text-gray-500'
+  return { Confirmed: 'bg-green-50 text-green-700', Declined: 'bg-red-50 text-red-700' }[iv.rsvp_status] || 'bg-orange-50 text-orange-700'
+}
+async function rsvp(iv, response) {
+  rsvpBusy.value = iv.name + response
+  try {
+    await interviewService.respondRsvp(iv.name, response)
+    iv.rsvp_status = response
+    toast({ title: response === 'Confirmed' ? 'Thank you. Your attendance is confirmed.' : 'Your reply has been sent.', icon: 'check', iconClasses: 'text-green-500' })
+  } catch (e) {
+    toast({ title: e?.messages?.[0] || 'Could not send your reply.', icon: 'alert-triangle', iconClasses: 'text-red-500' })
+  } finally {
+    rsvpBusy.value = ''
   }
 }
 

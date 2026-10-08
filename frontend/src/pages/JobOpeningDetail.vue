@@ -82,6 +82,14 @@
 
         <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
           <div class="flex min-w-0 flex-col gap-6 lg:col-span-2">
+            <!-- The interview stage comes first once there are shortlisted candidates. -->
+            <InterviewsPanel
+              v-if="interviews && interviews.candidates.length"
+              :job-opening="props.id"
+              :job-title="job.job_title"
+              :data="interviews"
+              @changed="loadInterviews"
+            />
             <SectionCard title="Job Description" icon="file-text">
               <div v-if="job.jd_text" class="prose prose-sm max-w-none text-gray-800" v-html="job.jd_text" />
               <div v-else class="text-sm text-gray-500">No description provided.</div>
@@ -103,10 +111,12 @@
               @loaded="(d) => (greenSheet = d.current)"
               @changed="fetchJob(props.id)"
             />
+            <InterviewsPanel v-if="interviews && !interviews.candidates.length" :job-opening="props.id" :job-title="job.job_title" :data="interviews" @changed="loadInterviews" />
           </div>
 
           <div class="flex flex-col gap-6 self-start">
             <ShortlistingPanel :job="job" :can-edit="!!permissions.can_write" @changed="fetchJob(props.id)" />
+            <SelectionCommitteePanel v-if="interviews" :job-opening="props.id" :data="interviews" @changed="loadInterviews" />
             <SectionCard title="Position" icon="briefcase">
               <dl class="flex flex-col divide-y divide-gray-100 text-sm">
                 <div v-for="row in positionRows" :key="row.label" class="flex justify-between gap-4 py-2 first:pt-0 last:pb-0">
@@ -205,6 +215,9 @@ import JobOpeningForm, { emptyJobForm } from '@/components/jobs/JobOpeningForm.v
 import ApplicationFormPanel from '@/components/jobs/ApplicationFormPanel.vue'
 import NoticePanel from '@/components/jobs/NoticePanel.vue'
 import ShortlistingPanel from '@/components/jobs/ShortlistingPanel.vue'
+import InterviewsPanel from '@/components/jobs/InterviewsPanel.vue'
+import SelectionCommitteePanel from '@/components/jobs/SelectionCommitteePanel.vue'
+import { interviewService } from '@/services/interviews'
 import { useStaffJobOpeningDetail } from '@/composables/useJobOpenings'
 import { jobOpeningService } from '@/services/jobOpenings'
 
@@ -287,6 +300,18 @@ const publicUrl = computed(() =>
 )
 
 const greenSheetPanel = ref(null)
+
+// Interview stage: shortlisted candidates, rounds and the Selection Committee.
+// Hidden for users who cannot see this job's interviews.
+const interviews = ref(null)
+async function loadInterviews() {
+  try {
+    interviews.value = await interviewService.getJobInterviews(props.id)
+  } catch {
+    interviews.value = null
+  }
+}
+watch(() => props.id, loadInterviews, { immediate: true })
 const greenSheet = ref(null)
 
 async function loadAll(id) {

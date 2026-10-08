@@ -15,6 +15,7 @@ EDITABLE_FIELDS = (
 	*APPEARANCE_FIELDS,
 	"acceptance_deadline_days",
 	"default_shortlisting_ratio",
+	"interview_google_calendar",
 	"min_shortlisting_committee_size",
 	"max_shortlisting_committee_size",
 	"min_selection_committee_size",

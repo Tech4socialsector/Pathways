@@ -13,3 +13,5 @@ pathways.patches.v1_0.candidate_portal_login
 pathways.patches.v1_0.candidate_owns_applications
 pathways.patches.v1_0.email_templates_from_workflow_folder
 pathways.patches.v1_0.shortlisting_rubrics_from_sheets
+pathways.patches.v1_0.interview_emails
+pathways.patches.v1_0.interview_emails #location

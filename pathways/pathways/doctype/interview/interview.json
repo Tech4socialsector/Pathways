@@ -16,7 +16,10 @@
   "scheduled_datetime",
   "mode",
   "column_break_2",
+  "meeting_platform",
   "meeting_link",
+  "location",
+  "calendar_event",
   "rsvp_status"
  ],
  "fields": [
@@ -88,10 +91,32 @@
    "fieldtype": "Column Break"
   },
   {
+   "fieldname": "meeting_platform",
+   "fieldtype": "Data",
+   "label": "Meeting Platform",
+   "depends_on": "eval:doc.mode=='Video Conference'",
+   "description": "Microsoft Teams, Zoom, Google Meet or another platform."
+  },
+  {
    "depends_on": "eval:doc.mode=='Video Conference'",
    "fieldname": "meeting_link",
    "fieldtype": "Data",
    "label": "Meeting Link"
+  },
+  {
+   "fieldname": "location",
+   "fieldtype": "Data",
+   "label": "Location",
+   "depends_on": "eval:doc.mode=='In-Person'",
+   "description": "Venue for an in-person interview, e.g. Training Centre, Room 004."
+  },
+  {
+   "fieldname": "calendar_event",
+   "fieldtype": "Link",
+   "options": "Event",
+   "label": "Calendar Event",
+   "read_only": 1,
+   "description": "Google Calendar event with the Meet link, when the meeting was created from Pathways."
   },
   {
    "fieldname": "rsvp_status",

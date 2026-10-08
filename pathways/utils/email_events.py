@@ -66,17 +66,32 @@ TEMPLATES = {
 		"<p>Greetings from National Law School of India University (NLSIU), Bangalore!</p>"
 		"<p>This is with reference to your interviews (Round 1) for the position {{ job_title }} at NLS. We are pleased to "
 		"inform you that your application has been selected for the Round 1 interview. This round is scheduled on "
-		"<b>{{ interview_date_time }}</b> (IST) via video conferencing.</p>"
-		"<p>Please find below the {{ meeting_platform or 'Teams' }} link for the meeting:<br>"
+		"<b>{{ interview_date_time }}</b> (IST){% if interview_location %} in person at <b>{{ interview_location }}</b>{% else %} via video conferencing{% endif %}.</p>"
+		"{% if interview_location %}<ol>"
+		"<li>Please arrive ten minutes before your start time at {{ interview_location }}.</li>"
+		"{% else %}<p>Please find below the {{ meeting_platform or 'Teams' }} link for the meeting:<br>"
 		"<a href=\"{{ meeting_link }}\">{{ meeting_link }}</a></p><ol>"
 		"<li>Please login into the {{ meeting_platform or 'Teams' }} meeting ten minutes before your start time and please "
-		"remain logged in. You will be admitted into the call once the panel is ready.</li>"
+		"remain logged in. You will be admitted into the call once the panel is ready.</li>{% endif %}"
 		"<li>While our earnest attempt is to bring each candidate into the interview room as per schedule, we request you to "
 		"bear with us if there is a delay.<br><b>IMPORTANT</b> - We request you to keep a two-hour window for the interview to "
 		"factor for any delay.</li>"
 		"<li>If you face any technical glitches, please be assured that our team will reach out to you. You can also email us "
 		"at {{ contact_email or 'recruitment@nls.ac.in' }}.</li></ol>"
-		"<p>Please confirm your participation by replying to this email by <b>{{ rsvp_deadline }}</b>.</p>" + SIGN_OFF,
+		"<p>Please confirm your participation by replying to this email{% if rsvp_deadline %} by <b>{{ rsvp_deadline }}</b>{% endif %}."
+		"{% if rsvp_link %} You can also confirm or decline in your candidate portal: <a href=\"{{ rsvp_link }}\">{{ rsvp_link }}</a>{% endif %}</p>" + SIGN_OFF,
+	),
+	# No template in the workflow folder: invitation to the selection panel.
+	"Selection Committee Invitation": (
+		"Selection committee: {{ job_title }}",
+		"<p>Dear {{ recipient_name }},</p>"
+		"<p>Thank you for agreeing to be on the selection committee for <b>{{ job_title }}</b> ({{ department }}).</p>"
+		"{% if interview_date %}<p>The interviews are planned for <b>{{ interview_date }}</b>{% if interview_time %} from <b>{{ interview_time }}</b>{% endif %}."
+		"{% if candidate_count %} {{ candidate_count }} candidate(s) have been shortlisted.{% endif %}</p>{% endif %}"
+		"<p>Panel: {{ panel }}</p>"
+		"<p>The candidates' CVs, statements of purpose, writing samples and the interview assessment form will be available "
+		"to you on Pathways: <a href=\"{{ job_link }}\">{{ job_link }}</a></p>"
+		"<p>The interview schedule and meeting link will follow.</p>" + SIGN_OFF,
 	),
 	# Workflow folder: 6. Final Interview / Interview Call Letter.
 	"Interview Call Letter": (
@@ -84,24 +99,29 @@ TEMPLATES = {
 		"<p>Dear Applicant,</p>"
 		"<p>Greetings from National Law School of India University (NLSIU), Bangalore!</p>"
 		"<p>This is with reference to your application for the position of {{ job_title }} in our institution.</p>"
-		"<p>We are pleased to inform you that your application has been shortlisted, and your interview is scheduled via "
-		"video conferencing on:</p>"
+		"<p>We are pleased to inform you that your application has been shortlisted, and your interview is scheduled "
+		"{% if interview_location %}in person{% else %}via video conferencing{% endif %} on:</p>"
 		"<p>Date - <b>{{ interview_date }}</b><br>Day - <b>{{ interview_day }}</b><br>Time - <b>{{ interview_time }}</b><br>"
-		"Mode - {{ interview_mode or 'Online' }}</p>"
+		"Mode - {{ interview_mode or 'Online' }}{% if interview_location %}<br>Venue - <b>{{ interview_location }}</b>{% endif %}</p>"
 		"{% if track == 'Faculty' %}<p>The interview will be in 2 parts:</p><ol>"
 		"<li>A talk by you on your pedagogical approach to teaching, with at least one example (approximately 3 to 5 minutes). "
 		"Please note that due to a paucity of time, slide presentations are not possible.</li>"
 		"<li>A discussion with the Selection Committee (approximately 10 minutes).</li></ol>{% endif %}"
-		"<p>Please find the details of the meeting ID and password for the {{ meeting_platform or 'Teams' }} call:<br>"
+		"{% if interview_location %}<p>Please note:</p><ol>"
+		"<li>Please report at {{ interview_location }} twenty minutes{% if login_time %} ({{ login_time }}){% endif %} before your "
+		"start time. You will be called in once the Committee is ready.</li>"
+		"{% else %}<p>Please find the details of the meeting ID and password for the {{ meeting_platform or 'Teams' }} call:<br>"
 		"<a href=\"{{ meeting_link }}\">{{ meeting_link }}</a>{% if meeting_details %}<br>{{ meeting_details }}{% endif %}</p>"
 		"<p>Please note:</p><ol>"
 		"<li>Please login into the {{ meeting_platform or 'Teams' }} meeting twenty minutes{% if login_time %} ({{ login_time }}){% endif %} "
 		"before your start time and please remain logged in. You will be admitted into the call once the Committee is ready. "
-		"Please ensure that your camera and microphone are switched on when you enter the meeting room.</li>"
+		"Please ensure that your camera and microphone are switched on when you enter the meeting room.</li>{% endif %}"
 		"<li>While our earnest attempt is to bring each candidate into the interview room as per schedule, we request you to "
 		"bear with us if there is a delay.</li>"
 		"<li>If you face any technical glitches, please be assured that our recruitment team will reach out to you. You can "
 		"also email us at {{ contact_email or 'recruitment@nls.ac.in' }}.</li></ol>"
+		"{% if rsvp_link %}<p>Please confirm or decline your attendance in your candidate portal: "
+		"<a href=\"{{ rsvp_link }}\">{{ rsvp_link }}</a></p>{% endif %}"
 		+ SIGN_OFF +
 		"<p><b>General Instructions:</b></p><ol>"
 		"<li>Ensure your room is well-illuminated and free of any background/external noise.</li>"
@@ -266,10 +286,13 @@ EVENTS = [
 		"Regret Mail", {"send_to_candidate": 1}, False, True, CANDIDATE_VARS),
 	("Screening & Shortlisting", "candidate_shortlisted", "Shortlisted (to candidate)", "The committee shortlists a candidate. Off by default: the interview invite usually follows.",
 		"Shortlisted Notice", {"send_to_candidate": 1}, True, False, CANDIDATE_VARS),
+	("Interviews", "selection_committee_assigned", "Selection committee invitation (to panellists)",
+		"A job's Selection Committee is set up, or a panellist is added to it (workflow step 15).",
+		"Selection Committee Invitation", {"send_to_approvers": 1}, True, True, JOB_VARS + ", interview_date, interview_time, panel, candidate_count"),
 	("Interviews", "interview_invite_round1", "Interview invite: Round 1 / HR interaction", "Round 1 is scheduled (workflow step 13).",
-		"Interview Invite (Round 1)", {"send_to_candidate": 1}, False, True, CANDIDATE_VARS + ", interview_date_time, meeting_link, meeting_platform, rsvp_deadline"),
+		"Interview Invite (Round 1)", {"send_to_candidate": 1}, True, True, CANDIDATE_VARS + ", interview_date_time, meeting_link, meeting_platform, interview_location, rsvp_deadline, rsvp_link"),
 	("Interviews", "interview_call_letter", "Interview call letter: final interview", "The final interview is scheduled (workflow steps 14-16).",
-		"Interview Call Letter", {"send_to_candidate": 1}, False, True, CANDIDATE_VARS + ", track, interview_date, interview_day, interview_time, interview_mode, meeting_platform, meeting_link, meeting_details, login_time"),
+		"Interview Call Letter", {"send_to_candidate": 1}, True, True, CANDIDATE_VARS + ", track, interview_date, interview_day, interview_time, interview_mode, meeting_platform, meeting_link, interview_location, meeting_details, login_time, rsvp_link"),
 	("Interviews", "interview_reminder", "Interview reminder (to candidate)", "Daily, the day before a scheduled interview.",
 		"Interview Reminder", {"send_to_candidate": 1}, True, True, CANDIDATE_VARS + ", interview_date_time, meeting_link"),
 	("Selection & Offer", "appointment_order", "Appointment order (to candidate)", "The signed appointment order is sent (workflow step 28).",
