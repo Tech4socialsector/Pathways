@@ -21,6 +21,7 @@ declare module 'vue' {
     EChart: typeof import('./src/components/reports/EChart.vue')['default']
     EmptyState: typeof import('./src/components/common/EmptyState.vue')['default']
     FormField: typeof import('./src/components/candidate/FormField.vue')['default']
+    GoogleSettingsPanel: typeof import('./src/components/settings/GoogleSettingsPanel.vue')['default']
     GreenSheetPanel: typeof import('./src/components/jobs/GreenSheetPanel.vue')['default']
     InterviewsPanel: typeof import('./src/components/jobs/InterviewsPanel.vue')['default']
     JobOpeningForm: typeof import('./src/components/jobs/JobOpeningForm.vue')['default']
@@ -47,6 +48,7 @@ declare module 'vue' {
     ShortlistingSheetDialog: typeof import('./src/components/common/ShortlistingSheetDialog.vue')['default']
     SidebarNavLink: typeof import('./src/components/layout/SidebarNavLink.vue')['default']
     StatusBadge: typeof import('./src/components/common/StatusBadge.vue')['default']
+    ToggleSwitch: typeof import('./src/components/common/ToggleSwitch.vue')['default']
     TopBar: typeof import('./src/components/layout/TopBar.vue')['default']
     UploadField: typeof import('./src/components/candidate/UploadField.vue')['default']
   }

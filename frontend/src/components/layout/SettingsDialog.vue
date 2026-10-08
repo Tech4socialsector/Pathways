@@ -1,5 +1,6 @@
 <template>
-  <Dialog v-model="isOpen" :options="{ title: 'Pathways Settings', size: tab === 'access' ? '7xl' : '3xl' }">
+  <!-- One size for every tab, so switching tabs never resizes or moves the dialog. -->
+  <Dialog v-model="isOpen" :options="{ title: 'Pathways Settings', size: '6xl' }">
     <template #body-content>
       <div class="flex flex-col gap-4">
         <ErrorMessage :message="formError" />
@@ -19,6 +20,9 @@
           </button>
         </nav>
 
+        <!-- Fixed-height content area: each tab scrolls inside it. The gutter is
+             reserved so content does not shift when a tab starts to scroll. -->
+        <div ref="tabBody" class="h-[min(62vh,40rem)] min-h-[20rem] overflow-y-auto pr-1 [scrollbar-gutter:stable]">
         <div v-if="loading" v-show="tab !== 'access'" class="text-sm text-gray-500">Loading...</div>
         <template v-else-if="canEditSettings">
           <!-- Appearance -->
@@ -252,65 +256,122 @@
         </template>
 
         <!-- Google Meet: Meet links for interviews, through Frappe's Google Calendar integration -->
-        <div v-if="!loading" v-show="tab === 'meet'" class="flex flex-col gap-5 text-sm">
+        <div v-if="!loading" v-show="tab === 'meet'" class="flex flex-col gap-6">
+          <!-- Overall status -->
           <div
-            class="flex items-start gap-3 rounded-lg border px-4 py-3"
-            :class="meet?.ready ? 'border-green-200 bg-green-50 text-green-900' : 'border-orange-200 bg-orange-50 text-orange-900'"
+            class="flex items-start gap-3 rounded-xl border px-4 py-3.5"
+            :class="meet?.ready ? 'border-brand-200 bg-brand-50/60' : 'border-amber-200 bg-amber-50'"
           >
-            <FeatherIcon :name="meet?.ready ? 'check-circle' : 'alert-circle'" class="mt-0.5 h-4 w-4 shrink-0" />
-            <div>
-              <p class="font-medium">{{ meet?.ready ? 'Google Meet links are created automatically.' : 'Google Meet is not set up yet.' }}</p>
-              <p class="mt-0.5">
-                <template v-if="meet?.ready">When an interview is scheduled with Google Meet, Pathways creates the calendar event and the Meet link, and invites the candidate (and the panel for final interviews).</template>
+            <FeatherIcon
+              :name="meet?.ready ? 'check-circle' : 'alert-circle'"
+              class="mt-0.5 h-5 w-5 shrink-0"
+              :class="meet?.ready ? 'text-brand-700' : 'text-amber-600'"
+            />
+            <div class="min-w-0 flex-1">
+              <p class="text-sm font-semibold" :class="meet?.ready ? 'text-brand-800' : 'text-amber-900'">
+                {{ meet?.ready ? 'Google Meet is ready' : 'Google Meet is not set up yet' }}
+              </p>
+              <p class="mt-0.5 text-p-sm" :class="meet?.ready ? 'text-brand-800/80' : 'text-amber-800'">
+                <template v-if="meet?.ready">
+                  Scheduling an interview with Google Meet creates the calendar event and Meet link, and invites the candidate (and the panel for final interviews).
+                </template>
                 <template v-else>{{ meet?.reason || 'Checking…' }} Until then, paste the meeting link when scheduling.</template>
               </p>
             </div>
+            <div class="flex shrink-0 items-center gap-1">
+              <span class="hidden text-xs font-medium tabular-nums sm:inline" :class="meet?.ready ? 'text-brand-700' : 'text-amber-800'">
+                {{ meetSteps.filter((s) => s.done).length }} of 3 done
+              </span>
+              <Button variant="ghost" icon="refresh-cw" :loading="meetLoading" aria-label="Check again" title="Check again" @click="loadMeet" />
+            </div>
           </div>
 
-          <ol class="flex flex-col gap-3">
-            <li class="flex gap-3 rounded-lg border p-4">
-              <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gray-100 text-xs font-bold text-gray-700">1</span>
-              <div class="min-w-0 flex-1">
+          <!-- Steps -->
+          <ol class="flex flex-col">
+            <li v-for="(step, i) in meetSteps" :key="step.key" class="relative flex gap-4 pb-8 last:pb-0">
+              <span v-if="i < meetSteps.length - 1" class="absolute bottom-0 left-[15px] top-9 w-px bg-gray-200" aria-hidden="true" />
+              <span
+                class="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-semibold"
+                :class="step.done ? 'bg-brand-700 text-white' : 'border-2 border-gray-300 bg-white text-gray-600'"
+              >
+                <FeatherIcon v-if="step.done" name="check" class="h-4 w-4" />
+                <template v-else>{{ i + 1 }}</template>
+              </span>
+
+              <div class="min-w-0 flex-1 pt-0.5">
                 <div class="flex flex-wrap items-center justify-between gap-2">
-                  <p class="font-medium text-gray-900">Google Settings</p>
-                  <span class="text-xs font-medium" :class="meet?.google_enabled ? 'text-green-700' : 'text-orange-700'">{{ meet?.google_enabled ? 'Enabled' : 'Not enabled' }}</span>
+                  <h3 class="text-base font-semibold text-gray-900">{{ step.title }}</h3>
+                  <span
+                    class="rounded-full px-2.5 py-0.5 text-xs font-medium"
+                    :class="step.done ? 'bg-brand-50 text-brand-700' : 'bg-gray-100 text-gray-600'"
+                  >{{ step.status }}</span>
                 </div>
-                <p class="mt-0.5 text-gray-600">
-                  In a Google Cloud project, enable the Google Calendar API and create an OAuth client (web application). Enter its Client ID and
-                  Client Secret here and tick Enable. Authorised redirect URI:
-                  <code class="rounded bg-gray-100 px-1 text-xs">{{ redirectUri }}</code>
-                </p>
-                <a href="/desk/google-settings" target="_blank" class="mt-2 inline-flex items-center gap-1 font-medium text-brand-700 hover:underline">Open Google Settings <FeatherIcon name="external-link" class="h-3.5 w-3.5" /></a>
-              </div>
-            </li>
-            <li class="flex gap-3 rounded-lg border p-4">
-              <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gray-100 text-xs font-bold text-gray-700">2</span>
-              <div class="min-w-0 flex-1">
-                <p class="font-medium text-gray-900">Connect the Google account that owns the meetings</p>
-                <p class="mt-0.5 text-gray-600">
-                  Add a Google Calendar (e.g. the recruitment mailbox), tick <b>Push to Google Calendar</b>, save, then click <b>Authorize Google Calendar Access</b>.
-                </p>
-                <ul v-if="meet?.calendars?.length" class="mt-2 flex flex-col gap-1">
-                  <li v-for="c in meet.calendars" :key="c.name" class="flex flex-wrap items-center gap-2 text-gray-700">
-                    <FeatherIcon name="calendar" class="h-3.5 w-3.5 text-gray-400" />{{ c.calendar_name || c.name }} <span class="text-xs text-gray-500">{{ c.user }}</span>
-                    <span class="rounded px-1.5 text-[11px] font-medium" :class="c.authorised && c.push_to_google_calendar && c.enable ? 'bg-green-50 text-green-700' : 'bg-orange-50 text-orange-700'">
-                      {{ !c.authorised ? 'Not authorised' : !c.push_to_google_calendar ? 'Push off' : !c.enable ? 'Disabled' : 'Ready' }}
-                    </span>
-                  </li>
-                </ul>
-                <a href="/desk/google-calendar/new" target="_blank" class="mt-2 inline-flex items-center gap-1 font-medium text-brand-700 hover:underline">Add a Google Calendar <FeatherIcon name="external-link" class="h-3.5 w-3.5" /></a>
-              </div>
-            </li>
-            <li class="flex gap-3 rounded-lg border p-4">
-              <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gray-100 text-xs font-bold text-gray-700">3</span>
-              <div class="min-w-0 flex-1">
-                <p class="font-medium text-gray-900">Calendar for interview meetings</p>
-                <FormControl class="mt-2 max-w-sm" type="select" v-model="form.interview_google_calendar" :options="calendarOptions" />
-                <p class="mt-1 text-xs text-gray-500">Saved with the Save button below.</p>
+
+                <!-- 1. Google Cloud credentials -->
+                <template v-if="step.key === 'google'">
+                  <p class="mt-1 text-p-sm text-gray-600">
+                    In Google Cloud, enable the <b class="font-medium text-gray-800">Google Calendar API</b>, then create an
+                    <b class="font-medium text-gray-800">OAuth client ID</b> of type <i>Web application</i> with this authorised redirect URI:
+                  </p>
+                  <div class="mt-3 flex items-center gap-2 rounded-lg border bg-gray-50 py-1.5 pl-3 pr-1.5">
+                    <code class="min-w-0 flex-1 truncate font-mono text-xs text-gray-700" :title="redirectUri">{{ redirectUri }}</code>
+                    <Button size="sm" :icon-left="uriCopied ? 'check' : 'copy'" @click="copyRedirectUri">{{ uriCopied ? 'Copied' : 'Copy' }}</Button>
+                  </div>
+                  <a
+                    href="https://console.cloud.google.com/apis/credentials"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="mt-2 inline-flex items-center gap-1 text-sm font-medium text-brand-700 hover:underline"
+                  >
+                    Open Google Cloud Console <FeatherIcon name="external-link" class="h-3.5 w-3.5" />
+                  </a>
+                  <!-- Mounted when the tab opens, so it loads fresh each visit. -->
+                  <GoogleSettingsPanel v-if="tab === 'meet'" class="mt-4" @saved="loadMeet" />
+                </template>
+
+                <!-- 2. Calendar account -->
+                <template v-else-if="step.key === 'calendar'">
+                  <p class="mt-1 text-p-sm text-gray-600">
+                    Add the Google Calendar of the account that should own interview meetings (e.g. the recruitment mailbox), tick
+                    <b class="font-medium text-gray-800">Push to Google Calendar</b>, save, then click
+                    <b class="font-medium text-gray-800">Authorize Google Calendar Access</b>.
+                  </p>
+                  <ul v-if="meet?.calendars?.length" class="mt-3 divide-y overflow-hidden rounded-xl border">
+                    <li v-for="c in meet.calendars" :key="c.name" class="flex items-center gap-3 px-4 py-3">
+                      <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gray-100 text-gray-500">
+                        <FeatherIcon name="calendar" class="h-4 w-4" />
+                      </span>
+                      <div class="min-w-0 flex-1">
+                        <p class="truncate text-sm font-medium text-gray-900">{{ c.calendar_name || c.name }}</p>
+                        <p v-if="c.user" class="truncate text-xs text-gray-500">{{ c.user }}</p>
+                      </div>
+                      <span class="shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium" :class="calendarState(c).ready ? 'bg-brand-50 text-brand-700' : 'bg-amber-50 text-amber-800'">
+                        {{ calendarState(c).label }}
+                      </span>
+                    </li>
+                  </ul>
+                  <p v-else class="mt-3 rounded-xl border border-dashed px-4 py-4 text-center text-sm text-gray-500">No Google Calendar connected yet.</p>
+                  <div class="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1">
+                    <a
+                      href="/desk/google-calendar/new"
+                      target="_blank"
+                      class="inline-flex items-center gap-1.5 rounded-lg border border-brand-200 px-3 py-1.5 text-sm font-medium text-brand-700 hover:bg-brand-50"
+                    >
+                      <FeatherIcon name="plus" class="h-4 w-4" /> Add a Google Calendar
+                    </a>
+                    <span class="text-xs text-gray-500">Opens in a new tab. Come back and press refresh above.</span>
+                  </div>
+                </template>
+
+                <!-- 3. Which calendar Pathways uses -->
+                <template v-else>
+                  <p class="mt-1 text-p-sm text-gray-600">Interview events and Meet links are created on this calendar.</p>
+                  <FormControl class="mt-3 max-w-md" type="select" v-model="form.interview_google_calendar" :options="calendarOptions" />
+                  <p class="mt-1.5 text-xs text-gray-500">Saved with the Save button at the bottom of this dialog.</p>
+                </template>
               </div>
             </li>
           </ol>
-          <Button class="self-start" variant="ghost" icon-left="refresh-cw" :loading="meetLoading" @click="loadMeet">Check again</Button>
         </div>
 
         <!-- Roles & Permissions: changes save as they are made, so the tab has no Save button.
@@ -318,14 +379,20 @@
         <div
           v-if="canManageAccess && accessVisited"
           v-show="tab === 'access'"
-          class="flex h-[70vh] min-h-[26rem] flex-col overflow-hidden rounded-lg border"
+          class="flex h-full flex-col overflow-hidden rounded-lg border"
         >
           <RolesPermissionsPanel embedded />
         </div>
+        </div>
       </div>
     </template>
-    <template v-if="tab !== 'access'" #actions>
-      <Button variant="solid" :class="BTN_BRAND" :loading="saving" :disabled="loading || loadFailed || !isValidHex(form.brand_color)" @click="submit">Save</Button>
+    <!-- Always present (same dialog height on every tab). Roles & Permissions
+         saves each change as it is made, so it shows a note instead. -->
+    <template #actions>
+      <p v-if="tab === 'access'" class="flex h-8 items-center gap-1.5 text-sm text-gray-500">
+        <FeatherIcon name="check-circle" class="h-4 w-4" /> Changes on this tab are saved as you make them.
+      </p>
+      <Button v-else variant="solid" :class="BTN_BRAND" :loading="saving" :disabled="loading || loadFailed || !isValidHex(form.brand_color)" @click="submit">Save</Button>
     </template>
   </Dialog>
 </template>
@@ -351,6 +418,7 @@ import { useSettings } from '@/composables/useSettings'
 import { useSessionStore } from '@/stores/session'
 import RolesPermissionsPanel from '@/components/settings/RolesPermissionsPanel.vue'
 import SettingsField from '@/components/settings/SettingsField.vue'
+import GoogleSettingsPanel from '@/components/settings/GoogleSettingsPanel.vue'
 
 const isOpen = defineModel({ type: Boolean, default: false })
 
@@ -374,8 +442,11 @@ const tabs = computed(() => [
 ])
 const tab = ref('appearance')
 const accessVisited = ref(false)
+const tabBody = ref(null)
 watch(tab, (key) => {
   if (key === 'access') accessVisited.value = true
+  // Each tab starts at its top.
+  if (tabBody.value) tabBody.value.scrollTop = 0
 })
 // If a permission change removes the open tab, fall back to one still available.
 watch(tabs, (list) => {
@@ -517,6 +588,62 @@ const calendarOptions = computed(() => [
   { label: '(None: paste meeting links by hand)', value: NONE },
   ...(meet.value?.calendars || []).map((c) => ({ label: `${c.calendar_name || c.name}${c.user ? ' · ' + c.user : ''}`, value: c.name })),
 ])
+// Calendar rows: what still blocks a calendar from being used.
+function calendarState(c) {
+  if (!c.authorised) return { ready: false, label: 'Not authorised' }
+  if (!c.enable) return { ready: false, label: 'Disabled' }
+  if (!c.push_to_google_calendar) return { ready: false, label: 'Push is off' }
+  return { ready: true, label: 'Ready' }
+}
+const meetSteps = computed(() => {
+  const m = meet.value || {}
+  const readyCalendars = (m.calendars || []).filter((c) => calendarState(c).ready).length
+  return [
+    { key: 'google', title: 'Google Cloud credentials', done: Boolean(m.google_enabled), status: m.google_enabled ? 'Enabled' : 'Not enabled' },
+    {
+      key: 'calendar',
+      title: 'Connect a Google account',
+      done: readyCalendars > 0,
+      status: readyCalendars ? `${readyCalendars} ready` : m.calendars?.length ? 'Needs authorising' : 'Not connected',
+    },
+    {
+      key: 'choose',
+      title: 'Calendar for interview meetings',
+      done: Boolean(m.ready),
+      status: m.ready ? 'In use' : m.selected ? 'Needs attention' : 'Not chosen',
+    },
+  ]
+})
+
+// Copy the redirect URI (with a fallback where the Clipboard API is blocked).
+const uriCopied = ref(false)
+let uriTimer = null
+async function copyRedirectUri() {
+  let ok = false
+  try {
+    await navigator.clipboard.writeText(redirectUri)
+    ok = true
+  } catch {
+    const area = document.createElement('textarea')
+    area.value = redirectUri
+    area.setAttribute('readonly', '')
+    area.style.position = 'fixed'
+    area.style.opacity = '0'
+    document.body.appendChild(area)
+    area.select()
+    try {
+      ok = document.execCommand('copy')
+    } catch {
+      ok = false
+    }
+    area.remove()
+  }
+  if (!ok) return toast({ title: 'Could not copy. Select the address and copy it.', icon: 'alert-triangle' })
+  uriCopied.value = true
+  clearTimeout(uriTimer)
+  uriTimer = setTimeout(() => (uriCopied.value = false), 2000)
+}
+
 async function loadMeet() {
   meetLoading.value = true
   try {
