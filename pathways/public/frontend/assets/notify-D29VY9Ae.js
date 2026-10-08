@@ -1,1 +1,0 @@
-import{bG as t}from"./index-TsKw1BRv.js";function i({title:s,message:o,icon:e,iconClasses:a}={}){const r=s||o||"";return e==="alert-triangle"||/red/.test(a||"")?t.error(r):t.success(r)}export{i as t};

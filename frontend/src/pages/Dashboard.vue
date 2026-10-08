@@ -156,8 +156,18 @@
               clickable
               empty-title="No job openings match the filters"
               search-placeholder="Search job openings..."
-              @row-click="(j) => router.push(`/jobs/${j.name}`)"
+              @row-click="(j) => openJobDrilldown(j, 'applied')"
             >
+              <template v-for="k in JOB_COUNT_CELLS" :key="k.col" #[`cell-${k.col}`]="{ row, value }">
+                <button
+                  v-if="value"
+                  type="button"
+                  class="rounded px-2 py-0.5 font-semibold hover:bg-brand-50 hover:underline"
+                  :class="k.tone"
+                  @click.stop="openJobDrilldown(row, k.stage)"
+                >{{ value }}</button>
+                <span v-else class="cursor-default px-2 text-gray-300" @click.stop>0</span>
+              </template>
               <template #cell-job_title="{ row }">
                 <div class="min-w-[12rem]">
                   <div class="font-semibold text-gray-900">{{ row.job_title }}</div>
@@ -171,12 +181,12 @@
                   <span v-if="row.status === 'Advertised' && row.days_left >= 0" class="text-xs text-gray-500">({{ row.days_left }}d)</span>
                 </span>
               </template>
-              <template #cell-pending="{ value }">
-                <span :class="value ? 'font-semibold text-orange-700' : 'text-gray-400'">{{ value }}</span>
-              </template>
               <template #cell-shortlisted="{ row }">
                 <div class="min-w-[7rem]">
-                  <div class="text-xs"><b>{{ row.shortlisted }}</b> / {{ row.target }} (1:{{ row.ratio }})</div>
+                  <div class="text-xs">
+                    <button v-if="row.shortlisted" type="button" class="font-bold text-brand-700 hover:underline" @click.stop="openJobDrilldown(row, 'shortlisted_now')">{{ row.shortlisted }}</button>
+                    <b v-else>0</b> / {{ row.target }} (1:{{ row.ratio }})
+                  </div>
                   <div class="mt-1 h-1.5 overflow-hidden rounded-full bg-gray-100">
                     <div class="h-full rounded-full bg-brand-700" :style="{ width: `${Math.min(100, (row.shortlisted / (row.target || 1)) * 100)}%` }" />
                   </div>
@@ -200,7 +210,7 @@
               clickable
               empty-title="No job openings to report on"
               search-placeholder="Search job openings..."
-              @row-click="(row) => router.push(`/jobs/${row.job_opening}`)"
+              @row-click="(row) => openPipelineDrilldown(row, 'applied')"
             >
               <template #cell-job_title="{ row }">
                 <span class="font-semibold text-gray-900">{{ row.job_title || row.job_opening }}</span>
@@ -269,6 +279,7 @@
       :title="drilldown.title"
       :description="drilldown.description"
       :filters="drilldown.params || { filters: apiFilters }"
+      :job-link="drilldown.jobLink"
     />
   </StaffLayout>
 </template>
@@ -473,9 +484,9 @@ const JOB_COLUMNS = [
 ]
 
 // One dialog for every drill-down.
-const drilldown = reactive({ open: false, bucket: '', title: '', description: '', params: null })
+const drilldown = reactive({ open: false, bucket: '', title: '', description: '', params: null, jobLink: '' })
 function openDrilldown(bucket, title, description = '') {
-  Object.assign(drilldown, { open: true, bucket, title, description, params: null })
+  Object.assign(drilldown, { open: true, bucket, title, description, params: null, jobLink: '' })
 }
 
 function initials(name) {
@@ -552,12 +563,25 @@ const STAGE_LABELS = {
   joined: 'Joined',
 }
 function openPipelineDrilldown(row, stage) {
+  openJobDrilldown({ name: row.job_opening, job_title: row.job_title }, stage)
+}
+
+// Job Openings at a Glance: clicking a job or one of its counts lists the
+// applications in the drilldown, with a button to open the job page.
+const JOB_COUNT_CELLS = [
+  { col: 'applications', stage: 'applied', tone: 'text-gray-900' },
+  { col: 'pending', stage: 'to_check', tone: 'text-orange-700' },
+  { col: 'eligible', stage: 'eligible_now', tone: 'text-green-700' },
+]
+function openJobDrilldown(job, stage) {
+  const label = { ...STAGE_LABELS, to_check: 'To check', eligible_now: 'Eligible', shortlisted_now: 'Shortlisted' }[stage] || 'Applications'
   Object.assign(drilldown, {
     open: true,
     bucket: `pipeline:${stage}`,
-    title: `${STAGE_LABELS[stage]} · ${row.job_title || row.job_opening}`,
-    description: `Applications counted as "${STAGE_LABELS[stage]}" for this job opening.`,
-    params: { job_opening: row.job_opening },
+    title: `${stage === 'applied' ? 'Applications' : label} · ${job.job_title || job.name}`,
+    description: stage === 'applied' ? 'Every application for this job opening.' : `Applications counted as "${label}" for this job opening.`,
+    params: { job_opening: job.name },
+    jobLink: `/jobs/${job.name}`,
   })
 }
 </script>

@@ -7,6 +7,8 @@ the framework's standard list/form views, which enforce permissions,
 validation and version history on their own.
 """
 
+from urllib.parse import quote
+
 import frappe
 from frappe import _
 
@@ -56,3 +58,27 @@ def _describe(master):
 		"inactive": frappe.db.count(doctype, {active_field: ["!=", active_value]}) if active_field else None,
 		"last_updated": (frappe.get_all(doctype, fields=["modified"], order_by="modified desc", limit=1) or [{}])[0].get("modified"),
 	}
+
+
+@frappe.whitelist()
+def get_master_records(doctype, limit=8):
+	"""Master Setup detail panel: the latest records of one master."""
+	allowed = {m["doctype"] for category in MASTER_SETUP for m in category["masters"]}
+	if doctype not in allowed or not can_manage(doctype):
+		frappe.throw(_("You do not have permission to view this master."), frappe.PermissionError)
+	meta = frappe.get_meta(doctype)
+	active_field, active_value = get_active_field(meta)
+	title_field = meta.title_field if meta.title_field and meta.has_field(meta.title_field) else None
+	fields = ["name", "modified"] + ([title_field] if title_field else []) + ([active_field] if active_field else [])
+	route = "/desk/" + doctype.lower().replace(" ", "-")
+	rows = frappe.get_list(doctype, fields=fields, order_by="modified desc", limit_page_length=frappe.utils.cint(limit) or 8)
+	return [
+		{
+			"name": r.name,
+			"title": (r.get(title_field) if title_field else None) or r.name,
+			"active": None if not active_field else frappe.utils.cint(r.get(active_field)) == active_value,
+			"modified": r.modified,
+			"route": f"{route}/{quote(r.name, safe='')}",
+		}
+		for r in rows
+	]

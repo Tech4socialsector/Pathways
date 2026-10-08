@@ -8,12 +8,21 @@
             <p class="text-sm text-white/80">
               {{ loading ? 'Loading...' : `${rows.length} application${rows.length === 1 ? '' : 's'}` }}
               <template v-if="description"> · {{ description }}</template>
-              <template v-if="rows.length"> · Click a row to open it</template>
             </p>
           </div>
+          <div class="flex shrink-0 items-center gap-2">
+          <button
+            v-if="jobLink"
+            type="button"
+            class="flex items-center gap-1.5 rounded-md bg-white/15 px-3 py-1.5 text-sm font-medium text-white hover:bg-white/25"
+            @click="openJob"
+          >
+            <FeatherIcon name="briefcase" class="h-4 w-4" />Open job opening
+          </button>
           <button class="rounded-md p-1.5 text-white/80 hover:bg-white/15 hover:text-white" aria-label="Close" @click="emit('update:open', false)">
             <FeatherIcon name="x" class="h-5 w-5" />
           </button>
+          </div>
         </header>
 
         <div class="min-h-0 flex-1 overflow-y-auto bg-gray-50 p-6">
@@ -24,11 +33,13 @@
             :rows="rows"
             :loading="loading"
             :filters="filters"
-            clickable
+            :selectable="false"
             empty-title="No applications here yet"
             search-placeholder="Search candidate, job or application ID..."
-            @row-click="go"
           >
+            <template #actions="{ row }">
+              <Button size="sm" variant="outline" icon-left="eye" @click="go(row)">View</Button>
+            </template>
             <template #cell-candidate_name="{ row }">
               <div class="flex items-center gap-3">
                 <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-100 text-xs font-bold text-brand-700">
@@ -56,7 +67,7 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { Dialog, FeatherIcon } from 'frappe-ui'
+import { Button, Dialog, FeatherIcon } from 'frappe-ui'
 import dayjs from 'dayjs'
 import StatusBadge from './StatusBadge.vue'
 import DataTable from './DataTable.vue'
@@ -70,6 +81,8 @@ const props = defineProps({
   bucket: { type: String, default: '' },
   // Dashboard filters (track, department, job_opening, from_date, to_date).
   filters: { type: Object, default: () => ({}) },
+  // A job's drilldown: a header button to open the job page.
+  jobLink: { type: String, default: '' },
 })
 const emit = defineEmits(['update:open'])
 const router = useRouter()
@@ -110,6 +123,11 @@ const filters = [
   { key: 'job_title', label: 'Job Openings' },
   { key: 'status', label: 'Statuses' },
 ]
+
+function openJob() {
+  emit('update:open', false)
+  router.push(props.jobLink)
+}
 
 function go(row) {
   emit('update:open', false)

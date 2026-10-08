@@ -299,6 +299,18 @@ def _pipeline_applications(job_opening, stage):
 	apps = frappe.get_all("Application", filters={"job_opening": job_opening}, pluck="name")
 	if not apps or stage == "applied":
 		return apps
+	if stage in ("eligible_now", "shortlisted_now"):
+		# Job Openings at a Glance counts the application's own fields (as
+		# scoring.shortlisting_summary does), not the check / score records.
+		from pathways.api.shortlisting_report import PAST_SHORTLISTING
+
+		rows = frappe.get_all("Application", filters={"name": ["in", apps], "status": ["!=", "Withdrawn"]}, fields=["name", "status", "eligibility_status"])
+		if stage == "eligible_now":
+			return [r.name for r in rows if r.eligibility_status == "Eligible"]
+		return [r.name for r in rows if r.status in PAST_SHORTLISTING]
+	if stage == "to_check":
+		rows = frappe.get_all("Application", filters={"name": ["in", apps], "status": ["!=", "Withdrawn"]}, fields=["name", "eligibility_status"])
+		return [r.name for r in rows if r.eligibility_status not in ("Eligible", "Not Eligible")]
 	if stage == "eligible":
 		return frappe.get_all("Eligibility Check", filters={"application": ["in", apps], "is_eligible": 1}, pluck="application")
 	if stage == "shortlisted":
