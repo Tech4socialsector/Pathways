@@ -8,10 +8,14 @@
       <template #target="{ togglePopover }">
         <button
           type="button"
-          class="flex w-full items-center gap-2 rounded border px-2.5 text-left text-sm transition"
+          class="flex w-full items-center gap-2 border text-left text-sm transition"
           :class="[
-            hideLabel ? 'h-7' : 'h-8',
-            modelValue.length ? 'border-brand-200 bg-brand-50 text-brand-800' : 'border-transparent bg-gray-100 text-gray-800 hover:bg-gray-200',
+            size === 'lg' ? 'h-11 rounded-xl px-3' : ['rounded px-2.5', hideLabel ? 'h-7' : 'h-8'],
+            modelValue.length
+              ? 'border-brand-200 bg-brand-50 text-brand-800'
+              : size === 'lg'
+                ? 'border-gray-200 bg-gray-50 text-gray-800 hover:bg-gray-100'
+                : 'border-transparent bg-gray-100 text-gray-800 hover:bg-gray-200',
           ]"
           :aria-expanded="open"
           aria-haspopup="listbox"
@@ -45,6 +49,7 @@
                   @change="toggle(opt.value)"
                 />
                 <span class="min-w-0 flex-1 truncate" :title="opt.label">{{ opt.label }}</span>
+                <span v-if="opt.count !== undefined" class="shrink-0 text-xs tabular-nums text-gray-400">{{ opt.count }}</span>
               </label>
             </li>
             <li v-if="!visible.length" class="px-3 py-2 text-sm text-gray-500">No matches.</li>
@@ -80,6 +85,8 @@ const props = defineProps({
   allLabel: { type: String, default: 'All' },
   // Inline in a toolbar: no caption above, and the height of the other inputs.
   hideLabel: { type: Boolean, default: false },
+  // 'sm' for the staff toolbars; 'lg' matches the candidate portal's inputs.
+  size: { type: String, default: 'sm' },
 })
 const emit = defineEmits(['update:modelValue'])
 

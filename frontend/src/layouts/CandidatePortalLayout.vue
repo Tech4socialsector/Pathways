@@ -14,12 +14,13 @@
             <span class="hidden truncate text-xs text-gray-500 sm:block">National Law School of India University</span>
           </span>
         </router-link>
-        <nav class="flex items-center gap-1 text-sm">
+        <!-- Desktop navigation -->
+        <nav class="hidden items-center gap-1 text-sm md:flex">
           <router-link
             v-for="link in links"
             :key="link.to"
             :to="link.to"
-            class="relative rounded-md px-3 py-2 font-medium transition-colors"
+            class="relative whitespace-nowrap rounded-md px-3 py-2 font-medium transition-colors"
             :class="isActive(link.to) ? 'text-brand-700' : 'text-gray-600 hover:text-gray-900'"
           >
             {{ link.label }}
@@ -27,7 +28,7 @@
           </router-link>
           <button
             v-if="session.isLoggedIn"
-            class="rounded-md px-3 py-2 font-medium text-gray-600 hover:text-gray-900"
+            class="whitespace-nowrap rounded-md px-3 py-2 font-medium text-gray-600 hover:text-gray-900"
             @click="confirmLogout = true"
           >
             Log out
@@ -35,12 +36,54 @@
           <a
             v-else
             :href="loginUrl"
-            class="ml-1 rounded-md border border-brand-200 px-3 py-1.5 font-semibold text-brand-700 hover:bg-brand-50"
+            class="ml-1 whitespace-nowrap rounded-md border border-brand-200 px-3 py-1.5 font-semibold text-brand-700 hover:bg-brand-50"
           >
             Log in
           </a>
         </nav>
+
+        <!-- Phones: Log in stays visible; everything else is in a menu. -->
+        <div class="flex shrink-0 items-center gap-2 md:hidden">
+          <a
+            v-if="!session.isLoggedIn"
+            :href="loginUrl"
+            class="whitespace-nowrap rounded-md border border-brand-200 px-3 py-1.5 text-sm font-semibold text-brand-700 hover:bg-brand-50"
+          >
+            Log in
+          </a>
+          <button
+            type="button"
+            class="flex h-9 w-9 items-center justify-center rounded-md text-gray-700 hover:bg-gray-100"
+            :aria-expanded="menuOpen"
+            aria-controls="portal-menu"
+            :aria-label="menuOpen ? 'Close menu' : 'Open menu'"
+            @click="menuOpen = !menuOpen"
+          >
+            <FeatherIcon :name="menuOpen ? 'x' : 'menu'" class="h-5 w-5" />
+          </button>
+        </div>
       </div>
+
+      <nav v-if="menuOpen" id="portal-menu" class="border-t bg-white px-4 py-2 md:hidden">
+        <router-link
+          v-for="link in links"
+          :key="link.to"
+          :to="link.to"
+          class="flex items-center justify-between rounded-md px-3 py-2.5 text-base font-medium"
+          :class="isActive(link.to) ? 'bg-brand-50 text-brand-700' : 'text-gray-700 hover:bg-gray-50'"
+        >
+          {{ link.label }}
+          <FeatherIcon name="chevron-right" class="h-4 w-4 opacity-50" />
+        </router-link>
+        <button
+          v-if="session.isLoggedIn"
+          type="button"
+          class="flex w-full items-center rounded-md px-3 py-2.5 text-left text-base font-medium text-gray-700 hover:bg-gray-50"
+          @click="(menuOpen = false), (confirmLogout = true)"
+        >
+          Log out
+        </button>
+      </nav>
     </header>
     <Dialog v-model="confirmLogout" :options="{ title: 'Log out?', size: 'sm' }">
       <template #body-content>
@@ -67,8 +110,8 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
-import { Button, Dialog } from 'frappe-ui'
+import { computed, ref, watch } from 'vue'
+import { Button, Dialog, FeatherIcon } from 'frappe-ui'
 import { BTN_BRAND } from '@/utils/buttonStyles'
 import { useRoute } from 'vue-router'
 import { useSessionStore } from '@/stores/session'
@@ -79,6 +122,10 @@ const confirmLogout = ref(false)
 const route = useRoute()
 const loginUrl = computed(() => `/login?redirect-to=${encodeURIComponent(window.location.pathname)}`)
 const year = new Date().getFullYear()
+
+// Phone menu; closes on navigation.
+const menuOpen = ref(false)
+watch(() => route.fullPath, () => (menuOpen.value = false))
 
 // Signed-in candidates see their own pages first; Openings comes last.
 const links = computed(() => [
