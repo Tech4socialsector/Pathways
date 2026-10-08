@@ -3,7 +3,6 @@
     <PageHeader
       title="Job Openings"
       subtitle="Manage and track all job openings across departments and employment types."
-      :breadcrumbs="[{ label: 'Dashboard', to: '/' }, { label: 'Job Openings' }]"
     >
       <template #actions>
         <Button v-if="session.can('Job Opening', 'create')" variant="solid" icon-left="plus" :class="BTN_BRAND" @click="openCreateDialog">
@@ -28,7 +27,14 @@
       >
       <!-- Status at a glance; a tab filters the list to that status. -->
       <template #above-toolbar>
-      <nav v-if="jobs.length" class="-mx-1 flex gap-1 overflow-x-auto border-b" aria-label="Filter by status">
+      <!-- The bottom rule is an inset shadow and the active underline sits
+           inside the nav: anything poking below it would make this
+           horizontally scrollable nav show a vertical scrollbar too. -->
+      <nav
+        v-if="jobs.length"
+        class="-mx-1 flex gap-1 overflow-x-auto overflow-y-hidden shadow-[inset_0_-1px_0_theme(colors.gray.200)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        aria-label="Filter by status"
+      >
         <button
           v-for="t in statusTabs"
           :key="t.key"
@@ -46,7 +52,7 @@
           >
             {{ t.count }}
           </span>
-          <span v-if="activeStatusTab === t.key" class="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-brand-700" />
+          <span v-if="activeStatusTab === t.key" class="absolute inset-x-2 bottom-0 h-0.5 rounded-full bg-brand-700" />
         </button>
       </nav>
       </template>

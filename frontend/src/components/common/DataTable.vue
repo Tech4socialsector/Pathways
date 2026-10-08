@@ -4,26 +4,31 @@
          search / filters / sort / view row share one white panel. -->
     <div :class="toolbarPanel && 'rounded-xl border bg-white px-4 pb-3 pt-1 shadow-sm'">
     <slot name="above-toolbar" />
-    <div class="flex flex-wrap items-end gap-2" :class="toolbarPanel && $slots['above-toolbar'] && 'pt-3'">
-      <div class="w-full sm:w-64">
-        <TextInput v-model="search" type="text" :placeholder="searchPlaceholder">
-          <template #prefix><FeatherIcon name="search" class="h-4 w-4 text-gray-500" /></template>
-        </TextInput>
+    <!-- Search and filters on the left (wrapping among themselves), view
+         controls kept together on the right; on narrow screens the right
+         group moves under the filters as a whole. -->
+    <div class="flex flex-wrap items-start gap-2 lg:flex-nowrap" :class="toolbarPanel && $slots['above-toolbar'] && 'pt-3'">
+      <div class="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+        <div class="w-full sm:w-64">
+          <TextInput v-model="search" type="text" :placeholder="searchPlaceholder">
+            <template #prefix><FeatherIcon name="search" class="h-4 w-4 text-gray-500" /></template>
+          </TextInput>
+        </div>
+        <!-- Each filter takes several values; a row matches any of them. -->
+        <MultiSelectFilter
+          v-for="filter in resolvedFilters"
+          :key="filter.key"
+          class="w-full sm:w-auto sm:min-w-[9rem] sm:max-w-[16rem]"
+          hide-label
+          :label="filter.label"
+          :all-label="`All ${filter.label}`"
+          :options="filter.options"
+          :model-value="filterValues[filter.key] || []"
+          @update:model-value="(v) => (filterValues[filter.key] = v)"
+        />
+        <Button v-if="isFiltered" variant="ghost" @click="clearFilters">Clear</Button>
       </div>
-      <!-- Each filter takes several values; a row matches any of them. -->
-      <MultiSelectFilter
-        v-for="filter in resolvedFilters"
-        :key="filter.key"
-        class="w-full sm:w-44"
-        hide-label
-        :label="filter.label"
-        :all-label="`All ${filter.label}`"
-        :options="filter.options"
-        :model-value="filterValues[filter.key] || []"
-        @update:model-value="(v) => (filterValues[filter.key] = v)"
-      />
-      <Button v-if="isFiltered" variant="ghost" @click="clearFilters">Clear</Button>
-      <div class="ml-auto flex items-center gap-2">
+      <div class="flex shrink-0 flex-wrap items-center gap-2 lg:ml-auto">
         <slot name="toolbar" />
         <AdvancedFilter v-if="advancedFilter && rows.length" v-model="conditions" :columns="allColumns" :rows="rows" />
         <!-- Cards have no column headers to click, so sorting gets its own control. -->

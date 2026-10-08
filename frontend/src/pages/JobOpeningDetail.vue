@@ -2,7 +2,6 @@
   <StaffLayout>
     <PageHeader
       :title="job?.job_title || 'Job Opening'"
-      :breadcrumbs="[{ label: 'Job Openings', to: '/jobs' }, { label: job?.job_title || 'Job Opening' }]"
     >
       <template #meta>
         <div v-if="job" class="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm text-gray-600">

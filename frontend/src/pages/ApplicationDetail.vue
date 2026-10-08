@@ -2,7 +2,6 @@
   <StaffLayout>
     <PageHeader
       :title="candidate.full_name || status?.application_id || 'Application'"
-      :breadcrumbs="[{ label: 'Applications', to: '/applications' }, { label: status?.application_id || 'Application' }]"
     >
       <template #meta>
         <div v-if="status" class="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm text-gray-600">
