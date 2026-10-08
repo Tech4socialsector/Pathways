@@ -1,7 +1,22 @@
 <template>
-  <component
-    :is="as === 'button' ? 'button' : RouterLink"
-    v-bind="linkProps"
+  <!-- Two explicit elements rather than <component :is="'button'">: that
+       string resolves to the globally registered frappe-ui Button. -->
+  <button
+    v-if="as === 'button'"
+    type="button"
+    :aria-label="isExpanded ? undefined : label"
+    class="relative flex h-9 w-full items-center gap-2.5 rounded-md px-2.5 text-left text-sm text-gray-700 transition-colors hover:bg-gray-100"
+  >
+    <Tooltip :text="label" placement="right" :disabled="isExpanded">
+      <span class="flex h-4 w-4 shrink-0 items-center justify-center">
+        <FeatherIcon :name="icon" class="h-4 w-4" />
+      </span>
+    </Tooltip>
+    <span v-if="isExpanded" class="truncate">{{ label }}</span>
+  </button>
+  <RouterLink
+    v-else
+    :to="to"
     :aria-label="isExpanded ? undefined : label"
     class="relative flex h-9 items-center gap-2.5 rounded-md px-2.5 text-sm transition-colors"
     :class="isActive ? 'bg-brand-50 font-semibold text-brand-700' : 'text-gray-700 hover:bg-gray-100'"
@@ -13,7 +28,7 @@
       </span>
     </Tooltip>
     <span v-if="isExpanded" class="truncate">{{ label }}</span>
-  </component>
+  </RouterLink>
 </template>
 
 <script setup>
@@ -30,8 +45,6 @@ const props = defineProps({
 })
 
 const route = useRoute()
-
-const linkProps = computed(() => (props.as === 'button' ? {} : { to: props.to }))
 
 const isActive = computed(() => {
   if (props.as === 'button') return false

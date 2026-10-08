@@ -66,13 +66,15 @@
         <template v-if="data">
           <!-- Summary -->
           <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-            <!-- A zero has nothing to list, so it is not a button. -->
-            <component
-              :is="card.value ? 'button' : 'div'"
+            <!-- A zero has nothing to list, so its button is disabled. (A native
+                 <button>, not <component :is="'button'">: that string resolves
+                 to the globally registered frappe-ui Button.) -->
+            <button
               v-for="card in cards"
               :key="card.key"
-              :type="card.value ? 'button' : undefined"
-              class="group flex items-start justify-between gap-3 rounded-xl border border-gray-200 bg-white p-4 text-left shadow-sm transition"
+              type="button"
+              :disabled="!card.value"
+              class="group flex items-start justify-between gap-3 rounded-xl border border-gray-200 bg-white p-4 text-left shadow-sm transition disabled:cursor-default"
               :class="card.value && 'hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-md'"
               :title="card.value ? `Show ${card.label.toLowerCase()}` : undefined"
               @click="card.value && openDrilldown(card.key, card.label)"
@@ -87,7 +89,7 @@
               >
                 <FeatherIcon :name="card.icon" class="h-4 w-4" />
               </div>
-            </component>
+            </button>
           </div>
 
           <div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
