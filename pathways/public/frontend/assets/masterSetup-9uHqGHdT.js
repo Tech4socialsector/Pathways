@@ -1,1 +1,0 @@
-import{z as e}from"./index-B7f1V9R-.js";const r={hasAccess(){return e("pathways.api.master_setup.has_access")},getMasterSetup(){return e("pathways.api.master_setup.get_master_setup")},getMasterRecords(t,s=8){return e("pathways.api.master_setup.get_master_records",{doctype:t,limit:s})},getPosition(t){return e("frappe.client.get",{doctype:"Position",name:t})}};export{r as m};

@@ -65,6 +65,21 @@ const routes = [
     meta: { requiresStaff: true },
   },
   {
+    path: '/master-setup/:slug',
+    name: 'MasterList',
+    component: () => import('@/pages/MasterList.vue'),
+    props: true,
+    meta: { requiresStaff: true },
+  },
+  {
+    // One record for /new and /edit/<name>: see newRoute() in utils/masterForm.js.
+    path: '/master-setup/:slug/:mode(new|edit)/:name?',
+    name: 'MasterForm',
+    component: () => import('@/pages/MasterForm.vue'),
+    props: (route) => ({ slug: route.params.slug, mode: route.params.mode, name: route.params.name || '' }),
+    meta: { requiresStaff: true },
+  },
+  {
     path: '/settings/email',
     name: 'EmailSetup',
     component: () => import('@/pages/settings/EmailSetup.vue'),

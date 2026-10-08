@@ -33,11 +33,24 @@ import SidebarNavLink from './SidebarNavLink.vue'
 
 const session = useSessionStore()
 
-const isExpanded = ref(localStorage.getItem('pathways-sidebar-expanded') !== 'false')
+// Collapsed by default; once the user expands or collapses it, that choice
+// is remembered. (New key: the old 'pathways-sidebar-expanded' defaulted to
+// expanded, so existing browsers would never have picked up the new default.)
+const SIDEBAR_KEY = 'pathways-sidebar'
+
+function readExpanded() {
+  try {
+    return localStorage.getItem(SIDEBAR_KEY) === 'expanded'
+  } catch {
+    return false
+  }
+}
+
+const isExpanded = ref(readExpanded())
 
 watch(isExpanded, (value) => {
   try {
-    localStorage.setItem('pathways-sidebar-expanded', String(value))
+    localStorage.setItem(SIDEBAR_KEY, value ? 'expanded' : 'collapsed')
   } catch {
     // ignore storage errors (private browsing, quota, etc.)
   }

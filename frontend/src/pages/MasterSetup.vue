@@ -3,166 +3,174 @@
     <PageHeader
       title="Master Setup"
       subtitle="Reference data behind job openings, application forms, approvals and scoring. Set it up in the order shown."
-      :breadcrumbs="[{ label: 'Dashboard', to: '/' }, { label: 'Master Setup' }]"
     />
-    <div class="flex min-h-0 flex-1 overflow-hidden bg-gray-50/60">
-      <div v-if="loading" class="flex-1 p-6"><div class="h-64 animate-pulse rounded-xl border bg-white" /></div>
 
-      <div v-else-if="isPermissionError" class="flex-1 p-6">
+    <div class="min-h-0 flex-1 overflow-y-auto bg-gray-50/60">
+      <div v-if="loading" class="mx-auto max-w-7xl space-y-6 p-4 md:p-6">
+        <div class="h-20 animate-pulse rounded-xl border bg-white" />
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <div v-for="i in 6" :key="i" class="h-44 animate-pulse rounded-xl border bg-white" />
+        </div>
+      </div>
+
+      <div v-else-if="isPermissionError" class="p-6">
         <EmptyState title="You don't have access to Master Setup" description="Ask a Pathways administrator if you need to manage master records." />
       </div>
 
-      <div v-else-if="error" class="flex-1 p-6">
+      <div v-else-if="error" class="p-6">
         <EmptyState title="Could not load Master Setup" :description="errorMessage">
           <template #action><Button @click="fetchMasterSetup">Try again</Button></template>
         </EmptyState>
       </div>
 
-      <template v-else>
-        <!-- Masters, in setup order -->
-        <aside class="flex w-80 shrink-0 flex-col border-r bg-white">
-          <div class="border-b p-3">
-            <TextInput v-model="query" type="text" placeholder="Search masters">
+      <div v-else class="mx-auto flex max-w-7xl flex-col gap-6 p-4 md:p-6">
+        <!-- Overview -->
+        <section class="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          <div v-for="s in summary" :key="s.label" class="flex items-center gap-3 rounded-xl border bg-white p-4 shadow-sm">
+            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg" :class="s.iconClass">
+              <FeatherIcon :name="s.icon" class="h-5 w-5" />
+            </span>
+            <div class="min-w-0">
+              <div class="text-sm text-gray-500">{{ s.label }}</div>
+              <div class="mt-1 text-2xl font-semibold tabular-nums text-gray-900">{{ s.value }}</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Toolbar -->
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div class="w-full sm:w-80">
+            <TextInput v-model="query" type="text" placeholder="Search masters, e.g. university, approver" aria-label="Search masters">
               <template #prefix><FeatherIcon name="search" class="h-4 w-4 text-gray-500" /></template>
             </TextInput>
           </div>
-          <nav class="min-h-0 flex-1 overflow-y-auto p-2" aria-label="Masters">
-            <div v-for="stage in visibleStages" :key="stage.key" class="mb-3">
-              <div class="px-2 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wider text-gray-500">
-                {{ stage.step }}. {{ stage.title }}
-              </div>
-              <button
-                v-for="m in stage.masters"
-                :key="m.doctype"
-                type="button"
-                class="group flex w-full items-center gap-3 rounded-md border-l-2 px-2.5 py-2 text-left text-sm transition"
-                :class="selected?.doctype === m.doctype ? 'border-brand-700 bg-brand-50 text-brand-800' : 'border-transparent text-gray-700 hover:bg-gray-50'"
-                :aria-current="selected?.doctype === m.doctype ? 'true' : undefined"
-                @click="select(m)"
-              >
-                <FeatherIcon :name="m.icon" class="h-4 w-4 shrink-0" :class="selected?.doctype === m.doctype ? 'text-brand-700' : 'text-gray-400'" />
-                <span class="min-w-0 flex-1 truncate" :class="selected?.doctype === m.doctype && 'font-semibold'">{{ m.label }}</span>
-                <span class="shrink-0 text-xs tabular-nums" :class="m.total ? 'text-gray-500' : 'font-semibold text-orange-600'">{{ m.total || 0 }}</span>
-              </button>
-            </div>
-            <p v-if="!visibleStages.length" class="px-2 py-6 text-center text-sm text-gray-500">No masters match “{{ query }}”.</p>
-          </nav>
-        </aside>
-
-        <!-- Selected master -->
-        <main v-if="selected" class="min-w-0 flex-1 overflow-y-auto p-6">
-          <div class="mx-auto flex max-w-4xl flex-col gap-5">
-            <section class="rounded-xl border bg-white shadow-sm">
-              <div class="flex flex-wrap items-start justify-between gap-4 border-b p-5">
-                <div class="flex min-w-0 items-start gap-4">
-                  <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-700">
-                    <FeatherIcon :name="selected.icon" class="h-5 w-5" />
-                  </span>
-                  <div class="min-w-0">
-                    <div class="text-xs font-medium uppercase tracking-wide text-gray-500">Step {{ selected.step }} · {{ selected.stageTitle }}</div>
-                    <h2 class="mt-0.5 font-heading text-xl font-semibold text-gray-900">{{ selected.label }}</h2>
-                    <p class="mt-0.5 text-sm text-gray-600">{{ selected.description }}</p>
-                  </div>
-                </div>
-                <div class="flex shrink-0 gap-2">
-                  <Button variant="outline" icon-left="list" @click="goTo(selected.route)">Open full list</Button>
-                  <Button v-if="selected.can_create" variant="solid" icon-left="plus" :class="BTN_BRAND" @click="goTo(selected.new_route)">
-                    New {{ selected.singular }}
-                  </Button>
-                </div>
-              </div>
-              <dl class="grid grid-cols-2 divide-x divide-y sm:grid-cols-4 sm:divide-y-0">
-                <div v-for="f in facts" :key="f.label" class="px-5 py-4">
-                  <dt class="text-xs text-gray-500">{{ f.label }}</dt>
-                  <dd class="mt-1 text-lg font-semibold tabular-nums" :class="f.tone || 'text-gray-900'">{{ f.value }}</dd>
-                </div>
-              </dl>
-            </section>
-
-            <section class="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div class="rounded-xl border bg-white p-5 shadow-sm">
-                <h3 class="text-xs font-semibold uppercase tracking-wide text-gray-500">Set up after</h3>
-                <p v-if="!selected.needs.length" class="mt-2 text-sm text-gray-700">Nothing. This master can be set up first.</p>
-                <ul v-else class="mt-2 flex flex-wrap gap-1.5">
-                  <li v-for="n in selected.needs" :key="n">
-                    <button
-                      v-if="byLabel[n]"
-                      type="button"
-                      class="rounded-md border px-2 py-0.5 text-sm text-gray-700 hover:border-brand-200 hover:text-brand-700"
-                      @click="select(byLabel[n])"
-                    >{{ n }}</button>
-                    <span v-else class="rounded-md border px-2 py-0.5 text-sm text-gray-600">{{ n }}</span>
-                  </li>
-                </ul>
-              </div>
-              <div class="rounded-xl border bg-white p-5 shadow-sm">
-                <h3 class="text-xs font-semibold uppercase tracking-wide text-gray-500">Used by</h3>
-                <p class="mt-2 text-sm text-gray-700">{{ selected.usedBy }}</p>
-              </div>
-            </section>
-
-            <section class="overflow-hidden rounded-xl border bg-white shadow-sm">
-              <header class="flex items-center justify-between border-b px-5 py-3">
-                <h3 class="text-sm font-semibold text-gray-900">Recently updated</h3>
-                <button type="button" class="text-sm font-medium text-brand-700 hover:underline" @click="goTo(selected.route)">
-                  View all {{ selected.total || 0 }}
-                </button>
-              </header>
-              <div v-if="records.loading" class="p-5 text-sm text-gray-500">Loading…</div>
-              <div v-else-if="records.error" class="p-5 text-sm text-red-700">{{ records.error }}</div>
-              <div v-else-if="!records.rows.length" class="flex flex-col items-center gap-2 p-8 text-center text-sm text-gray-500">
-                No {{ selected.label.toLowerCase() }} yet.
-                <Button v-if="selected.can_create" size="sm" variant="solid" icon-left="plus" :class="BTN_BRAND" @click="goTo(selected.new_route)">
-                  Add the first {{ selected.singular.toLowerCase() }}
-                </Button>
-              </div>
-              <table v-else class="w-full text-sm">
-                <thead class="bg-gray-50 text-left text-xs uppercase text-gray-500">
-                  <tr>
-                    <th class="px-5 py-2 font-medium">Name</th>
-                    <th v-if="records.rows.some((r) => r.active !== null)" class="px-5 py-2 font-medium">Status</th>
-                    <th class="px-5 py-2 text-right font-medium">Last updated</th>
-                  </tr>
-                </thead>
-                <tbody class="divide-y">
-                  <tr v-for="r in records.rows" :key="r.name" class="cursor-pointer hover:bg-gray-50" @click="goTo(r.route)">
-                    <td class="px-5 py-2.5">
-                      <div class="font-medium text-gray-900">{{ r.title }}</div>
-                      <div v-if="r.title !== r.name" class="text-xs text-gray-500">{{ r.name }}</div>
-                    </td>
-                    <td v-if="records.rows.some((x) => x.active !== null)" class="px-5 py-2.5">
-                      <span
-                        v-if="r.active !== null"
-                        class="rounded-full px-2 py-0.5 text-xs font-medium"
-                        :class="r.active ? 'bg-gray-100 text-gray-700' : 'bg-orange-50 text-orange-700'"
-                      >{{ r.active ? 'Active' : 'Inactive' }}</span>
-                    </td>
-                    <td class="px-5 py-2.5 text-right text-gray-500">{{ dayjs(r.modified).format('DD MMM YYYY') }}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </section>
+          <div class="flex items-center gap-1 rounded-lg border bg-white p-1 text-sm" role="tablist" aria-label="Filter masters">
+            <button
+              v-for="f in filters"
+              :key="f.value"
+              type="button"
+              role="tab"
+              :aria-selected="filter === f.value"
+              class="rounded-md px-3 py-1 font-medium transition"
+              :class="filter === f.value ? 'bg-brand-700 text-white' : 'text-gray-600 hover:bg-gray-100'"
+              @click="filter = f.value"
+            >
+              {{ f.label }} <span class="ml-1 tabular-nums opacity-75">{{ f.count }}</span>
+            </button>
           </div>
-        </main>
-      </template>
+        </div>
+
+        <!-- Sections, in setup order -->
+        <section v-for="stage in visibleStages" :key="stage.key" :aria-labelledby="`stage-${stage.key}`">
+          <header class="mb-3 flex flex-wrap items-center gap-3">
+            <span
+              class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm font-semibold"
+              :class="stage.complete ? 'bg-brand-700 text-white' : 'border-2 border-brand-700 bg-white text-brand-700'"
+            >
+              <FeatherIcon v-if="stage.complete" name="check" class="h-4 w-4" />
+              <template v-else>{{ stage.step }}</template>
+            </span>
+            <div class="min-w-0 flex-1">
+              <h2 :id="`stage-${stage.key}`" class="font-heading text-lg font-semibold text-gray-900">
+                Step {{ stage.step }} · {{ stage.title }}
+              </h2>
+              <p class="mt-0.5 text-p-sm text-gray-500">{{ stage.hint }}</p>
+            </div>
+            <span class="rounded-full bg-white px-2.5 py-1 text-sm font-medium tabular-nums text-gray-600 ring-1 ring-inset ring-gray-200">
+              {{ stage.done }} of {{ stage.total }} set up
+            </span>
+          </header>
+
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <article
+              v-for="m in stage.masters"
+              :key="m.doctype"
+              class="group relative flex flex-col rounded-xl border bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-md focus-within:border-brand-300"
+            >
+              <div class="flex flex-1 flex-col p-4">
+                <div class="flex items-start gap-3">
+                  <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-700 transition group-hover:bg-brand-700 group-hover:text-white">
+                    <FeatherIcon :name="m.icon" class="h-5 w-5" />
+                  </span>
+                  <div class="min-w-0 flex-1">
+                    <h3 class="truncate text-base font-semibold text-gray-900">
+                      <!-- Stretched link: the whole card opens the list -->
+                      <RouterLink :to="listRoute(m.doctype)" class="outline-none after:absolute after:inset-0 after:rounded-xl focus-visible:underline">
+                        {{ m.label }}
+                      </RouterLink>
+                    </h3>
+                    <div class="mt-1.5 flex items-center gap-1.5 text-sm">
+                      <template v-if="isDone(m)">
+                        <span class="font-semibold tabular-nums text-gray-900">{{ m.total }}</span>
+                        <span class="text-gray-500">{{ m.total === 1 ? 'record' : 'records' }}</span>
+                        <template v-if="m.inactive">
+                          <span class="text-gray-300">·</span>
+                          <span class="text-gray-500">{{ m.inactive }} inactive</span>
+                        </template>
+                      </template>
+                      <span v-else class="rounded-full bg-orange-50 px-2 py-0.5 text-xs font-medium text-orange-700">No records yet</span>
+                    </div>
+                  </div>
+                  <FeatherIcon
+                    :name="isDone(m) ? 'check-circle' : 'alert-circle'"
+                    class="h-4 w-4 shrink-0"
+                    :class="isDone(m) ? 'text-brand-600' : 'text-orange-500'"
+                    :aria-label="isDone(m) ? 'Set up' : 'Not set up'"
+                  />
+                </div>
+
+                <p class="mt-3 line-clamp-2 text-p-sm text-gray-600">{{ m.description }}</p>
+
+                <p v-if="m.needs.length" class="mt-2 text-p-xs text-gray-500">
+                  <span class="font-medium text-gray-600">Needs:</span>{{ ' ' }}
+                  <template v-for="(n, i) in m.needs" :key="n">
+                    <span :class="byLabel[n] && !isDone(byLabel[n]) ? 'font-medium text-orange-700' : ''">{{ n }}</span>{{ i < m.needs.length - 1 ? ', ' : '' }}
+                  </template>
+                </p>
+              </div>
+
+              <footer class="flex items-center justify-between gap-2 border-t px-4 py-2.5">
+                <span class="truncate text-sm text-gray-500">
+                  {{ m.last_updated ? `Updated ${formatDate(m.last_updated)}` : 'Never updated' }}
+                </span>
+                <!-- z-10 lifts the action above the card's stretched link -->
+                <RouterLink
+                  v-if="m.can_create"
+                  :to="newRoute(m.doctype)"
+                  class="relative z-10 inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-sm font-medium text-brand-700 hover:bg-brand-50"
+                  :aria-label="`New ${m.singular}`"
+                >
+                  <FeatherIcon name="plus" class="h-3.5 w-3.5" />
+                  {{ isDone(m) ? 'New' : `Add first ${m.singular.toLowerCase()}` }}
+                </RouterLink>
+              </footer>
+            </article>
+          </div>
+        </section>
+
+        <div v-if="!visibleStages.length" class="rounded-xl border border-dashed bg-white p-10 text-center">
+          <p class="text-sm text-gray-600">
+            <template v-if="query.trim()">No masters match “{{ query.trim() }}”.</template>
+            <template v-else>Every master has records. Nothing needs setting up.</template>
+          </p>
+          <Button class="mt-3" size="sm" @click="resetFilters">Show all masters</Button>
+        </div>
+      </div>
     </div>
   </StaffLayout>
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { computed, onMounted, ref } from 'vue'
+import { RouterLink } from 'vue-router'
 import { Button, FeatherIcon, TextInput } from 'frappe-ui'
 import dayjs from 'dayjs'
 import StaffLayout from '@/layouts/StaffLayout.vue'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import { useMasterSetup } from '@/composables/useMasterSetup'
-import { masterSetupService } from '@/services/masterSetup'
-import { BTN_BRAND } from '@/utils/buttonStyles'
+import { listRoute, newRoute } from '@/utils/masterForm'
 
-const route = useRoute()
-const router = useRouter()
 const { categories, loading, error, fetchMasterSetup } = useMasterSetup()
 
 onMounted(fetchMasterSetup)
@@ -184,126 +192,113 @@ const STAGES = [
   {
     key: 'basics',
     title: 'Organisation',
+    hint: 'Start here. Everything else links to these.',
     masters: [
-      { doctype: 'Recruitment Track', needs: [], usedBy: 'Designations, positions, job openings, approval chains and scoring rubrics.' },
-      { doctype: 'Department', needs: [], usedBy: 'Positions and job openings.' },
-      { doctype: 'Designation', needs: ['Recruitment Tracks'], usedBy: 'Positions and job openings.' },
+      { doctype: 'Recruitment Track', needs: [] },
+      { doctype: 'Department', needs: [] },
+      { doctype: 'Designation', needs: ['Recruitment Tracks'] },
     ],
   },
   {
     key: 'form_lists',
     title: 'Application form lists',
+    hint: 'Choices candidates pick from on the application form.',
     masters: [
-      { doctype: 'Document Type Master', needs: [], usedBy: 'Required documents on positions and job openings, and the uploads on applications.' },
-      { doctype: 'Institution Master', needs: [], usedBy: 'The college / university list on the application form.' },
-      { doctype: 'Specialization Master', needs: [], usedBy: 'The specialisation question on Faculty application forms.' },
-      { doctype: 'UGC NET Subject Master', needs: [], usedBy: 'The NET subject question on Faculty application forms.' },
-      { doctype: 'Candidate Source', needs: [], usedBy: '"Where did you hear about us" on the application form, and the Source report.' },
+      { doctype: 'Document Type Master', needs: [] },
+      { doctype: 'Institution Master', needs: [] },
+      { doctype: 'Specialization Master', needs: [] },
+      { doctype: 'UGC NET Subject Master', needs: [] },
+      { doctype: 'Candidate Source', needs: [] },
     ],
   },
   {
     key: 'positions',
     title: 'Positions',
-    masters: [
-      {
-        doctype: 'Position',
-        needs: ['Recruitment Tracks', 'Departments', 'Designations', 'Document Types'],
-        usedBy: 'Job openings: a new job opening copies its position\'s details and application form.',
-      },
-    ],
+    hint: 'Posts by job code. A new job opening copies its position.',
+    masters: [{ doctype: 'Position', needs: ['Recruitment Tracks', 'Departments', 'Designations', 'Document Types'] }],
   },
   {
     key: 'approvals_scoring',
     title: 'Approvals and scoring',
+    hint: 'Who approves green sheets, and how candidates are scored.',
     masters: [
-      { doctype: 'Approval Chain Template', needs: ['Recruitment Tracks', 'Staff users with the approver roles'], usedBy: 'Pre- and post-interview green sheets (who approves, in what order).' },
-      { doctype: 'Scoring Rubric Template', needs: ['Recruitment Tracks'], usedBy: 'Shortlisting scores and interview assessments.' },
+      { doctype: 'Approval Chain Template', needs: ['Recruitment Tracks', 'approver roles'] },
+      { doctype: 'Scoring Rubric Template', needs: ['Recruitment Tracks'] },
     ],
   },
 ]
+
+// A master counts as set up once it has at least one record.
+const isDone = (m) => (m?.total || 0) > 0
 
 const byDoctype = computed(() => Object.fromEntries(categories.value.flatMap((c) => c.masters).map((m) => [m.doctype, m])))
 
 const stages = computed(() => {
   const placed = new Set()
   const out = STAGES.map((st, i) => ({
-    key: st.key,
-    title: st.title,
+    ...st,
     step: i + 1,
     masters: st.masters
       .filter((m) => byDoctype.value[m.doctype])
       .map((m) => {
         placed.add(m.doctype)
-        return { ...byDoctype.value[m.doctype], needs: m.needs, usedBy: m.usedBy, step: i + 1, stageTitle: st.title }
+        return { ...byDoctype.value[m.doctype], needs: m.needs }
       }),
   }))
+  // Masters added to the server registry but not placed above still show.
   const rest = Object.values(byDoctype.value).filter((m) => !placed.has(m.doctype))
   if (rest.length) {
-    const step = out.length + 1
-    out.push({ key: 'other', title: 'Other', step, masters: rest.map((m) => ({ ...m, needs: [], usedBy: '—', step, stageTitle: 'Other' })) })
+    out.push({ key: 'other', title: 'Other', hint: 'More reference data.', step: out.length + 1, masters: rest.map((m) => ({ ...m, needs: [] })) })
   }
-  return out.filter((st) => st.masters.length)
+  return out
+    .filter((st) => st.masters.length)
+    .map((st, i) => {
+      const done = st.masters.filter(isDone).length
+      return { ...st, step: i + 1, done, total: st.masters.length, complete: done === st.masters.length }
+    })
 })
 
 const allMasters = computed(() => stages.value.flatMap((st) => st.masters))
 const byLabel = computed(() => Object.fromEntries(allMasters.value.map((m) => [m.label, m])))
 
+const summary = computed(() => {
+  const masters = allMasters.value
+  const done = masters.filter(isDone).length
+  return [
+    { label: 'Masters', value: masters.length, icon: 'grid', iconClass: 'bg-gray-100 text-gray-700' },
+    { label: 'Set up', value: done, icon: 'check-circle', iconClass: 'bg-brand-50 text-brand-700' },
+    { label: 'Need setup', value: masters.length - done, icon: 'alert-circle', iconClass: masters.length - done ? 'bg-orange-50 text-orange-700' : 'bg-gray-100 text-gray-500' },
+    { label: 'Total records', value: masters.reduce((n, m) => n + (m.total || 0), 0).toLocaleString('en-IN'), icon: 'database', iconClass: 'bg-gray-100 text-gray-700' },
+  ]
+})
+
 const query = ref('')
+const filter = ref('all')
+const filters = computed(() => [
+  { value: 'all', label: 'All', count: allMasters.value.length },
+  { value: 'todo', label: 'Need setup', count: allMasters.value.filter((m) => !isDone(m)).length },
+])
+
 const visibleStages = computed(() => {
   const q = query.value.trim().toLowerCase()
-  if (!q) return stages.value
   return stages.value
     .map((st) => ({
       ...st,
-      masters: st.masters.filter((m) =>
-        [m.label, m.singular, m.description, m.doctype, ...(m.keywords || [])].join(' ').toLowerCase().includes(q),
+      masters: st.masters.filter(
+        (m) =>
+          (filter.value === 'all' || !isDone(m)) &&
+          (!q || [m.label, m.singular, m.description, m.doctype, ...(m.keywords || [])].join(' ').toLowerCase().includes(q)),
       ),
     }))
     .filter((st) => st.masters.length)
 })
 
-// The selected master is kept in the URL (?master=Position), so a refresh or
-// the back button returns to it.
-const selected = computed(() => {
-  const want = route.query.master
-  return allMasters.value.find((m) => m.doctype === want) || allMasters.value[0] || null
-})
-function select(m) {
-  router.replace({ query: { ...route.query, master: m.doctype } })
+function resetFilters() {
+  query.value = ''
+  filter.value = 'all'
 }
 
-const facts = computed(() => {
-  const m = selected.value
-  if (!m) return []
-  const inactive = m.inactive || 0
-  return [
-    { label: 'Records', value: m.total || 0, tone: m.total ? '' : 'text-orange-600' },
-    { label: 'Active', value: m.inactive == null ? '—' : (m.total || 0) - inactive },
-    { label: 'Inactive', value: m.inactive == null ? '—' : inactive },
-    { label: 'Last updated', value: m.last_updated ? dayjs(m.last_updated).format('DD MMM YYYY') : '—' },
-  ]
-})
-
-const records = reactive({ rows: [], loading: false, error: '' })
-watch(
-  () => selected.value?.doctype,
-  async (doctype) => {
-    if (!doctype) return
-    records.loading = true
-    records.error = ''
-    try {
-      records.rows = (await masterSetupService.getMasterRecords(doctype, 8)) || []
-    } catch (e) {
-      records.rows = []
-      records.error = e?.messages?.[0] || 'Could not load the records.'
-    } finally {
-      records.loading = false
-    }
-  },
-  { immediate: true },
-)
-
-function goTo(href) {
-  window.location.href = href
+function formatDate(value) {
+  return dayjs(value).format('DD MMM YYYY')
 }
 </script>

@@ -2,6 +2,7 @@
   <component
     :is="as === 'button' ? 'button' : RouterLink"
     v-bind="linkProps"
+    :aria-label="isExpanded ? undefined : label"
     class="relative flex h-9 items-center gap-2.5 rounded-md px-2.5 text-sm transition-colors"
     :class="isActive ? 'bg-brand-50 font-semibold text-brand-700' : 'text-gray-700 hover:bg-gray-100'"
   >

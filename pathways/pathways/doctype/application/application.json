@@ -124,6 +124,8 @@
   {
    "fieldname": "source",
    "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Source",
    "options": "Candidate Source"
   },
@@ -150,13 +152,13 @@
    "label": "Eligibility"
   },
   {
+   "default": "Pending",
    "fieldname": "eligibility_status",
    "fieldtype": "Select",
-   "label": "Eligibility",
-   "options": "Pending\nEligible\nNot Eligible",
-   "default": "Pending",
    "in_list_view": 1,
    "in_standard_filter": 1,
+   "label": "Eligibility",
+   "options": "Pending\nEligible\nNot Eligible",
    "read_only": 1
   },
   {
@@ -172,8 +174,8 @@
   {
    "fieldname": "eligibility_checked_by",
    "fieldtype": "Link",
-   "options": "User",
    "label": "Checked By",
+   "options": "User",
    "read_only": 1
   },
   {
@@ -473,7 +475,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-10-07 16:30:00.000000",
+ "modified": "2026-10-08 10:28:43.554252",
  "modified_by": "Administrator",
  "module": "Pathways",
  "name": "Application",
