@@ -66,30 +66,40 @@
         <template v-if="data">
           <!-- Summary -->
           <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-            <button
+            <!-- A zero has nothing to list, so it is not a button. -->
+            <component
+              :is="card.value ? 'button' : 'div'"
               v-for="card in cards"
               :key="card.key"
-              class="group flex items-start justify-between gap-3 rounded-xl border border-gray-200 bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-md"
-              :title="`Show ${card.label.toLowerCase()}`"
-              @click="openDrilldown(card.key, card.label)"
+              :type="card.value ? 'button' : undefined"
+              class="group flex items-start justify-between gap-3 rounded-xl border border-gray-200 bg-white p-4 text-left shadow-sm transition"
+              :class="card.value && 'hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-md'"
+              :title="card.value ? `Show ${card.label.toLowerCase()}` : undefined"
+              @click="card.value && openDrilldown(card.key, card.label)"
             >
               <div class="min-w-0">
-                <div class="text-2xl font-bold text-gray-900">{{ card.value }}</div>
-                <div class="mt-1 text-xs text-gray-500 group-hover:text-brand-700">{{ card.label }}</div>
+                <div class="text-2xl font-bold" :class="card.value ? 'text-gray-900' : 'text-gray-400'">{{ card.value }}</div>
+                <div class="mt-1 text-xs text-gray-500" :class="card.value && 'group-hover:text-brand-700'">{{ card.label }}</div>
               </div>
-              <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-50 text-brand-700 group-hover:bg-brand-700 group-hover:text-white">
+              <div
+                class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
+                :class="card.value ? 'bg-brand-50 text-brand-700 group-hover:bg-brand-700 group-hover:text-white' : 'bg-gray-100 text-gray-400'"
+              >
                 <FeatherIcon :name="card.icon" class="h-4 w-4" />
               </div>
-            </button>
+            </component>
           </div>
 
           <div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
             <!-- Needs attention -->
             <SectionCard title="Needs Attention" icon="alert-circle">
-              <ul class="-mx-2 flex flex-col">
+              <ul class="dash-scroll -mx-2 flex flex-col">
                 <li v-for="item in attention" :key="item.key">
+                  <div v-if="!item.count" class="flex w-full items-center gap-3 px-2 py-2 text-left text-sm">
+                    <AttentionRow :item="item" />
+                  </div>
                   <router-link
-                    v-if="!item.drilldown"
+                    v-else-if="!item.drilldown"
                     :to="item.link"
                     class="flex w-full items-center gap-3 rounded-md px-2 py-2 text-left text-sm hover:bg-brand-50"
                   >
@@ -111,7 +121,7 @@
             <!-- Deadlines -->
             <SectionCard title="Upcoming Deadlines" icon="calendar">
               <div v-if="!data.deadlines.length" class="text-sm text-gray-500">No upcoming deadlines.</div>
-              <ul v-else class="-mx-2 flex flex-col">
+              <ul v-else class="dash-scroll -mx-2 flex flex-col">
                 <li v-for="(d, idx) in data.deadlines" :key="idx">
                   <router-link :to="`/jobs/${d.job}`" class="flex items-center gap-3 rounded-md px-2 py-2 text-sm hover:bg-brand-50">
                     <div
@@ -136,7 +146,7 @@
             <!-- Upcoming interviews -->
             <SectionCard title="Upcoming Interviews" icon="video">
               <div v-if="!recruiter?.upcoming_interviews?.length" class="text-sm text-gray-500">No upcoming interviews.</div>
-              <ul v-else class="-mx-2 flex flex-col">
+              <ul v-else class="dash-scroll -mx-2 flex flex-col">
                 <li v-for="iv in recruiter.upcoming_interviews" :key="iv.name">
                   <router-link :to="`/applications/${iv.application}`" class="flex items-center justify-between gap-2 rounded-md px-2 py-2 text-sm hover:bg-brand-50">
                     <span class="text-gray-800">{{ iv.application }} · {{ iv.round_type }}</span>
@@ -156,7 +166,7 @@
               clickable
               empty-title="No job openings match the filters"
               search-placeholder="Search job openings..."
-              @row-click="(j) => openJobDrilldown(j, 'applied')"
+              @row-click="(j) => (j.applications ? openJobDrilldown(j, 'applied') : router.push(`/jobs/${j.name}`))"
             >
               <template v-for="k in JOB_COUNT_CELLS" :key="k.col" #[`cell-${k.col}`]="{ row, value }">
                 <button
@@ -166,7 +176,7 @@
                   :class="k.tone"
                   @click.stop="openJobDrilldown(row, k.stage)"
                 >{{ value }}</button>
-                <span v-else class="cursor-default px-2 text-gray-300" @click.stop>0</span>
+                <span v-else class="-mx-4 -my-2.5 block cursor-default px-6 py-2.5 text-gray-300" @click.stop>0</span>
               </template>
               <template #cell-job_title="{ row }">
                 <div class="min-w-[12rem]">
@@ -182,7 +192,7 @@
                 </span>
               </template>
               <template #cell-shortlisted="{ row }">
-                <div class="min-w-[7rem]">
+                <div class="min-w-[7rem]" @click="!row.shortlisted && $event.stopPropagation()">
                   <div class="text-xs">
                     <button v-if="row.shortlisted" type="button" class="font-bold text-brand-700 hover:underline" @click.stop="openJobDrilldown(row, 'shortlisted_now')">{{ row.shortlisted }}</button>
                     <b v-else>0</b> / {{ row.target }} (1:{{ row.ratio }})
@@ -210,7 +220,7 @@
               clickable
               empty-title="No job openings to report on"
               search-placeholder="Search job openings..."
-              @row-click="(row) => openPipelineDrilldown(row, 'applied')"
+              @row-click="(row) => (row.applied ? openPipelineDrilldown(row, 'applied') : router.push(`/jobs/${row.job_opening}`))"
             >
               <template #cell-job_title="{ row }">
                 <span class="font-semibold text-gray-900">{{ row.job_title || row.job_opening }}</span>
@@ -223,7 +233,7 @@
                   :title="`See the ${value} application(s)`"
                   @click.stop="openPipelineDrilldown(row, k)"
                 >{{ value }}</button>
-                <span v-else class="cursor-default px-2 text-gray-300" title="No applications at this stage" @click.stop>0</span>
+                <span v-else class="-mx-4 -my-2.5 block cursor-default px-6 py-2.5 text-gray-300" title="No applications at this stage" @click.stop>0</span>
               </template>
             </DataTable>
           </SectionCard>
@@ -486,6 +496,7 @@ const JOB_COLUMNS = [
 // One dialog for every drill-down.
 const drilldown = reactive({ open: false, bucket: '', title: '', description: '', params: null, jobLink: '' })
 function openDrilldown(bucket, title, description = '') {
+  if (!bucket) return
   Object.assign(drilldown, { open: true, bucket, title, description, params: null, jobLink: '' })
 }
 
@@ -520,7 +531,7 @@ const AttentionRow = (p) => [
     String(p.item.count),
   ),
   h('span', { class: ['flex-1', p.item.count ? 'text-gray-900' : 'text-gray-500'] }, p.item.label),
-  h(FeatherIcon, { name: 'chevron-right', class: 'h-4 w-4 text-gray-400' }),
+  p.item.count ? h(FeatherIcon, { name: 'chevron-right', class: 'h-4 w-4 text-gray-400' }) : null,
 ]
 AttentionRow.props = ['item']
 
@@ -585,3 +596,26 @@ function openJobDrilldown(job, stage) {
   })
 }
 </script>
+
+<style scoped>
+/* Needs Attention, Upcoming Deadlines and Upcoming Interviews: same height,
+   scrolling inside the card once the list is longer. */
+.dash-scroll {
+  max-height: 20rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 0.25rem;
+  scrollbar-width: thin;
+  scrollbar-color: theme('colors.gray.300') transparent;
+}
+.dash-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+.dash-scroll::-webkit-scrollbar-thumb {
+  border-radius: 9999px;
+  background: theme('colors.gray.300');
+}
+.dash-scroll::-webkit-scrollbar-thumb:hover {
+  background: theme('colors.gray.400');
+}
+</style>
