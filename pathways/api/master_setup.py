@@ -54,4 +54,5 @@ def _describe(master):
 		"can_create": bool(frappe.has_permission(doctype, "create")),
 		"total": frappe.db.count(doctype),
 		"inactive": frappe.db.count(doctype, {active_field: ["!=", active_value]}) if active_field else None,
+		"last_updated": (frappe.get_all(doctype, fields=["modified"], order_by="modified desc", limit=1) or [{}])[0].get("modified"),
 	}

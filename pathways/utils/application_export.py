@@ -24,7 +24,7 @@ PAY_FIELDS = ("current_salary", "expected_salary")
 # Shown as their own columns (screening) or not data at all.
 SKIP_APPLICATION_FIELDS = {"naming_series", "candidate", "screening_answers", "documents"}
 # Always present, even when empty for every row in a sheet.
-CORE_KEYS = {"application_id", "job_opening", "status", "application_date", "cand:full_name", "cand:email", "cand:mobile_number"}
+CORE_KEYS = {"extra:Position", "extra:Stage", "application_id", "job_opening", "status", "application_date", "cand:full_name", "cand:email", "cand:mobile_number"}
 
 LAYOUT_LABELS = {
 	"single": "Single sheet",
@@ -52,10 +52,14 @@ def build_workbook(names, mode):
 	return buffer.getvalue(), total
 
 
-def add_application_sheets(wb, names, mode, used_names):
+def add_application_sheets(wb, names, mode, used_names, extra=None, locations=None):
 	"""Write the applications into wb: one sheet ("single"), one per job
 	opening ("job_wise") or one per position ("position_wise"). Returns
-	([(sheet, id, title, count)], total)."""
+	([(sheet, id, title, count)], total).
+
+	extra: {application: {header: value}} columns placed right after the
+	candidate's name (e.g. Position, Stage). locations, when given, is
+	filled with {application: (sheet name, row)}."""
 	if mode not in MODES:
 		frappe.throw(_("Unknown export type."))
 
@@ -65,6 +69,9 @@ def add_application_sheets(wb, names, mode, used_names):
 
 	ctx = _Context()
 	records = [_record(app, ctx) for app in apps]
+	if extra:
+		for rec in records:
+			_insert_extra(rec, extra.get(rec["name"]) or {})
 
 	if mode == "single":
 		groups = [(_("All Applications"), None, records)]
@@ -91,8 +98,29 @@ def add_application_sheets(wb, names, mode, used_names):
 	for title, ref, recs in groups:
 		sheet_name = _sheet_name(title, used_names)
 		_write_sheet(wb.create_sheet(sheet_name), recs)
+		if locations is not None:
+			for row, rec in enumerate(recs, start=2):
+				locations[rec["name"]] = (sheet_name, row)
 		summary_rows.append((sheet_name, ref or "", title if ref else _("All job openings"), len(recs)))
 	return summary_rows, len(records)
+
+
+def _insert_extra(rec, extra):
+	"""Put extra columns right after the candidate's name."""
+	if not extra:
+		return
+	values, headers = {}, {}
+	placed = False
+	for key, value in rec["values"].items():
+		values[key], headers[key] = value, rec["headers"][key]
+		if key == "cand:full_name":
+			for header, v in extra.items():
+				values[f"extra:{header}"], headers[f"extra:{header}"] = v, header
+			placed = True
+	if not placed:
+		for header, v in extra.items():
+			values[f"extra:{header}"], headers[f"extra:{header}"] = v, header
+	rec["values"], rec["headers"] = values, headers
 
 
 def _load_applications(names):
@@ -217,7 +245,7 @@ def _record(app, ctx):
 		if row.document_type and row.attachment:
 			put(f"document:{row.document_type}", f"{_('Document')} — {row.document_type}", _value(_ATTACH, row.attachment, ctx))
 
-	return {"values": values, "headers": headers, "job_opening_id": app.job_opening}
+	return {"values": values, "headers": headers, "job_opening_id": app.job_opening, "name": app.name}
 
 
 _ATTACH = frappe._dict(fieldtype="Attach")

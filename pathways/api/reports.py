@@ -590,7 +590,13 @@ def export_report(filters=None, scope="all", positions=None, layout="single", in
 		for label, value in rows:
 			wb.active.append([label, value])
 	used = {name.lower() for name in wb.sheetnames}
-	sheets, total = add_application_sheets(wb, names, layout, used)
+	# Rows sorted by position, then stage, then eligibility, so each count on
+	# the Summary links to one block of rows.
+	info = _application_info(names)
+	names = sorted(names, key=lambda n: info[n]["sort"])
+	extra = {n: {_("Position"): info[n]["position_label"], _("Stage"): info[n]["stage"]} for n in names}
+	locations = {}
+	sheets, total = add_application_sheets(wb, names, layout, used, extra=extra, locations=locations)
 
 	# List the data sheets on the Summary too.
 	from openpyxl.styles import Font
@@ -606,12 +612,232 @@ def export_report(filters=None, scope="all", positions=None, layout="single", in
 		link.hyperlink = Hyperlink(ref=link.coordinate, location=f"'{sheet_name.replace(chr(39), chr(39) * 2)}'!A1")
 		link.font = Font(color="0563C1", underline="single")
 
+	_colour_stage_cells(wb, [sheet for sheet, *_rest in sheets])
+	_position_stage_table(wb, summary, names, info, locations)
+
 	buffer = io.BytesIO()
 	wb.save(buffer)
 	suffix = "by-position" if layout == "position_wise" else "all"
 	frappe.local.response.filename = f"recruitment-report-{suffix}-{today()}.xlsx"
 	frappe.local.response.filecontent = buffer.getvalue()
 	frappe.local.response.type = "download"
+
+
+# Stage columns on the Summary's position table (Closed split in two).
+SUMMARY_STAGES = [s for s in STAGES if s[0] != "Closed"] + [("Not Selected", ["Not Selected"]), ("Withdrawn", ["Withdrawn"])]
+
+
+def _application_info(names):
+	"""{application: position, stage, eligibility and a sort key}."""
+	apps = frappe.get_all(
+		"Application",
+		filters={"name": ["in", names or [""]]},
+		fields=["name", "job_opening", "status", "eligibility_status", "creation"],
+		limit_page_length=0,
+	)
+	jobs = dict(
+		frappe.get_all("Job Opening", filters={"name": ["in", list({a.job_opening for a in apps}) or [""]]}, fields=["name", "position"], as_list=True)
+	)
+	titles = dict(frappe.get_all("Position", fields=["name", "position_title"], as_list=True))
+	counts = {}
+	for a in apps:
+		counts[jobs.get(a.job_opening) or ""] = counts.get(jobs.get(a.job_opening) or "", 0) + 1
+	stage_index = {stage: i for i, (stage, _x) in enumerate(SUMMARY_STAGES)}
+	elig_index = {"Eligible": 0, "Not Eligible": 1}
+	out = {}
+	for a in apps:
+		pos = jobs.get(a.job_opening) or ""
+		stage = next((st for st, statuses in SUMMARY_STAGES if a.status in statuses), _("Other"))
+		elig = a.eligibility_status if a.eligibility_status in ("Eligible", "Not Eligible") else "Pending"
+		out[a.name] = {
+			"position": pos or _("No position"),
+			"position_label": f"{pos} · {titles[pos]}" if pos in titles else (pos or _("No position")),
+			"title": titles.get(pos, ""),
+			"stage": stage,
+			"eligibility": elig,
+			# Same order as the Summary table: most applications first.
+			"sort": (-counts[pos], pos, stage_index.get(stage, 99), elig_index.get(elig, 2), str(a.creation)),
+		}
+	return out
+
+
+# Light fills per stage, on the Stage column and the Details headings.
+STAGE_FILLS = {
+	"Screening": "FFF4E5", "Shortlisted": "E6F4EA", "Interview": "E8F0FE", "Selected": "D9F2E3", "Offer": "D9F2E3",
+	"Onboarding": "D9F2E3", "Joined": "C8EBD5", "Not Selected": "FDECEA", "Withdrawn": "EEEEEE",
+	"Eligible": "E6F4EA", "Not Eligible": "FDECEA", "Pending": "FFF4E5",
+}
+
+
+def _colour_stage_cells(wb, sheet_names):
+	from openpyxl.styles import PatternFill
+
+	for name in sheet_names:
+		ws = wb[name]
+		header = [c.value for c in ws[1]]
+		if "Stage" not in header:
+			continue
+		col = header.index("Stage") + 1
+		for row in range(2, ws.max_row + 1):
+			cell = ws.cell(row=row, column=col)
+			colour = STAGE_FILLS.get(cell.value)
+			if colour:
+				cell.fill = PatternFill("solid", fgColor=colour)
+
+
+DETAIL_COLUMNS = [
+	("application_id", "Application ID"), ("candidate_name", "Candidate"), ("email", "Email"), ("mobile", "Mobile"),
+	("job_title", "Job Opening"), ("stage", "Stage"), ("status", "Status"), ("eligibility", "Eligibility"),
+	("reason", "Reason Not Eligible"), ("applied_on", "Applied On"),
+]
+
+
+def _position_stage_table(wb, ws, names, info, locations):
+	"""Summary sheet: for each position, how many applied, their
+	eligibility, and how many are at each stage, with a Total row. Each
+	count links to its own section on the Details sheet, which lists just
+	those applications."""
+	from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+	from openpyxl.utils import get_column_letter
+	from openpyxl.worksheet.hyperlink import Hyperlink
+
+	stage_keys = [stage for stage, _x in SUMMARY_STAGES]
+	keys = ["Eligible", "Not Eligible", "Pending"] + stage_keys
+	key_label = {"Pending": _("To Check")}
+	rows = {}
+	for n in names:
+		i = info[n]
+		r = rows.setdefault(i["position"], {"title": i["title"], "apps": [], "jobs": set(), **{k: [] for k in keys}})
+		r["apps"].append(n)
+		r["jobs"].add(frappe.db.get_value("Application", n, "job_opening"))
+		r[i["eligibility"]].append(n)
+		if i["stage"] in r:
+			r[i["stage"]].append(n)
+	order = sorted(rows, key=lambda p: (-len(rows[p]["apps"]), p))
+
+	header = [_("Position"), _("Position Title"), _("Job Openings"), _("Applications"), _("Eligible"), _("Not Eligible"), _("To Check")]
+	header += [_(stage) for stage in stage_keys]
+
+	ws.append([])
+	ws.append([_("Applications by position and stage")])
+	ws.cell(row=ws.max_row, column=1).font = Font(bold=True, size=12)
+	ws.append([_("Click a number to see just those applications (Details sheet).")])
+	ws.cell(row=ws.max_row, column=1).font = Font(italic=True, color="52514E")
+	ws.append(header)
+	head_row = ws.max_row
+	brand = _theme().primary[1:].upper()
+	fill = PatternFill("solid", fgColor=brand)
+	for c in range(1, len(header) + 1):
+		cell = ws.cell(row=head_row, column=c)
+		cell.font = Font(bold=True, color="FFFFFF")
+		cell.fill = fill
+		cell.alignment = Alignment(wrap_text=True, vertical="center", horizontal="center" if c > 2 else "left")
+	ws.row_dimensions[head_row].height = 32
+
+	# Rows of the table: (summary row, [(column, heading, apps)])
+	links = []
+	for pos in order:
+		r = rows[pos]
+		ws.append([pos, r["title"], len(r["jobs"]), len(r["apps"]), *[len(r[k]) for k in keys]])
+		row = ws.max_row
+		for c in range(1, 3):
+			ws.cell(row=row, column=c).data_type = "s"
+		name = f"{pos} · {r['title']}" if r["title"] else pos
+		cells = [(4, f"{name} — {_('All applications')}", r["apps"])]
+		cells += [(c, f"{name} — {_(key_label.get(k, k))}", r[k]) for c, k in enumerate(keys, start=5) if r[k]]
+		links.append((row, cells))
+
+	ws.append([_("Total"), "", sum(len(r["jobs"]) for r in rows.values()), sum(len(r["apps"]) for r in rows.values()),
+		*[sum(len(r[k]) for r in rows.values()) for k in keys]])
+	total_row = ws.max_row
+	line = Side(style="thin", color="999999")
+	for c in range(1, len(header) + 1):
+		cell = ws.cell(row=total_row, column=c)
+		cell.font = Font(bold=True)
+		cell.border = Border(top=line)
+	all_apps = [n for p in order for n in rows[p]["apps"]]
+	total_cells = [(4, _("All positions — All applications"), all_apps)]
+	for c, k in enumerate(keys, start=5):
+		apps = [n for p in order for n in rows[p][k]]
+		if apps:
+			total_cells.append((c, f"{_('All positions')} — {_(key_label.get(k, k))}", apps))
+	links.append((total_row, total_cells))
+	for c in range(3, len(header) + 1):
+		ws.column_dimensions[get_column_letter(c)].width = max(ws.column_dimensions[get_column_letter(c)].width or 0, 12)
+
+	# ---- Details sheet: one highlighted section per count
+	details = _details_rows(names)
+	dws = wb.create_sheet(_("Details"), index=wb.sheetnames.index(ws.title) + 1)
+	dws["A1"] = _("Applications behind each number on the Summary")
+	dws["A1"].font = Font(bold=True, size=13)
+	link_font = Font(color="0563C1", underline="single")
+	width = len(DETAIL_COLUMNS)
+	last_col = get_column_letter(width)
+	summary_ref = ws.title.replace("'", "''")
+	head_fill = PatternFill("solid", fgColor="F3F4F6")
+	row = 3
+	for summary_row, cells in links:
+		for col, heading, apps in cells:
+			start = row
+			title = dws.cell(row=row, column=1, value=f"{heading} ({len(apps)})")
+			title.font = Font(bold=True, color="FFFFFF")
+			for c in range(1, width + 1):
+				dws.cell(row=row, column=c).fill = fill
+			back = dws.cell(row=row, column=width, value=_("↑ Back to Summary"))
+			back.hyperlink = Hyperlink(ref=back.coordinate, location=f"'{summary_ref}'!{get_column_letter(col)}{summary_row}")
+			back.font = Font(color="FFFFFF", underline="single")
+			back.alignment = Alignment(horizontal="right")
+			row += 1
+			for c, (_key, label) in enumerate(DETAIL_COLUMNS, start=1):
+				cell = dws.cell(row=row, column=c, value=_(label))
+				cell.font = Font(bold=True)
+				cell.fill = head_fill
+			row += 1
+			for n in apps:
+				d = details.get(n, {})
+				for c, (key, _label) in enumerate(DETAIL_COLUMNS, start=1):
+					cell = dws.cell(row=row, column=c, value=d.get(key))
+					if isinstance(cell.value, str):
+						cell.data_type = "s"
+					if key == "stage" and STAGE_FILLS.get(d.get("stage")):
+						cell.fill = PatternFill("solid", fgColor=STAGE_FILLS[d["stage"]])
+					if key == "eligibility" and STAGE_FILLS.get(d.get("eligibility_key")):
+						cell.fill = PatternFill("solid", fgColor=STAGE_FILLS[d["eligibility_key"]])
+					if key == "applied_on" and cell.value:
+						cell.number_format = "DD-MMM-YYYY"
+				row += 1
+			end = row - 1
+			# The Summary number opens this section, selected.
+			target = ws.cell(row=summary_row, column=col)
+			target.hyperlink = Hyperlink(ref=target.coordinate, location=f"'{dws.title}'!A{start}:{last_col}{end}")
+			target.font = Font(bold=target.font.bold, color="0563C1", underline="single")
+			row += 1  # gap
+	for c, w in enumerate((20, 24, 30, 16, 34, 14, 18, 14, 30, 14), start=1):
+		dws.column_dimensions[get_column_letter(c)].width = w
+	dws.freeze_panes = "A2"
+
+
+def _details_rows(names):
+	apps = frappe.get_all(
+		"Application",
+		filters={"name": ["in", names or [""]]},
+		fields=[
+			"name", "application_id", "candidate.full_name as candidate_name", "candidate.email as email",
+			"candidate.mobile_number as mobile", "job_opening.job_title as job_title", "status", "eligibility_status",
+			"eligibility_reason", "application_date",
+		],
+		limit_page_length=0,
+	)
+	out = {}
+	for a in apps:
+		elig = a.eligibility_status if a.eligibility_status in ("Eligible", "Not Eligible") else "Pending"
+		out[a.name] = {
+			"application_id": a.application_id, "candidate_name": a.candidate_name, "email": a.email, "mobile": a.mobile,
+			"job_title": a.job_title, "stage": next((st for st, statuses in SUMMARY_STAGES if a.status in statuses), a.status),
+			"status": a.status, "eligibility": _("To check") if elig == "Pending" else _(elig), "eligibility_key": elig,
+			"reason": a.eligibility_reason, "applied_on": a.application_date,
+		}
+	return out
 
 
 def _excel_chart(chart, ws, first_row, last_row, columns):
