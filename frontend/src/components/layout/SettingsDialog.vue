@@ -126,124 +126,128 @@
           </div>
 
           <!-- General -->
-          <div v-show="tab === 'general'" class="flex flex-col gap-4">
-            <div class="text-xs font-semibold uppercase text-gray-500">Email</div>
-            <div class="grid grid-cols-2 gap-4">
-              <FormControl label="Default Sender Email" v-model="form.default_sender_email" />
-              <FormControl label="Recruitment Contact Email" v-model="form.recruitment_contact_email" />
-            </div>
-
-            <div class="mt-2 text-xs font-semibold uppercase text-gray-500">Offers & Interviews</div>
-            <div class="grid grid-cols-2 gap-4">
-              <FormControl
-                label="Acceptance Deadline (days)"
-                type="number"
-                v-model="form.acceptance_deadline_days"
-              />
-              <FormControl
-                label="Interview Login Buffer (minutes)"
-                type="number"
-                v-model="form.interview_login_buffer_minutes"
-              />
-            </div>
-
-            <div class="mt-2 text-xs font-semibold uppercase text-gray-500">Committees</div>
-            <FormControl label="Default Shortlisting Ratio" type="number" v-model="form.default_shortlisting_ratio" />
-            <div class="grid grid-cols-2 gap-4">
-              <FormControl
-                label="Min Shortlisting Committee Size"
-                type="number"
-                v-model="form.min_shortlisting_committee_size"
-              />
-              <FormControl
-                label="Max Shortlisting Committee Size"
-                type="number"
-                v-model="form.max_shortlisting_committee_size"
-              />
-            </div>
-            <div class="grid grid-cols-2 gap-4">
-              <FormControl
-                label="Min Selection Committee Size"
-                type="number"
-                v-model="form.min_selection_committee_size"
-              />
-              <FormControl
-                label="Max Selection Committee Size"
-                type="number"
-                v-model="form.max_selection_committee_size"
-              />
-            </div>
-
-            <div class="mt-2 text-xs font-semibold uppercase text-gray-500">Offer Letter</div>
-            <FormControl
-              label="Default General Conditions"
-              type="textarea"
-              v-model="form.default_general_conditions"
-            />
-
-            <div class="mt-2 text-xs font-semibold uppercase text-gray-500">Approvals</div>
-            <p class="-mt-2 text-xs text-gray-500">
-              Who approves each Green Sheet is set per track in Master Setup &rsaquo; Approval Chains.
-            </p>
-            <div class="grid grid-cols-2 gap-4">
-              <FormControl
-                label="Approval Override Role"
-                type="select"
-                v-model="form.approval_override_role"
-                :options="roleSelectOptions"
-                description="May record an approval on any step (e.g. a signed paper copy). Always flagged in the log."
-              />
-              <FormControl
-                label="Job Status Override Role"
-                type="select"
-                v-model="form.status_override_role"
-                :options="roleSelectOptions"
-                description="May set any job status without an approved Green Sheet."
-              />
-            </div>
-            <label class="flex items-center gap-2 text-sm text-gray-700">
-              <input v-model="form.allow_same_approver_multiple_steps" type="checkbox" :true-value="1" :false-value="0" class="rounded border-gray-300" />
-              Allow one person to approve more than one step of the same Green Sheet
-            </label>
-            <div class="grid grid-cols-2 gap-4">
-              <div>
-                <span class="mb-1.5 block text-sm text-gray-700">Document Verifier Roles</span>
-                <div class="max-h-36 overflow-y-auto rounded border p-2">
-                  <label v-for="r in roleOptions" :key="r" class="flex items-center gap-2 text-sm text-gray-700">
-                    <input v-model="form.document_verifier_roles" type="checkbox" :value="r" class="rounded border-gray-300" />
-                    {{ r }}
-                  </label>
-                </div>
+          <div v-show="tab === 'general'" class="flex flex-col gap-6">
+            <!-- Email settings live on their own page, with a test send. -->
+            <div class="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-gray-50 px-4 py-3">
+              <div class="min-w-0">
+                <p class="text-sm font-medium text-gray-800">Email</p>
+                <p class="mt-0.5 text-p-sm text-gray-600">The sending account, reply-to address and emails by stage are set in Email Setup.</p>
               </div>
-              <div>
-                <span class="mb-1.5 block text-sm text-gray-700">Corrigendum Signer Roles</span>
-                <div class="max-h-36 overflow-y-auto rounded border p-2">
-                  <label v-for="r in roleOptions" :key="r" class="flex items-center gap-2 text-sm text-gray-700">
-                    <input v-model="form.corrigendum_signer_roles" type="checkbox" :value="r" class="rounded border-gray-300" />
-                    {{ r }}
-                  </label>
-                </div>
-              </div>
+              <Button icon-right="arrow-right" @click="openEmailSetup">Email Setup</Button>
             </div>
 
-            <div class="mt-2 text-xs font-semibold uppercase text-gray-500">Candidate Applications</div>
-            <div class="grid grid-cols-2 gap-4">
-              <FormControl label="Max Upload Size (MB)" type="number" v-model="form.application_max_file_size_mb" />
-              <FormControl label="Allowed Upload Formats" v-model="form.application_allowed_formats" />
-            </div>
-            <FormControl label="Application Declaration" type="textarea" :rows="6" v-model="form.application_declaration" />
-            <div>
-              <span class="mb-1.5 block text-sm text-gray-700">General Application Instructions</span>
-              <TextEditor
-                :content="form.application_instructions"
-                placeholder="Shown on every application form under the Instructions button..."
-                :fixed-menu="true"
-                editor-class="prose-sm max-w-none min-h-[10rem] px-3 py-2"
-                class="rounded border border-gray-300 bg-white"
-                @change="(html) => (form.application_instructions = html)"
-              />
-              <p class="mt-1 text-xs text-gray-500">Post-specific instructions are added on each Position and Job Opening.</p>
-            </div>
+            <section class="flex flex-col gap-4">
+              <h3 class="border-b pb-2 text-sm font-semibold uppercase tracking-wide text-gray-600">Offers</h3>
+              <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <SettingsField label="Offer Acceptance Deadline (days)" :error="errors.acceptance_deadline_days" hint="Days a candidate has to accept an offer before it lapses.">
+                  <TextInput v-model="form.acceptance_deadline_days" type="number" min="1" max="365" step="1" />
+                </SettingsField>
+              </div>
+            </section>
+
+            <section class="flex flex-col gap-4">
+              <h3 class="border-b pb-2 text-sm font-semibold uppercase tracking-wide text-gray-600">Shortlisting & committees</h3>
+              <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <SettingsField label="Default Shortlisting Ratio (1:N)" :error="errors.default_shortlisting_ratio" hint="Shortlist 1 candidate per N applications, where available. A job opening can set its own.">
+                  <TextInput v-model="form.default_shortlisting_ratio" type="number" min="1" step="1" />
+                </SettingsField>
+              </div>
+              <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <SettingsField label="Shortlisting committee — min members" :error="errors.min_shortlisting_committee_size">
+                  <TextInput v-model="form.min_shortlisting_committee_size" type="number" min="1" step="1" />
+                </SettingsField>
+                <SettingsField label="Shortlisting committee — max members" :error="errors.max_shortlisting_committee_size">
+                  <TextInput v-model="form.max_shortlisting_committee_size" type="number" min="1" step="1" />
+                </SettingsField>
+                <SettingsField label="Selection committee — min members" :error="errors.min_selection_committee_size">
+                  <TextInput v-model="form.min_selection_committee_size" type="number" min="1" step="1" />
+                </SettingsField>
+                <SettingsField label="Selection committee — max members" :error="errors.max_selection_committee_size">
+                  <TextInput v-model="form.max_selection_committee_size" type="number" min="1" step="1" />
+                </SettingsField>
+              </div>
+            </section>
+
+            <section class="flex flex-col gap-4">
+              <div class="border-b pb-2">
+                <h3 class="text-sm font-semibold uppercase tracking-wide text-gray-600">Approvals</h3>
+                <p class="mt-1 text-p-sm text-gray-500">
+                  Who approves each Green Sheet is set per track in
+                  <button type="button" class="font-medium text-brand-700 hover:underline" @click="go('/master-setup/approval-chain-template')">Master Setup › Approval Chains</button>.
+                </p>
+              </div>
+              <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <SettingsField label="Approval Override Role" hint="May record an approval on any step (e.g. a signed paper copy). Always flagged in the log.">
+                  <FormControl v-model="form.approval_override_role" type="select" :options="roleSelectOptions" />
+                </SettingsField>
+                <SettingsField label="Job Status Override Role" hint="May set any job status without an approved Green Sheet.">
+                  <FormControl v-model="form.status_override_role" type="select" :options="roleSelectOptions" />
+                </SettingsField>
+              </div>
+              <label class="flex cursor-pointer items-start gap-2.5">
+                <input
+                  v-model="form.allow_same_approver_multiple_steps"
+                  type="checkbox"
+                  :true-value="1"
+                  :false-value="0"
+                  class="mt-px h-4 w-4 rounded border-gray-300 text-brand-700 focus:ring-brand-500"
+                />
+                <span>
+                  <span class="block text-base text-gray-800">Allow one person to approve more than one step of the same Green Sheet</span>
+                  <span class="mt-0.5 block text-p-sm text-gray-500">When off, someone who approved one step cannot approve a later step of that sheet.</span>
+                </span>
+              </label>
+              <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <SettingsField
+                  v-for="duty in DUTIES"
+                  :key="duty.field"
+                  :label="duty.label"
+                  :hint="form[duty.field]?.length ? duty.hint : ''"
+                  :warning="form[duty.field]?.length ? '' : duty.empty"
+                  as="div"
+                >
+                  <div class="max-h-40 overflow-y-auto rounded border p-1.5">
+                    <label
+                      v-for="r in roleOptions"
+                      :key="r"
+                      class="flex cursor-pointer items-center gap-2 rounded px-1.5 py-1 text-sm text-gray-700 hover:bg-gray-50"
+                    >
+                      <input v-model="form[duty.field]" type="checkbox" :value="r" class="h-4 w-4 rounded border-gray-300 text-brand-700 focus:ring-brand-500" />
+                      {{ r }}
+                    </label>
+                  </div>
+                </SettingsField>
+              </div>
+            </section>
+
+            <section class="flex flex-col gap-4">
+              <h3 class="border-b pb-2 text-sm font-semibold uppercase tracking-wide text-gray-600">Candidate applications</h3>
+              <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <SettingsField
+                  label="Max Upload Size (MB)"
+                  :error="errors.application_max_file_size_mb"
+                  :hint="`Per file, up to ${maxUploadMb} MB (this site's limit). A Document Type can set its own.`"
+                >
+                  <TextInput v-model="form.application_max_file_size_mb" type="number" min="0.5" :max="maxUploadMb" step="0.5" />
+                </SettingsField>
+                <SettingsField label="Allowed Upload Formats" :error="errors.application_allowed_formats" hint="File extensions, comma-separated, e.g. PDF, JPG, PNG.">
+                  <TextInput v-model="form.application_allowed_formats" type="text" />
+                </SettingsField>
+              </div>
+              <SettingsField label="Application Declaration" hint="Shown on every application form; the candidate must accept it to submit.">
+                <FormControl v-model="form.application_declaration" type="textarea" :rows="6" />
+              </SettingsField>
+              <SettingsField label="General Application Instructions" hint="Post-specific instructions are added on each Position and Job Opening." as="div">
+                <TextEditor
+                  :content="form.application_instructions"
+                  placeholder="Shown on every application form under the Instructions button..."
+                  :fixed-menu="true"
+                  editor-class="prose-sm max-w-none min-h-[10rem] px-3 py-2"
+                  class="rounded border border-gray-300 bg-white"
+                  @change="(html) => (form.application_instructions = html)"
+                />
+              </SettingsField>
+            </section>
           </div>
         </template>
 
@@ -259,14 +263,15 @@
       </div>
     </template>
     <template v-if="tab !== 'access'" #actions>
-      <Button variant="solid" :class="BTN_BRAND" :loading="saving" :disabled="!isValidHex(form.brand_color)" @click="submit">Save</Button>
+      <Button variant="solid" :class="BTN_BRAND" :loading="saving" :disabled="loading || loadFailed || !isValidHex(form.brand_color)" @click="submit">Save</Button>
     </template>
   </Dialog>
 </template>
 
 <script setup>
 import { computed, reactive, ref, watch } from 'vue'
-import { Dialog, Button, FeatherIcon, FileUploader, FormControl, ErrorMessage, TextEditor } from 'frappe-ui'
+import { useRouter } from 'vue-router'
+import { Dialog, Button, FeatherIcon, FileUploader, FormControl, ErrorMessage, TextEditor, TextInput } from 'frappe-ui'
 import { BTN_BRAND } from '@/utils/buttonStyles'
 import {
   COLOR_PRESETS,
@@ -282,6 +287,7 @@ import { toast } from '@/utils/notify'
 import { useSettings } from '@/composables/useSettings'
 import { useSessionStore } from '@/stores/session'
 import RolesPermissionsPanel from '@/components/settings/RolesPermissionsPanel.vue'
+import SettingsField from '@/components/settings/SettingsField.vue'
 
 const isOpen = defineModel({ type: Boolean, default: false })
 
@@ -337,7 +343,65 @@ watch(
   },
 )
 const formError = ref('')
+// Saving after a failed load would write blanks over the real settings.
+const loadFailed = ref(false)
 const roleOptions = ref([])
+const maxUploadMb = ref(10)
+
+const DUTIES = [
+  {
+    field: 'document_verifier_roles',
+    label: 'Document Verifier Roles',
+    hint: "May verify or reject candidates' onboarding documents.",
+    empty: "No one can verify candidates' onboarding documents while this is empty.",
+  },
+  {
+    field: 'corrigendum_signer_roles',
+    label: 'Corrigendum Signer Roles',
+    hint: 'May create and sign a Corrigendum.',
+    empty: 'No one can issue a Corrigendum while this is empty.',
+  },
+]
+
+// ----- general: checked here for instant feedback; the server checks again.
+const showErrors = ref(false)
+const num = (v) => (v === '' || v === null || v === undefined ? NaN : Number(v))
+const isWhole = (v) => Number.isInteger(num(v))
+const FORMAT = /^[a-z0-9]{1,10}$/
+const errors = computed(() => {
+  if (!showErrors.value) return {}
+  const e = {}
+  if (!isWhole(form.acceptance_deadline_days) || num(form.acceptance_deadline_days) < 1 || num(form.acceptance_deadline_days) > 365) {
+    e.acceptance_deadline_days = 'Enter a whole number from 1 to 365.'
+  }
+  if (!isWhole(form.default_shortlisting_ratio) || num(form.default_shortlisting_ratio) < 1) {
+    e.default_shortlisting_ratio = 'Enter a whole number, 1 or more.'
+  }
+  for (const c of ['shortlisting', 'selection']) {
+    const min = `min_${c}_committee_size`
+    const max = `max_${c}_committee_size`
+    if (!isWhole(form[min]) || num(form[min]) < 1) e[min] = 'Enter a whole number, 1 or more.'
+    if (!isWhole(form[max]) || num(form[max]) < 1) e[max] = 'Enter a whole number, 1 or more.'
+    else if (!e[min] && num(form[max]) < num(form[min])) e[max] = 'Cannot be less than the minimum.'
+  }
+  const size = num(form.application_max_file_size_mb)
+  if (!(size > 0)) e.application_max_file_size_mb = 'Enter a size above 0.'
+  else if (size > maxUploadMb.value) e.application_max_file_size_mb = `This site allows up to ${maxUploadMb.value} MB.`
+  const formats = String(form.application_allowed_formats || '')
+    .split(',')
+    .map((f) => f.trim().toLowerCase().replace(/^\./, ''))
+    .filter(Boolean)
+  if (!formats.length) e.application_allowed_formats = 'List at least one file extension.'
+  else if (formats.some((f) => !FORMAT.test(f))) e.application_allowed_formats = 'Use extensions only, e.g. PDF, JPG, PNG.'
+  return e
+})
+
+const router = useRouter()
+function go(path) {
+  isOpen.value = false
+  router.push(path)
+}
+const openEmailSetup = () => go('/settings/email')
 // frappe-ui's Select drops options whose value is '', so "nobody" needs a
 // sentinel that is mapped back to blank on save.
 const NONE = '__none__'
@@ -357,12 +421,20 @@ watch(isOpen, async (open) => {
   saved = false
   savedAppearance = null
   formError.value = ''
+  showErrors.value = false
+  loadFailed.value = false
   tab.value = tabs.value[0]?.key || 'appearance'
   accessVisited.value = tab.value === 'access'
   if (!canEditSettings.value) return
   await fetchSettings()
-  const { role_options, ...values } = settings.value || {}
+  if (!settings.value) {
+    loadFailed.value = true
+    formError.value = error.value?.messages?.[0] || 'Could not load settings. Close this and try again.'
+    return
+  }
+  const { role_options, max_upload_mb, ...values } = settings.value
   roleOptions.value = role_options || []
+  maxUploadMb.value = Number(max_upload_mb) || 10
   Object.assign(form, values)
   for (const key of APPEARANCE_KEYS) form[key] = values[key] || DEFAULT_APPEARANCE[key]
   if (form.app_logo === DEFAULT_APPEARANCE.app_logo) form.app_logo = ''
@@ -372,10 +444,28 @@ watch(isOpen, async (open) => {
   form.corrigendum_signer_roles = [...(values.corrigendum_signer_roles || [])]
 })
 
+const NUMBER_FIELDS = [
+  'acceptance_deadline_days',
+  'default_shortlisting_ratio',
+  'min_shortlisting_committee_size',
+  'max_shortlisting_committee_size',
+  'min_selection_committee_size',
+  'max_selection_committee_size',
+  'application_max_file_size_mb',
+]
+
 async function submit() {
+  if (loadFailed.value || saving.value) return
   formError.value = ''
+  showErrors.value = true
+  if (Object.keys(errors.value).length) {
+    tab.value = 'general'
+    formError.value = 'Some General settings need fixing before saving.'
+    return
+  }
   const payload = { ...form }
   for (const field of ROLE_FIELDS) if (payload[field] === NONE) payload[field] = ''
+  for (const field of NUMBER_FIELDS) payload[field] = num(payload[field])
   const ok = await saveSettings(payload)
   if (ok) {
     saved = true

@@ -85,7 +85,7 @@
             <article
               v-for="m in stage.masters"
               :key="m.doctype"
-              class="group relative flex flex-col rounded-xl border bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-md focus-within:border-brand-300"
+              class="group relative isolate flex flex-col rounded-xl border bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-md focus-within:border-brand-300"
             >
               <div class="flex flex-1 flex-col p-4">
                 <div class="flex items-start gap-3">

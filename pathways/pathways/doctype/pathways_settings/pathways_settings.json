@@ -12,11 +12,9 @@
   "body_font",
   "heading_font",
   "general_section",
-  "default_sender_email",
   "recruitment_contact_email",
   "column_break_1",
   "acceptance_deadline_days",
-  "interview_login_buffer_minutes",
   "shortlisting_section",
   "default_shortlisting_ratio",
   "min_shortlisting_committee_size",
@@ -24,8 +22,6 @@
   "column_break_2",
   "min_selection_committee_size",
   "max_selection_committee_size",
-  "general_conditions_section",
-  "default_general_conditions",
   "approval_section",
   "approval_override_role",
   "allow_same_approver_multiple_steps",
@@ -93,12 +89,6 @@
    "label": "General"
   },
   {
-   "fieldname": "default_sender_email",
-   "fieldtype": "Data",
-   "label": "Default Sender Email",
-   "options": "Email"
-  },
-  {
    "fieldname": "recruitment_contact_email",
    "fieldtype": "Data",
    "label": "Recruitment Contact Email",
@@ -113,12 +103,6 @@
    "fieldname": "acceptance_deadline_days",
    "fieldtype": "Int",
    "label": "Offer Acceptance Deadline (Days)"
-  },
-  {
-   "default": "20",
-   "fieldname": "interview_login_buffer_minutes",
-   "fieldtype": "Int",
-   "label": "Interview Login Buffer (Minutes)"
   },
   {
    "fieldname": "shortlisting_section",
@@ -159,17 +143,6 @@
    "fieldname": "max_selection_committee_size",
    "fieldtype": "Int",
    "label": "Max Selection Committee Size"
-  },
-  {
-   "fieldname": "general_conditions_section",
-   "fieldtype": "Section Break",
-   "label": "Notification Defaults"
-  },
-  {
-   "description": "Default boilerplate General Conditions text for formal Notifications",
-   "fieldname": "default_general_conditions",
-   "fieldtype": "Text Editor",
-   "label": "Default General Conditions"
   },
   {
    "fieldname": "approval_section",
@@ -273,7 +246,7 @@
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-10-07 11:00:00.000000",
+ "modified": "2026-10-08 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "Pathways",
  "name": "Pathways Settings",

@@ -37,6 +37,7 @@ declare module 'vue' {
     RouterView: typeof import('vue-router')['RouterView']
     SectionCard: typeof import('./src/components/common/SectionCard.vue')['default']
     SettingsDialog: typeof import('./src/components/layout/SettingsDialog.vue')['default']
+    SettingsField: typeof import('./src/components/settings/SettingsField.vue')['default']
     ShortlistingPanel: typeof import('./src/components/jobs/ShortlistingPanel.vue')['default']
     ShortlistingReviewPanel: typeof import('./src/components/common/ShortlistingReviewPanel.vue')['default']
     ShortlistingSheetDialog: typeof import('./src/components/common/ShortlistingSheetDialog.vue')['default']

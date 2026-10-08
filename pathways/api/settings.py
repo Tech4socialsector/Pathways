@@ -2,25 +2,23 @@
 # For license information, please see license.txt
 
 import frappe
+from frappe.utils.file_manager import get_max_file_size
 
-from pathways.permissions import get_pathways_roles
+from pathways.permissions import SCOPED_ROLES, get_pathways_roles
 
-# Plain fields editable from the in-app Settings dialog. Role tables
-# (Pathways Roles, duty roles) are managed from Roles & Permissions / Desk.
+# Plain fields editable from the in-app Settings dialog. Pathways Roles are
+# managed from Roles & Permissions; the reply-to address
+# (recruitment_contact_email) from Email Setup.
 APPEARANCE_FIELDS = ("app_name", "app_logo", "brand_color", "body_font", "heading_font")
 
 EDITABLE_FIELDS = (
 	*APPEARANCE_FIELDS,
-	"default_sender_email",
-	"recruitment_contact_email",
 	"acceptance_deadline_days",
-	"interview_login_buffer_minutes",
 	"default_shortlisting_ratio",
 	"min_shortlisting_committee_size",
 	"max_shortlisting_committee_size",
 	"min_selection_committee_size",
 	"max_selection_committee_size",
-	"default_general_conditions",
 	"approval_override_role",
 	"allow_same_approver_multiple_steps",
 	"status_override_role",
@@ -41,9 +39,18 @@ def get_settings():
 	doc = frappe.get_single("Pathways Settings")
 	doc.check_permission("read")
 	out = {field: doc.get(field) for field in EDITABLE_FIELDS}
-	out["role_options"] = sorted(get_pathways_roles() | {"System Manager"})
 	out["document_verifier_roles"] = [row.role for row in doc.document_verifier_roles]
 	out["corrigendum_signer_roles"] = [row.role for row in doc.corrigendum_signer_roles]
+	# Overrides and duties are staff powers, so candidate and committee-member
+	# roles are not offered. Roles already chosen stay listed so they show.
+	chosen = {
+		doc.approval_override_role,
+		doc.status_override_role,
+		*out["document_verifier_roles"],
+		*out["corrigendum_signer_roles"],
+	}
+	out["role_options"] = sorted(((get_pathways_roles() - SCOPED_ROLES) | {"System Manager"} | chosen) - {None, ""})
+	out["max_upload_mb"] = get_max_file_size() / (1024 * 1024)
 	return out
 
 
