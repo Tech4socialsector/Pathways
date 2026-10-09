@@ -583,7 +583,9 @@ watch(isOpen, async (open) => {
 // ----- Google Meet
 const meet = ref(null)
 const meetLoading = ref(false)
-const redirectUri = `${window.location.origin}/api/method/frappe.integrations.doctype.google_calendar.google_calendar.google_callback`
+// Exactly what Frappe's Google Calendar sends as redirect_uri: the site
+// address followed by ?cmd=… (no /api/method path). Google must have this one.
+const redirectUri = `${window.location.origin}?cmd=frappe.integrations.doctype.google_calendar.google_calendar.google_callback`
 const calendarOptions = computed(() => [
   { label: '(None: paste meeting links by hand)', value: NONE },
   ...(meet.value?.calendars || []).map((c) => ({ label: `${c.calendar_name || c.name}${c.user ? ' · ' + c.user : ''}`, value: c.name })),

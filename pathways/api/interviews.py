@@ -311,6 +311,7 @@ def _sync_meet_event(iv, app, minutes, committee=None):
 	calendar = _meet_calendar()
 	if not calendar:
 		frappe.throw(_("Google Meet is not set up: {0}").format(get_meet_status()["reason"]))
+	calendar_id = _google_calendar_id(calendar)
 	candidate = frappe.db.get_value("Candidate", app.candidate, ["full_name", "email"], as_dict=True) or {}
 	job_title = frappe.db.get_value("Job Opening", app.job_opening, "job_title")
 	start = get_datetime(iv.scheduled_datetime)
@@ -327,7 +328,7 @@ def _sync_meet_event(iv, app, minutes, committee=None):
 	)
 	if iv.get("calendar_event") and frappe.db.exists("Event", iv.calendar_event):
 		ev = frappe.get_doc("Event", iv.calendar_event)
-		ev.update({"subject": subject, "starts_on": start, "ends_on": end, "status": "Open"})
+		ev.update({"subject": subject, "starts_on": start, "ends_on": end, "status": "Open", "google_calendar_id": calendar_id})
 		ev.set("event_participants", participants)
 		ev.save(ignore_permissions=True)
 	else:
@@ -342,6 +343,8 @@ def _sync_meet_event(iv, app, minutes, committee=None):
 				"description": _("NLSIU recruitment interview for {0} ({1}).").format(job_title, app.application_id),
 				"sync_with_google_calendar": 1,
 				"google_calendar": calendar,
+				# Desk fills this from the Google Calendar; a script must set it.
+				"google_calendar_id": calendar_id,
 				"add_video_conferencing": 1,
 				"event_participants": participants,
 				"reference_doctype": "Interview",
@@ -353,6 +356,20 @@ def _sync_meet_event(iv, app, minutes, committee=None):
 		frappe.throw(_("Google Calendar did not return a Meet link for {0}. Check the calendar connection.").format(app.application_id))
 	iv.db_set({"calendar_event": ev.name, "meeting_link": link, "meeting_platform": "Google Meet"}, update_modified=False)
 	iv.reload()
+
+
+def _google_calendar_id(calendar):
+	"""The calendar's id in Google; connecting it the first time creates the
+	calendar in the Google account and stores the id."""
+	calendar_id = frappe.db.get_value("Google Calendar", calendar, "google_calendar_id")
+	if not calendar_id:
+		from frappe.integrations.doctype.google_calendar.google_calendar import get_google_calendar_object
+
+		get_google_calendar_object(calendar)
+		calendar_id = frappe.db.get_value("Google Calendar", calendar, "google_calendar_id")
+	if not calendar_id:
+		frappe.throw(_("Google Calendar {0} has no calendar in Google yet. Authorise it again in Desk.").format(calendar))
+	return calendar_id
 
 
 def _cancel_meet_event(iv):
