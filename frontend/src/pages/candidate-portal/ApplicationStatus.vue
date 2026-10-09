@@ -94,11 +94,12 @@
           </div>
         </section>
 
-        <!-- Progress: the same line as the staff application page -->
+        <!-- Progress: the same line as the staff application page (hidden for now)
         <section class="isolate mb-6 rounded-xl border bg-white p-5 shadow-sm">
           <div class="mb-4 text-xs font-bold uppercase tracking-wide text-brand-700">Your progress</div>
           <ProgressStepper :steps="timelineSteps" />
         </section>
+        -->
 
         <div class="mb-6 grid grid-cols-1 items-start gap-6 md:grid-cols-2 xl:grid-cols-3">
             <!-- Files they uploaded with the application -->
