@@ -74,7 +74,7 @@ def get_job_interviews(job_opening):
 	interviews = frappe.get_all(
 		"Interview",
 		filters={"application": ["in", [a.name for a in apps] or [""]]},
-		fields=["name", "application", "round_type", "status", "scheduled_datetime", "mode", "meeting_platform", "meeting_link", "location", "rsvp_status"],
+		fields=["name", "application", "round_type", "status", "scheduled_datetime", "mode", "meeting_platform", "meeting_link", "location", "rsvp_status", "calendar_event"],
 		order_by="scheduled_datetime asc",
 	)
 	by_app = {}
@@ -173,7 +173,7 @@ def _time_label(value):
 @frappe.whitelist(methods=["POST"])
 def schedule_interviews(
 	job_opening, applications, round_type, start, slot_minutes=0, mode="Video Conference", meeting_link=None,
-	meeting_platform=None, rsvp_deadline=None, send_invite=1, location=None, create_meet=0,
+	meeting_platform=None, rsvp_deadline=None, send_invite=1, location=None, create_meet=0, cc=None,
 ):
 	"""Schedule (or reschedule) one round for several candidates. Each
 	candidate gets the next slot: start, start + slot, ... The invite (Round
@@ -244,7 +244,7 @@ def schedule_interviews(
 			),
 		)
 		if cint(send_invite):
-			_send_invite(iv, app, meeting_platform, rsvp_deadline)
+			_send_invite(iv, app, meeting_platform, rsvp_deadline, cc=cc)
 		done.append(iv.name)
 	return {"scheduled": len(done), "interviews": done}
 
@@ -379,7 +379,7 @@ def _cancel_meet_event(iv):
 		ev.save(ignore_permissions=True)
 
 
-def _send_invite(iv, app, meeting_platform=None, rsvp_deadline=None):
+def _send_invite(iv, app, meeting_platform=None, rsvp_deadline=None, updated=False, note=None, cc=None):
 	from pathways.utils.communication import candidate_email_context, send_event
 
 	when = get_datetime(iv.scheduled_datetime)
@@ -397,25 +397,28 @@ def _send_invite(iv, app, meeting_platform=None, rsvp_deadline=None):
 			"interview_location": iv.get("location") or "",
 			"rsvp_deadline": frappe.utils.format_datetime(rsvp_deadline, "MMMM d, yyyy '–' h:mm a") if rsvp_deadline else "",
 			"rsvp_link": get_url(f"/pathways/portal/applications/{app.name}"),
-			"rsvp_accept_link": rsvp_links(iv.name)["Confirmed"],
-			"rsvp_decline_link": rsvp_links(iv.name)["Declined"],
+			# The buttons open the portal; the candidate signs in and replies there.
+			"rsvp_respond_link": portal_rsvp_link(app.name, iv.name),
+			# Rescheduled / edited: the email says it replaces the earlier one.
+			"updated": 1 if updated else 0,
+			"change_note": (note or "").strip(),
 		}
 	)
-	send_event(INVITE_EVENT[iv.round_type], "Interview", iv.name, context, candidate=candidate)
+	send_event(INVITE_EVENT[iv.round_type], "Interview", iv.name, context, candidate=candidate, cc=cc)
 
 
 @frappe.whitelist(methods=["POST"])
-def resend_invite(interview, meeting_platform=None, rsvp_deadline=None):
+def resend_invite(interview, meeting_platform=None, rsvp_deadline=None, cc=None):
 	_require_manage()
 	iv = frappe.get_doc("Interview", interview)
-	_send_invite(iv, frappe.get_doc("Application", iv.application), meeting_platform, rsvp_deadline)
+	_send_invite(iv, frappe.get_doc("Application", iv.application), meeting_platform, rsvp_deadline, cc=cc)
 	return True
 
 
 @frappe.whitelist(methods=["POST"])
-def set_interview_status(interview, status):
+def set_interview_status(interview, status, reason=None, notify=0, cc=None):
 	"""Mark an interview Completed or Cancelled. A completed Final moves the
-	application to Interview Completed."""
+	application to Interview Completed. Cancelling can email the candidate."""
 	_require_manage()
 	if status not in ("Completed", "Cancelled"):
 		frappe.throw(_("Unknown interview status."))
@@ -433,28 +436,132 @@ def set_interview_status(interview, status):
 		if not other:
 			app.status = "Shortlisted"
 			app.save(ignore_permissions=True)
-	app.add_comment("Info", _("{0} interview marked {1} by {2}.").format(_(iv.round_type), _(status).lower(), frappe.utils.get_fullname(frappe.session.user)))
+	note = _("{0} interview marked {1} by {2}.").format(_(iv.round_type), _(status).lower(), frappe.utils.get_fullname(frappe.session.user))
+	if reason:
+		note += " " + _("Reason: {0}").format(frappe.utils.escape_html(reason))
+	app.add_comment("Info", note)
+	if status == "Cancelled" and cint(notify):
+		from pathways.utils.communication import candidate_email_context, send_event
+
+		context, candidate = candidate_email_context(app)
+		context.update(
+			{
+				"interview_round": _("Round 1 (HR interaction)") if iv.round_type == "HR Interaction" else _("final interview"),
+				"interview_date_time": frappe.utils.format_datetime(iv.scheduled_datetime, "EEEE, MMMM d, yyyy 'at' h:mm a"),
+				"reason": (reason or "").strip(),
+			}
+		)
+		send_event("interview_cancelled", "Interview", iv.name, context, candidate=candidate, cc=cc)
 	return {"status": iv.status, "application_status": app.status}
+
+
+@frappe.whitelist()
+def get_email_recipients(round_type=None, job_openings=None, cancelled=0):
+	"""Who an interview email goes to, for the dialogs: the candidate, the
+	rule's other recipients and CC (Email Setup), and people worth copying
+	(the jobs' Selection Committee, the recruitment contact)."""
+	_require_manage()
+	from pathways.utils.communication import event_recipients
+
+	event = "interview_cancelled" if cint(cancelled) else INVITE_EVENT.get(round_type or "HR Interaction")
+	if not frappe.db.exists("Recruitment Email Rule", event):
+		return {"enabled": 0, "label": event, "to_candidate": 0, "to": [], "cc": [], "suggestions": []}
+	rule = frappe.get_doc("Recruitment Email Rule", event)
+	jobs = frappe.parse_json(job_openings) if job_openings else []
+	if isinstance(jobs, str):
+		jobs = [jobs]
+
+	suggestions, seen = [], set()
+
+	def suggest(email, name, tag):
+		if email and email.lower() not in seen:
+			seen.add(email.lower())
+			suggestions.append({"email": email, "name": name or email, "tag": tag})
+
+	for job in jobs:
+		committee = frappe.db.get_value("Selection Committee", {"job_opening": job}, "name")
+		if committee:
+			for user in frappe.get_all("Committee Member Row", filters={"parent": committee, "parenttype": "Selection Committee"}, pluck="member"):
+				row = frappe.db.get_value("User", user, ["email", "full_name"], as_dict=True)
+				if row:
+					suggest(row.email, row.full_name, _("Selection Committee"))
+	suggest(frappe.get_cached_doc("Pathways Settings").get("recruitment_contact_email"), None, _("Recruitment team"))
+	return {
+		"enabled": cint(rule.enabled),
+		"label": rule.label,
+		"to_candidate": cint(rule.send_to_candidate),
+		# Everyone besides the candidate (roles, approvers, extra recipients).
+		"to": [{"email": e, "name": n} for e, n in event_recipients(rule)],
+		"cc": [e.strip() for e in (rule.cc or "").split(",") if e.strip()],
+		"suggestions": suggestions,
+	}
+
+
+@frappe.whitelist(methods=["POST"])
+def update_interview(
+	interview, start=None, minutes=None, mode=None, meeting_platform=None, meeting_link=None, location=None,
+	rsvp_deadline=None, create_meet=0, send_invite=1, note=None, cc=None,
+):
+	"""Reschedule or edit one open interview. A new time marks it Rescheduled
+	and asks the candidate to reply again; the updated invite says it
+	replaces the earlier one."""
+	_require_manage()
+	iv = frappe.get_doc("Interview", interview)
+	if iv.status not in ("Scheduled", "Rescheduled"):
+		frappe.throw(_("Only scheduled interviews can be changed (this one is {0}).").format(iv.status))
+	app = frappe.get_doc("Application", iv.application)
+	before = get_datetime(iv.scheduled_datetime)
+	new_start = get_datetime(start) if start else before
+	time_changed = new_start != before
+	if time_changed and new_start < frappe.utils.now_datetime():
+		frappe.throw(_("The new interview time must be in the future."))
+
+	mode = mode or iv.mode
+	in_person = mode == "In-Person"
+	if in_person and not (location if location is not None else iv.get("location") or "").strip():
+		frappe.throw(_("Enter the location for an in-person interview."))
+	create_meet = cint(create_meet) and not in_person
+	if create_meet and not _meet_calendar():
+		frappe.throw(_("Google Meet is not set up: {0}").format(get_meet_status()["reason"]))
+
+	iv.update(
+		{
+			"scheduled_datetime": new_start,
+			"mode": mode,
+			"location": ((location or "").strip() or None) if in_person else None,
+			"meeting_link": None if in_person else ((meeting_link or "").strip() or iv.meeting_link),
+			"meeting_platform": None if in_person else (_platform(meeting_platform, meeting_link) or iv.get("meeting_platform")),
+		}
+	)
+	if time_changed:
+		iv.status = "Rescheduled"
+		iv.rsvp_status = "Pending"
+	iv.save(ignore_permissions=True)
+
+	committee = frappe.db.get_value("Selection Committee", {"job_opening": app.job_opening}, "name")
+	if in_person:
+		_cancel_meet_event(iv)
+	elif create_meet or (iv.get("calendar_event") and _meet_calendar()):
+		_sync_meet_event(iv, app, minutes or 30, committee)
+
+	what = _("rescheduled to {0}").format(frappe.utils.format_datetime(new_start, "dd MMM yyyy, h:mm a")) if time_changed else _("details updated")
+	comment = _("{0} interview {1} by {2}.").format(_(iv.round_type), what, frappe.utils.get_fullname(frappe.session.user))
+	if note:
+		comment += " " + _("Note: {0}").format(frappe.utils.escape_html(note))
+	app.add_comment("Info", comment)
+	if cint(send_invite):
+		_send_invite(iv, app, meeting_platform, rsvp_deadline, updated=True, note=note, cc=cc)
+	return {"status": iv.status, "scheduled_datetime": iv.scheduled_datetime}
 
 
 # ----------------------------------------------------------- RSVP
 
 
-def _rsvp_token(interview, response):
-	"""Signature for the one-click RSVP links in the invite email."""
-	import hashlib
-	import hmac
-
-	key = (frappe.local.conf.get("encryption_key") or frappe.local.site).encode()
-	return hmac.new(key, f"{interview}:{response}".encode(), hashlib.sha256).hexdigest()[:32]
-
-
-def rsvp_links(interview):
-	base = get_url("/api/method/pathways.api.interviews.rsvp_from_email")
-	return {
-		r: f"{base}?interview={interview}&response={r}&token={_rsvp_token(interview, r)}"
-		for r in ("Confirmed", "Declined")
-	}
+def portal_rsvp_link(application, interview, response=None):
+	"""The application page on the candidate portal, opened on this
+	interview; with a response, its Confirm / Decline question too."""
+	url = get_url(f"/pathways/portal/applications/{application}?interview={interview}")
+	return f"{url}&rsvp={response}" if response else url
 
 
 def _record_rsvp(iv, response, via):
@@ -469,35 +576,14 @@ def _record_rsvp(iv, response, via):
 
 @frappe.whitelist(allow_guest=True, methods=["GET"])
 def rsvp_from_email(interview=None, response=None, token=None):
-	"""One-click Confirm / Decline from the invite email; no login needed.
-	The signed token ties the link to this interview and this answer."""
-	import hmac
-
-	ok = (
-		interview and response in ("Confirmed", "Declined") and token
-		and hmac.compare_digest(str(token), _rsvp_token(interview, response))
-		and frappe.db.exists("Interview", interview)
-	)
-	if not ok:
-		frappe.respond_as_web_page(_("Link not valid"), _("This link is not valid. Please reply to the interview email instead."), http_status_code=400, indicator_color="red")
+	"""Links in invites sent before replies moved to the portal: nothing is
+	recorded here; the candidate is sent to the portal to sign in and reply."""
+	application = frappe.db.get_value("Interview", interview, "application") if interview else None
+	if not application:
+		frappe.respond_as_web_page(_("Link not valid"), _("Please sign in to the candidate portal to reply to your interview invitation."), http_status_code=400, indicator_color="red")
 		return
-	iv = frappe.get_doc("Interview", interview)
-	when = frappe.utils.format_datetime(iv.scheduled_datetime, "EEEE, MMMM d, yyyy 'at' h:mm a")
-	if iv.status not in ("Scheduled", "Rescheduled") or get_datetime(iv.scheduled_datetime) < frappe.utils.now_datetime():
-		frappe.respond_as_web_page(
-			_("Interview no longer open"),
-			_("This interview ({0}) is no longer open for a reply. Please check your latest email from the NLSIU Recruitment Team.").format(when),
-			indicator_color="orange",
-		)
-		return
-	frappe.flags.ignore_permissions = True
-	_record_rsvp(iv, response, _("from the email link"))
-	frappe.db.commit()
-	if response == "Confirmed":
-		title, message, colour = _("Thank you. Your interview is confirmed."), _("We look forward to meeting you on {0} (IST). The meeting details are in your email.").format(when), "green"
-	else:
-		title, message, colour = _("Your reply has been recorded."), _("You have let us know you cannot attend the interview on {0}. The Recruitment Team will be in touch.").format(when), "orange"
-	frappe.respond_as_web_page(title, message, indicator_color=colour)
+	frappe.local.response["type"] = "redirect"
+	frappe.local.response["location"] = portal_rsvp_link(application, interview, response if response in ("Confirmed", "Declined") else "Confirmed")
 
 
 @frappe.whitelist(methods=["POST"])
@@ -524,7 +610,7 @@ def list_interviews():
 	rows = frappe.get_list(
 		"Interview",
 		fields=[
-			"name", "application", "round_type", "status", "scheduled_datetime", "mode", "meeting_platform", "meeting_link", "location", "rsvp_status",
+			"name", "application", "round_type", "status", "scheduled_datetime", "mode", "meeting_platform", "meeting_link", "location", "rsvp_status", "calendar_event",
 			"application.application_id as application_id", "application.job_opening as job_opening",
 		],
 		order_by="scheduled_datetime desc",

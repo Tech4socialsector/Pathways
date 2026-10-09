@@ -163,7 +163,7 @@ router.beforeEach(async (to) => {
   const session = useSessionStore()
 
   if (!session.isLoggedIn && (to.meta.requiresStaff || to.meta.requiresCandidate)) {
-    window.location.href = `/login?redirect-to=/pathways${to.fullPath}`
+    window.location.href = `/login?redirect-to=${encodeURIComponent('/pathways' + to.fullPath)}`
     return false
   }
 

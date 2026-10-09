@@ -1,6 +1,8 @@
 # Copyright (c) 2026, NLSIU and contributors
 # For license information, please see license.txt
 
+import re
+
 import frappe
 from frappe.utils import now_datetime
 
@@ -51,14 +53,15 @@ def send_templated_email(email_template, recipient, reference_doctype, reference
 # page (Recruitment Email Rule). Business code only says what happened.
 
 
-def send_event(event, reference_doctype, reference_name, context=None, candidate=None, job_opening=None, approvers=None):
+def send_event(event, reference_doctype, reference_name, context=None, candidate=None, job_opening=None, approvers=None, cc=None):
 	"""Queue the emails for `event` after the current transaction commits, so
 	a failed or rolled-back action sends nothing and sending never slows or
 	breaks the action itself.
 
 	candidate: {"email", "name"} when the rule may go to the candidate;
 	job_opening: for "the job's committee"; approvers: user IDs for "the
-	approvers of the current step"."""
+	approvers of the current step"; cc: extra addresses copied on this
+	send, on top of the rule's own CC."""
 	if not frappe.db.exists("Recruitment Email Rule", {"name": event, "enabled": 1}):
 		return
 	frappe.enqueue(
@@ -73,7 +76,26 @@ def send_event(event, reference_doctype, reference_name, context=None, candidate
 		candidate=candidate,
 		job_opening=job_opening,
 		approvers=approvers,
+		extra_cc=parse_emails(cc),
 	)
+
+
+def parse_emails(value):
+	"""Valid, de-duplicated addresses from a list or a comma/semicolon string."""
+	if not value:
+		return []
+	if isinstance(value, str):
+		value = frappe.parse_json(value) if value.strip().startswith("[") else re.split(r"[,;\s]+", value)
+	out = []
+	for email in value:
+		email = (email or "").strip()
+		if not email:
+			continue
+		if not frappe.utils.validate_email_address(email):
+			frappe.throw(frappe._("{0} is not a valid email address.").format(email))
+		if email.lower() not in [e.lower() for e in out]:
+			out.append(email)
+	return out
 
 
 def event_recipients(rule, candidate=None, job_opening=None, approvers=None):
@@ -118,12 +140,13 @@ def event_attachments(rule, reference_doctype=None, reference_name=None):
 	return list(dict.fromkeys(files))
 
 
-def _send_event(rule_event=None, reference_doctype=None, reference_name=None, context=None, candidate=None, job_opening=None, approvers=None, event=None):
+def _send_event(rule_event=None, reference_doctype=None, reference_name=None, context=None, candidate=None, job_opening=None, approvers=None, extra_cc=None, event=None):
 	event = rule_event or event
 	context = context or {}
 	rule = frappe.get_doc("Recruitment Email Rule", event)
 	template = frappe.get_doc("Email Template", rule.email_template)
 	cc = [e.strip() for e in (rule.cc or "").split(",") if e.strip()]
+	cc += [e for e in extra_cc or [] if e.lower() not in {c.lower() for c in cc}]
 	attachments = [{"fid": f} for f in event_attachments(rule, reference_doctype, reference_name)]
 	# Replies go to the recruitment team (Email Setup > Reply-to address).
 	reply_to = frappe.get_cached_doc("Pathways Settings").recruitment_contact_email or None

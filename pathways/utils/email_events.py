@@ -64,6 +64,8 @@ TEMPLATES = {
 		"Action Required : Interviews - {{ job_title }}",
 		"<p>Dear Applicant,</p>"
 		"<p>Greetings from National Law School of India University (NLSIU), Bangalore!</p>"
+		"{% if updated %}<p style=\"padding:10px 12px;background:#FFF4E5;border-left:3px solid #D97706\"><b>Please note: the interview details have changed. "
+		"This email replaces our earlier invitation.</b>{% if change_note %}<br>{{ change_note }}{% endif %}</p>{% endif %}"
 		"<p>This is with reference to your interviews (Round 1) for the position {{ job_title }} at NLS. We are pleased to "
 		"inform you that your application has been selected for the Round 1 interview. This round is scheduled on "
 		"<b>{{ interview_date_time }}</b> (IST){% if interview_location %} in person at <b>{{ interview_location }}</b>{% else %} via video conferencing{% endif %}.</p>"
@@ -78,13 +80,13 @@ TEMPLATES = {
 		"factor for any delay.</li>"
 		"<li>If you face any technical glitches, please be assured that our team will reach out to you. You can also email us "
 		"at {{ contact_email or 'recruitment@nls.ac.in' }}.</li></ol>"
-		"<p>Please confirm your participation by replying to this email{% if rsvp_deadline %} by <b>{{ rsvp_deadline }}</b>{% endif %}."
+		"<p>Please confirm your participation on the candidate portal{% if rsvp_deadline %} by <b>{{ rsvp_deadline }}</b>{% endif %}."
 		"</p>"
-		"{% if rsvp_accept_link %}<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:16px 0\"><tr>"
-		"<td style=\"background:#920C24;border-radius:6px\"><a href=\"{{ rsvp_accept_link }}\" style=\"display:inline-block;padding:11px 22px;color:#ffffff;font-weight:bold;text-decoration:none\">Click here to accept the interview</a></td>"
-		"<td style=\"width:12px\"></td>"
-		"<td style=\"border:1px solid #920C24;border-radius:6px\"><a href=\"{{ rsvp_decline_link }}\" style=\"display:inline-block;padding:10px 20px;color:#920C24;text-decoration:none\">I can't attend</a></td>"
-		"</tr></table>{% endif %}" + SIGN_OFF,
+		"{% if rsvp_respond_link %}<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:16px 0\"><tr>"
+		"<td style=\"background:#920C24;border-radius:6px\"><a href=\"{{ rsvp_respond_link }}\" style=\"display:inline-block;padding:11px 22px;color:#ffffff;font-weight:bold;text-decoration:none\">Click here to respond</a></td>"
+		"</tr></table>"
+		"<p style=\"font-size:12px;color:#666\">The button opens the NLSIU candidate portal. Sign in with your Candidate ID and password to accept or decline the interview.</p>"
+		"{% endif %}" + SIGN_OFF,
 	),
 	# No template in the workflow folder: invitation to the selection panel.
 	"Selection Committee Invitation": (
@@ -98,11 +100,23 @@ TEMPLATES = {
 		"to you on Pathways: <a href=\"{{ job_link }}\">{{ job_link }}</a></p>"
 		"<p>The interview schedule and meeting link will follow.</p>" + SIGN_OFF,
 	),
+	# No template in the workflow folder: an interview is called off.
+	"Interview Cancelled": (
+		"Update: your interview for {{ job_title }}",
+		"<p>Dear Applicant,</p>"
+		"<p>Greetings from National Law School of India University (NLSIU), Bangalore!</p>"
+		"<p>We regret to inform you that your {{ interview_round }} for the position of {{ job_title }}, scheduled on "
+		"<b>{{ interview_date_time }}</b> (IST), has been cancelled.{% if reason %} {{ reason }}{% endif %}</p>"
+		"<p>The Recruitment Team will get in touch with you about the next steps. You can also email us at "
+		"{{ contact_email or 'recruitment@nls.ac.in' }}.</p>" + SIGN_OFF,
+	),
 	# Workflow folder: 6. Final Interview / Interview Call Letter.
 	"Interview Call Letter": (
 		"Action Required : Interviews for the position of {{ job_title }}",
 		"<p>Dear Applicant,</p>"
 		"<p>Greetings from National Law School of India University (NLSIU), Bangalore!</p>"
+		"{% if updated %}<p style=\"padding:10px 12px;background:#FFF4E5;border-left:3px solid #D97706\"><b>Please note: the interview details have changed. "
+		"This email replaces our earlier invitation.</b>{% if change_note %}<br>{{ change_note }}{% endif %}</p>{% endif %}"
 		"<p>This is with reference to your application for the position of {{ job_title }} in our institution.</p>"
 		"<p>We are pleased to inform you that your application has been shortlisted, and your interview is scheduled "
 		"{% if interview_location %}in person{% else %}via video conferencing{% endif %} on:</p>"
@@ -125,12 +139,12 @@ TEMPLATES = {
 		"bear with us if there is a delay.</li>"
 		"<li>If you face any technical glitches, please be assured that our recruitment team will reach out to you. You can "
 		"also email us at {{ contact_email or 'recruitment@nls.ac.in' }}.</li></ol>"
-		"{% if rsvp_accept_link %}<p>Please confirm your attendance:</p>{% endif %}"
-		"{% if rsvp_accept_link %}<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:16px 0\"><tr>"
-		"<td style=\"background:#920C24;border-radius:6px\"><a href=\"{{ rsvp_accept_link }}\" style=\"display:inline-block;padding:11px 22px;color:#ffffff;font-weight:bold;text-decoration:none\">Click here to accept the interview</a></td>"
-		"<td style=\"width:12px\"></td>"
-		"<td style=\"border:1px solid #920C24;border-radius:6px\"><a href=\"{{ rsvp_decline_link }}\" style=\"display:inline-block;padding:10px 20px;color:#920C24;text-decoration:none\">I can't attend</a></td>"
-		"</tr></table>{% endif %}"
+		"{% if rsvp_respond_link %}<p>Please confirm your attendance on the candidate portal{% if rsvp_deadline %} by <b>{{ rsvp_deadline }}</b>{% endif %}:</p>{% endif %}"
+		"{% if rsvp_respond_link %}<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:16px 0\"><tr>"
+		"<td style=\"background:#920C24;border-radius:6px\"><a href=\"{{ rsvp_respond_link }}\" style=\"display:inline-block;padding:11px 22px;color:#ffffff;font-weight:bold;text-decoration:none\">Click here to respond</a></td>"
+		"</tr></table>"
+		"<p style=\"font-size:12px;color:#666\">The button opens the NLSIU candidate portal. Sign in with your Candidate ID and password to accept or decline the interview.</p>"
+		"{% endif %}"
 		+ SIGN_OFF +
 		"<p><b>General Instructions:</b></p><ol>"
 		"<li>Ensure your room is well-illuminated and free of any background/external noise.</li>"
@@ -299,9 +313,12 @@ EVENTS = [
 		"A job's Selection Committee is set up, or a panellist is added to it (workflow step 15).",
 		"Selection Committee Invitation", {"send_to_approvers": 1}, True, True, JOB_VARS + ", interview_date, interview_time, panel, candidate_count"),
 	("Interviews", "interview_invite_round1", "Interview invite: Round 1 / HR interaction", "Round 1 is scheduled (workflow step 13).",
-		"Interview Invite (Round 1)", {"send_to_candidate": 1}, True, True, CANDIDATE_VARS + ", interview_date_time, meeting_link, meeting_platform, interview_location, rsvp_deadline, rsvp_link, rsvp_accept_link, rsvp_decline_link"),
+		"Interview Invite (Round 1)", {"send_to_candidate": 1}, True, True, CANDIDATE_VARS + ", interview_date_time, meeting_link, meeting_platform, interview_location, rsvp_deadline, rsvp_link, rsvp_respond_link, updated, change_note"),
 	("Interviews", "interview_call_letter", "Interview call letter: final interview", "The final interview is scheduled (workflow steps 14-16).",
-		"Interview Call Letter", {"send_to_candidate": 1}, True, True, CANDIDATE_VARS + ", track, interview_date, interview_day, interview_time, interview_mode, meeting_platform, meeting_link, interview_location, meeting_details, login_time, rsvp_link, rsvp_accept_link, rsvp_decline_link"),
+		"Interview Call Letter", {"send_to_candidate": 1}, True, True, CANDIDATE_VARS + ", track, interview_date, interview_day, interview_time, interview_mode, meeting_platform, meeting_link, interview_location, meeting_details, login_time, rsvp_link, rsvp_respond_link, updated, change_note"),
+	("Interviews", "interview_cancelled", "Interview cancelled (to candidate)",
+		"An interview is cancelled and 'Email the candidate' is ticked.",
+		"Interview Cancelled", {"send_to_candidate": 1}, True, True, CANDIDATE_VARS + ", interview_round, interview_date_time, reason"),
 	("Interviews", "interview_reminder", "Interview reminder (to candidate)", "Daily, the day before a scheduled interview.",
 		"Interview Reminder", {"send_to_candidate": 1}, True, True, CANDIDATE_VARS + ", interview_date_time, meeting_link"),
 	("Selection & Offer", "appointment_order", "Appointment order (to candidate)", "The signed appointment order is sent (workflow step 28).",

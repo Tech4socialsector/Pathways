@@ -70,7 +70,7 @@
                     >
                       RSVP: {{ c.rounds[round].rsvp_status || 'Pending' }}
                     </span>
-                    <Dropdown v-if="data.can_manage" :options="roundMenu(c.rounds[round])" placement="left">
+                    <Dropdown v-if="data.can_manage" :options="roundMenu(c.rounds[round], c)" placement="left">
                       <button type="button" class="rounded p-0.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700" :aria-label="`${round} actions`">
                         <FeatherIcon name="more-horizontal" class="h-4 w-4" />
                       </button>
@@ -90,13 +90,19 @@
       </div>
     </template>
 
+    <ConfirmActionDialog v-model:open="confirmBox.open" v-bind="confirmBox" />
+    <EditInterviewDialog v-model:open="editDialog.open" :interview="editDialog.interview" @saved="emit('changed')" />
+    <CancelInterviewDialog v-model:open="cancelDialog.open" :interview="cancelDialog.interview" @saved="emit('changed')" />
     <ScheduleInterviewDialog v-model:open="scheduleOpen" :candidates="scheduleCandidates" :round="scheduleRound" @scheduled="onScheduled" />
   </SectionCard>
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { Button, Dropdown, FeatherIcon } from 'frappe-ui'
+import ConfirmActionDialog from '@/components/common/ConfirmActionDialog.vue'
+import CancelInterviewDialog from '@/components/jobs/CancelInterviewDialog.vue'
+import EditInterviewDialog from '@/components/jobs/EditInterviewDialog.vue'
 import ScheduleInterviewDialog from '@/components/jobs/ScheduleInterviewDialog.vue'
 import dayjs from 'dayjs'
 import SectionCard from '@/components/common/SectionCard.vue'
@@ -169,13 +175,19 @@ function onScheduled() {
 }
 
 // ----- per-interview actions
-function roundMenu(iv) {
+const editDialog = reactive({ open: false, interview: null })
+const confirmBox = reactive({ open: false, title: '', message: '', label: '', run: null })
+const askConfirm = (o) => Object.assign(confirmBox, { open: true, ...o })
+const cancelDialog = reactive({ open: false, interview: null })
+function roundMenu(iv, c) {
   const open = ['Scheduled', 'Rescheduled'].includes(iv.status)
+  const row = { ...iv, candidate_name: c.candidate_name, job_title: props.jobTitle, job_opening: props.jobOpening }
   const items = []
   if (open) {
-    items.push({ label: 'Resend invite', icon: 'send', onClick: () => act(() => interviewService.resendInvite(iv.name), 'Invite queued.') })
-    items.push({ label: 'Mark completed', icon: 'check', onClick: () => act(() => interviewService.setStatus(iv.name, 'Completed'), 'Marked completed.') })
-    items.push({ label: 'Cancel interview', icon: 'x', onClick: () => act(() => interviewService.setStatus(iv.name, 'Cancelled'), 'Interview cancelled.') })
+    items.push({ label: 'Reschedule / edit', icon: 'edit-2', onClick: () => Object.assign(editDialog, { open: true, interview: row }) })
+    items.push({ label: 'Resend invite', icon: 'send', onClick: () => askConfirm({ title: 'Resend invite?', message: `Email the invite to ${c.candidate_name} again?`, label: 'Resend', run: () => act(() => interviewService.resendInvite(iv.name), 'Invite queued.') }) })
+    items.push({ label: 'Mark completed', icon: 'check', onClick: () => askConfirm({ title: 'Mark interview completed?', message: `Mark the ${iv.round_type === 'Final' ? 'final' : 'Round 1 (HR)'} interview of ${c.candidate_name} as completed? It can no longer be rescheduled.`, label: 'Mark completed', run: () => act(() => interviewService.setStatus(iv.name, 'Completed'), 'Marked completed.') }) })
+    items.push({ label: 'Cancel interview', icon: 'x', onClick: () => Object.assign(cancelDialog, { open: true, interview: row }) })
   }
   return [{ group: 'Interview', hideLabel: true, items: items.length ? items : [{ label: `No actions (${iv.status})`, disabled: true }] }]
 }

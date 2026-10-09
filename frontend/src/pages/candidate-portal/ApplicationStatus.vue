@@ -44,9 +44,10 @@
         <!-- Upcoming interviews: first thing on the page, with the reply buttons -->
         <section
           v-for="iv in upcomingInterviews"
+          :id="'interview-' + iv.name"
           :key="'up-' + iv.name"
-          class="mb-6 overflow-hidden rounded-xl border-2 shadow-sm"
-          :class="needsReply(iv) ? 'border-brand-700' : 'border-green-300'"
+          class="mb-6 scroll-mt-20 overflow-hidden rounded-xl border-2 shadow-sm transition"
+          :class="[needsReply(iv) ? 'border-brand-700' : 'border-green-300', highlighted === iv.name ? 'ring-4 ring-brand-200' : '']"
         >
           <div class="flex flex-wrap items-center justify-between gap-2 px-5 py-3 text-white" :class="needsReply(iv) ? 'bg-brand-700' : 'bg-green-700'">
             <span class="flex items-center gap-2 text-sm font-semibold">
@@ -82,8 +83,8 @@
             <div v-if="needsReply(iv) && session.isCandidate" class="flex flex-col gap-2 md:items-end">
               <span class="text-sm font-medium text-gray-700">Will you attend?</span>
               <div class="flex gap-2">
-                <Button size="md" variant="solid" icon-left="check" :class="BTN_BRAND" :loading="rsvpBusy === iv.name + 'Confirmed'" @click="rsvp(iv, 'Confirmed')">Confirm</Button>
-                <Button size="md" variant="outline" icon-left="x" :loading="rsvpBusy === iv.name + 'Declined'" @click="rsvp(iv, 'Declined')">Decline</Button>
+                <Button size="md" variant="solid" icon-left="check" :class="BTN_BRAND" :loading="rsvpBusy === iv.name + 'Confirmed'" @click="askRsvp(iv, 'Confirmed')">Confirm</Button>
+                <Button size="md" variant="outline" icon-left="x" :loading="rsvpBusy === iv.name + 'Declined'" @click="askRsvp(iv, 'Declined')">Decline</Button>
               </div>
             </div>
             <div v-else-if="!needsReply(iv)" class="flex items-center gap-2 text-sm font-medium" :class="iv.rsvp_status === 'Declined' ? 'text-red-700' : 'text-green-700'">
@@ -144,8 +145,8 @@
                 </a>
                 <div v-if="isOpen(iv) && (iv.rsvp_status || 'Pending') === 'Pending'" class="mt-3 flex flex-wrap items-center gap-2 border-t pt-3">
                   <span class="text-gray-600">Will you attend?</span>
-                  <Button size="sm" variant="solid" :class="BTN_BRAND" :loading="rsvpBusy === iv.name + 'Confirmed'" @click="rsvp(iv, 'Confirmed')">Confirm</Button>
-                  <Button size="sm" variant="outline" :loading="rsvpBusy === iv.name + 'Declined'" @click="rsvp(iv, 'Declined')">Decline</Button>
+                  <Button size="sm" variant="solid" :class="BTN_BRAND" :loading="rsvpBusy === iv.name + 'Confirmed'" @click="askRsvp(iv, 'Confirmed')">Confirm</Button>
+                  <Button size="sm" variant="outline" :loading="rsvpBusy === iv.name + 'Declined'" @click="askRsvp(iv, 'Declined')">Decline</Button>
                 </div>
               </div>
             </div>
@@ -188,14 +189,45 @@
         :start-index="viewerIndex"
       />
     </div>
+    <!-- Confirm / decline: asked here, also when arriving from the invite email -->
+    <Dialog v-model="rsvpAsk.open" :options="{ title: rsvpAsk.response === 'Declined' ? 'Decline this interview?' : 'Confirm your attendance?', size: 'sm' }">
+      <template #body-content>
+        <div v-if="rsvpAsk.iv" class="text-sm text-gray-700">
+          <p>
+            {{ rsvpAsk.iv.round_type === 'HR Interaction' ? 'Round 1 (HR interaction)' : 'Final interview' }} on
+            <b>{{ dayjs(rsvpAsk.iv.scheduled_datetime).format('dddd, DD MMMM YYYY [at] h:mm A') }}</b> (IST).
+          </p>
+          <p class="mt-2 text-gray-600">
+            {{ rsvpAsk.response === 'Declined'
+              ? 'The Recruitment Team will be told that you cannot attend. If you would like another time, please email them.'
+              : 'The Recruitment Team will be told that you will attend.' }}
+          </p>
+        </div>
+      </template>
+      <template #actions>
+        <div class="flex justify-end gap-2">
+          <Button variant="ghost" @click="rsvpAsk.open = false">Not now</Button>
+          <Button
+            variant="solid"
+            :theme="rsvpAsk.response === 'Declined' ? 'red' : 'gray'"
+            :class="rsvpAsk.response === 'Declined' ? '' : BTN_BRAND"
+            :loading="!!rsvpBusy"
+            @click="sendAsked"
+          >
+            {{ rsvpAsk.response === 'Declined' ? "Yes, I can't attend" : 'Yes, I will attend' }}
+          </Button>
+        </div>
+      </template>
+    </Dialog>
   </CandidatePortalLayout>
 </template>
 
 <script setup>
 import { useSessionStore } from '@/stores/session'
 import BackButton from '@/components/common/BackButton.vue'
-import { computed, onMounted, ref, watch } from 'vue'
-import { Button, FeatherIcon, FormControl } from 'frappe-ui'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { Button, Dialog, FeatherIcon, FormControl } from 'frappe-ui'
+import { useRoute, useRouter } from 'vue-router'
 import { BTN_BRAND } from '@/utils/buttonStyles'
 import { interviewService } from '@/services/interviews'
 import dayjs from 'dayjs'
@@ -345,6 +377,41 @@ async function rsvp(iv, response) {
     rsvpBusy.value = ''
   }
 }
+
+// Ask before replying. The invite email links here with ?interview=…,
+// so the candidate signs in and answers on the portal, not in the email.
+const route = useRoute()
+const router = useRouter()
+const rsvpAsk = ref({ open: false, iv: null, response: 'Confirmed' })
+const highlighted = ref('')
+function askRsvp(iv, response) {
+  rsvpAsk.value = { open: true, iv, response }
+}
+async function sendAsked() {
+  await rsvp(rsvpAsk.value.iv, rsvpAsk.value.response)
+  rsvpAsk.value.open = false
+}
+watch(
+  () => status.value?.interviews,
+  async (list) => {
+    const wanted = route.query.interview
+    const answer = route.query.rsvp
+    if (!list || !wanted) return
+    const iv = upcomingInterviews.value.find((x) => x.name === wanted)
+    // Done with the query either way, so a refresh does not ask again.
+    router.replace({ query: {} })
+    if (!iv) {
+      toast({ title: 'This interview is no longer open for a reply. See the details below.', icon: 'info', iconClasses: 'text-blue-500' })
+      return
+    }
+    highlighted.value = iv.name
+    await nextTick()
+    document.getElementById('interview-' + iv.name)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    // "Click here to respond": the card is highlighted and they choose.
+    // Older emails had separate accept / decline links: ask that one.
+    if (answer && needsReply(iv) && session.isCandidate) askRsvp(iv, answer === 'Declined' ? 'Declined' : 'Confirmed')
+  },
+)
 
 function formatDay(value) {
   return value ? dayjs(value).format('DD MMM YYYY') : ''

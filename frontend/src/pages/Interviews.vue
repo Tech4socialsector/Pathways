@@ -68,7 +68,6 @@
         :rows="rows"
         :loading="loading"
         :filters="filters"
-        :selectable="false"
         clickable
         empty-title="No interviews scheduled yet"
         search-placeholder="Search candidate, job or application…"
@@ -90,14 +89,28 @@
           </span>
           <span v-else class="text-gray-300">—</span>
         </template>
+        <template #bulk-actions="{ rows: chosen, clear }">
+          <span v-if="openOnly(chosen).length < chosen.length" class="text-xs text-gray-500">{{ openOnly(chosen).length }} still open</span>
+          <Button size="sm" variant="outline" icon-left="send" :disabled="!openOnly(chosen).length" @click="bulkResend(chosen, clear)">Resend invite</Button>
+          <Button size="sm" variant="outline" icon-left="check" :disabled="!openOnly(chosen).length" @click="bulkComplete(chosen, clear)">Mark completed</Button>
+          <Button size="sm" variant="outline" theme="red" icon-left="x" :disabled="!openOnly(chosen).length" @click="bulkCancel(chosen, clear)">Cancel</Button>
+        </template>
         <template #actions="{ row }">
-          <a v-if="row.meeting_link" :href="row.meeting_link" target="_blank" rel="noopener" @click.stop>
-            <Button size="sm" variant="outline" icon-left="video">Join</Button>
-          </a>
+          <div class="flex items-center justify-end gap-1" @click.stop>
+            <a v-if="row.meeting_link && isOpen(row)" :href="row.meeting_link" target="_blank" rel="noopener">
+              <Button size="sm" variant="outline" icon-left="video">Join</Button>
+            </a>
+            <Dropdown :options="rowMenu(row)" placement="right">
+              <Button size="sm" variant="ghost" icon="more-horizontal" :aria-label="`Actions for ${row.candidate_name}`" />
+            </Dropdown>
+          </div>
         </template>
       </DataTable>
     </div>
 
+    <EditInterviewDialog v-model:open="editDialog.open" :interview="editDialog.interview" @saved="load" />
+    <CancelInterviewDialog v-model:open="cancelDialog.open" :interview="cancelDialog.interview" :interviews="cancelDialog.interviews" @saved="onCancelled" />
+    <ConfirmActionDialog v-model:open="confirmBox.open" v-bind="confirmBox" />
     <ScheduleInterviewDialog v-model:open="scheduleDialog.open" :candidates="scheduleDialog.candidates" @scheduled="onScheduled" />
   </StaffLayout>
 </template>
@@ -107,7 +120,11 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import ScheduleInterviewDialog from '@/components/jobs/ScheduleInterviewDialog.vue'
 import { useRouter } from 'vue-router'
 import { BTN_BRAND } from '@/utils/buttonStyles'
-import { Button } from 'frappe-ui'
+import { Button, Dropdown } from 'frappe-ui'
+import ConfirmActionDialog from '@/components/common/ConfirmActionDialog.vue'
+import CancelInterviewDialog from '@/components/jobs/CancelInterviewDialog.vue'
+import EditInterviewDialog from '@/components/jobs/EditInterviewDialog.vue'
+import { toast } from '@/utils/notify'
 import dayjs from 'dayjs'
 import StaffLayout from '@/layouts/StaffLayout.vue'
 import PageHeader from '@/components/layout/PageHeader.vue'
@@ -170,6 +187,76 @@ async function onScheduled() {
   await load()
 }
 const loading = ref(false)
+
+// ----- per-interview actions: reschedule / edit, resend, complete, cancel
+const editDialog = reactive({ open: false, interview: null })
+const cancelDialog = reactive({ open: false, interview: null, interviews: [], clear: null })
+const confirmBox = reactive({ open: false, title: '', message: '', label: '', run: null })
+const askConfirm = (o) => Object.assign(confirmBox, { open: true, ...o })
+const isOpen = (row) => ['Scheduled', 'Rescheduled'].includes(row.status)
+const openOnly = (list) => list.filter(isOpen)
+const roundName = (row) => (row.round_type === 'Final' ? 'final' : 'Round 1 (HR)')
+function rowMenu(row) {
+  const items = []
+  if (isOpen(row)) {
+    items.push({ label: 'Reschedule / edit', icon: 'edit-2', onClick: () => Object.assign(editDialog, { open: true, interview: row }) })
+    items.push({ label: 'Resend invite', icon: 'send', onClick: () => askConfirm({ title: 'Resend invite?', message: `Email the ${roundName(row)} invite to ${row.candidate_name} again?`, label: 'Resend', run: () => act(() => interviewService.resendInvite(row.name), 'Invite queued.') }) })
+    items.push({ label: 'Mark completed', icon: 'check', onClick: () => askConfirm({ title: 'Mark interview completed?', message: `Mark the ${roundName(row)} interview of ${row.candidate_name} as completed? It can no longer be rescheduled.`, label: 'Mark completed', run: () => act(() => interviewService.setStatus(row.name, 'Completed'), 'Marked completed.') }) })
+    items.push({ label: 'Cancel interview', icon: 'x', onClick: () => Object.assign(cancelDialog, { open: true, interview: row, interviews: [], clear: null }) })
+  }
+  items.push({ label: 'Open application', icon: 'external-link', onClick: () => router.push(`/applications/${row.application}`) })
+  return [{ group: 'Interview', hideLabel: true, items }]
+}
+// ----- bulk actions (only interviews still open)
+async function runEach(list, fn, done, clear) {
+  const failed = []
+  for (const row of list) {
+    try {
+      await fn(row)
+    } catch (e) {
+      failed.push(`${row.candidate_name}: ${e?.messages?.[0] || 'failed'}`)
+    }
+  }
+  const ok = list.length - failed.length
+  if (ok) toast({ title: done(ok), icon: 'check', iconClasses: 'text-green-500' })
+  if (failed.length) toast({ title: failed.join(' · '), icon: 'alert-triangle', iconClasses: 'text-red-500' })
+  clear?.()
+  await load()
+}
+function bulkResend(chosen, clear) {
+  const list = openOnly(chosen)
+  askConfirm({
+    title: `Resend ${list.length} invite${list.length === 1 ? '' : 's'}?`,
+    message: `Email the interview invite again to ${list.length} candidate${list.length === 1 ? '' : 's'}.`,
+    label: 'Resend',
+    run: () => runEach(list, (r) => interviewService.resendInvite(r.name), (n) => `${n} invite${n === 1 ? '' : 's'} queued.`, clear),
+  })
+}
+function bulkComplete(chosen, clear) {
+  const list = openOnly(chosen)
+  askConfirm({
+    title: `Mark ${list.length} interview${list.length === 1 ? '' : 's'} completed?`,
+    message: 'They can no longer be rescheduled. Completed final interviews move the application to Interview Completed.',
+    label: 'Mark completed',
+    run: () => runEach(list, (r) => interviewService.setStatus(r.name, 'Completed'), (n) => `${n} marked completed.`, clear),
+  })
+}
+function bulkCancel(chosen, clear) {
+  Object.assign(cancelDialog, { open: true, interview: null, interviews: openOnly(chosen), clear })
+}
+function onCancelled() {
+  cancelDialog.clear?.()
+  load()
+}
+async function act(fn, message) {
+  try {
+    await fn()
+    toast({ title: message, icon: 'check', iconClasses: 'text-green-500' })
+    await load()
+  } catch (e) {
+    toast({ title: e?.messages?.[0] || 'That did not work.', icon: 'alert-triangle', iconClasses: 'text-red-500' })
+  }
+}
 
 const STATUS_TONE = {
   Scheduled: 'bg-blue-50 text-blue-700',

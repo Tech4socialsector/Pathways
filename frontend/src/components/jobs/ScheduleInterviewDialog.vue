@@ -74,6 +74,13 @@
           Email the {{ form.round === 'Final' ? 'interview call letter' : 'Round 1 invite' }} to
           {{ candidates.length === 1 ? candidates[0].candidate_name : `each of the ${candidates.length} candidates` }}
         </label>
+        <EmailRecipients
+          v-if="form.send && open"
+          v-model="form.cc"
+          :round-type="form.round"
+          :job-openings="jobs.map((j) => j.job_opening)"
+          :candidate-names="candidates.map((c) => c.candidate_name)"
+        />
         <p v-if="blocker" class="flex items-center gap-1.5 text-orange-700">
           <FeatherIcon name="info" class="h-4 w-4 shrink-0" />{{ blocker }}
         </p>
@@ -108,6 +115,7 @@
 import { computed, reactive, ref, watch } from 'vue'
 import { Button, Dialog, FeatherIcon, FormControl } from 'frappe-ui'
 import dayjs from 'dayjs'
+import EmailRecipients from '@/components/jobs/EmailRecipients.vue'
 import SelectionCommitteeDialog from '@/components/jobs/SelectionCommitteeDialog.vue'
 import { interviewService } from '@/services/interviews'
 import { BTN_BRAND } from '@/utils/buttonStyles'
@@ -126,7 +134,7 @@ const ROUND_OPTIONS = [
   { value: 'Final', label: 'Final interview' },
 ]
 const today = dayjs().format('YYYY-MM-DD')
-const form = reactive({ round: 'HR Interaction', date: '', time: '10:00', slot: 20, mode: 'Video Conference', platform: 'Microsoft Teams', otherPlatform: '', link: '', createMeet: true, location: '', rsvp: '', send: true, saving: false, error: '' })
+const form = reactive({ round: 'HR Interaction', date: '', time: '10:00', slot: 20, mode: 'Video Conference', platform: 'Microsoft Teams', otherPlatform: '', link: '', createMeet: true, location: '', rsvp: '', send: true, cc: [], saving: false, error: '' })
 const inPerson = computed(() => form.mode === 'In-Person')
 // Google Meet through the Google Calendar integration (Settings > Google Meet).
 const meet = reactive({ ready: false, checked: false })
@@ -187,6 +195,7 @@ watch(
       round: props.round,
       error: '',
       send: true,
+      cc: [],
       slot: props.round === 'Final' ? 30 : 20,
       // Default to tomorrow, so the form is never left without a date.
       date: props.round === 'Final' && first?.committee_date ? first.committee_date : form.date || dayjs().add(1, 'day').format('YYYY-MM-DD'),
@@ -252,6 +261,7 @@ async function schedule() {
         meeting_platform: inPerson.value ? '' : platformName.value,
         rsvp_deadline: form.rsvp ? form.rsvp.replace('T', ' ') + ':00' : null,
         send_invite: form.send ? 1 : 0,
+        cc: JSON.stringify(form.send ? form.cc : []),
       })
       done += r.scheduled
     } catch (e) {
