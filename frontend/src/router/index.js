@@ -134,6 +134,12 @@ const routes = [
     meta: { requiresCandidate: true },
   },
   {
+    path: '/portal/profile',
+    name: 'MyProfile',
+    component: () => import('@/pages/candidate-portal/MyProfile.vue'),
+    meta: { requiresCandidate: true },
+  },
+  {
     path: '/portal/change-password',
     name: 'ChangePassword',
     component: () => import('@/pages/candidate-portal/ChangePassword.vue'),

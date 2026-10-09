@@ -30,6 +30,69 @@
           </div>
         </div>
 
+        <!-- Staff opening a candidate's page (e.g. from an email link) -->
+        <div v-if="!session.isCandidate" class="mb-6 flex items-start gap-3 rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm text-orange-900">
+          <FeatherIcon name="alert-circle" class="mt-0.5 h-4 w-4 shrink-0" />
+          <div>
+            <p class="font-medium">You are signed in as staff ({{ session.user }}), not as this candidate.</p>
+            <p class="mt-0.5">Only the candidate can reply to the interview or see their submitted application here. To test as the candidate, use a private window and sign in with their Candidate ID, or use the buttons in the invite email.
+              <router-link :to="`/applications/${id}`" class="font-medium text-brand-700 hover:underline">Open this application in Pathways</router-link>.
+            </p>
+          </div>
+        </div>
+
+        <!-- Upcoming interviews: first thing on the page, with the reply buttons -->
+        <section
+          v-for="iv in upcomingInterviews"
+          :key="'up-' + iv.name"
+          class="mb-6 overflow-hidden rounded-xl border-2 shadow-sm"
+          :class="needsReply(iv) ? 'border-brand-700' : 'border-green-300'"
+        >
+          <div class="flex flex-wrap items-center justify-between gap-2 px-5 py-3 text-white" :class="needsReply(iv) ? 'bg-brand-700' : 'bg-green-700'">
+            <span class="flex items-center gap-2 text-sm font-semibold">
+              <FeatherIcon :name="needsReply(iv) ? 'bell' : 'check-circle'" class="h-4 w-4" />
+              {{ needsReply(iv) ? 'Action needed: please confirm your interview' : 'Interview confirmed' }}
+            </span>
+            <span class="text-xs text-white/80">{{ iv.round_type === 'HR Interaction' ? 'Round 1 · HR interaction' : 'Final interview' }}</span>
+          </div>
+          <div class="grid grid-cols-1 gap-5 bg-white p-5 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
+            <div class="flex items-start gap-4">
+              <div class="flex w-16 shrink-0 flex-col items-center rounded-lg border bg-brand-50 py-2 text-brand-800">
+                <span class="text-[11px] font-semibold uppercase">{{ dayjs(iv.scheduled_datetime).format('MMM') }}</span>
+                <span class="text-2xl font-bold leading-none">{{ dayjs(iv.scheduled_datetime).format('D') }}</span>
+                <span class="text-[11px]">{{ dayjs(iv.scheduled_datetime).format('ddd') }}</span>
+              </div>
+              <div class="min-w-0 text-sm">
+                <div class="text-lg font-semibold text-gray-900">{{ dayjs(iv.scheduled_datetime).format('dddd, DD MMMM YYYY') }}</div>
+                <div class="mt-0.5 text-gray-700">{{ dayjs(iv.scheduled_datetime).format('h:mm A') }} (IST) · {{ iv.mode === 'In-Person' ? 'In person' : 'Online' }}</div>
+                <div v-if="iv.location" class="mt-1 flex items-center gap-1.5 text-gray-700">
+                  <FeatherIcon name="map-pin" class="h-4 w-4 text-gray-400" />{{ iv.location }}
+                </div>
+                <a
+                  v-if="iv.meeting_link"
+                  :href="iv.meeting_link"
+                  target="_blank"
+                  rel="noopener"
+                  class="mt-2 inline-flex items-center gap-1.5 rounded-md border border-brand-200 px-3 py-1.5 font-medium text-brand-700 hover:bg-brand-50"
+                >
+                  <FeatherIcon name="video" class="h-4 w-4" />Join {{ iv.meeting_platform || 'meeting' }}
+                </a>
+              </div>
+            </div>
+            <div v-if="needsReply(iv) && session.isCandidate" class="flex flex-col gap-2 md:items-end">
+              <span class="text-sm font-medium text-gray-700">Will you attend?</span>
+              <div class="flex gap-2">
+                <Button size="md" variant="solid" icon-left="check" :class="BTN_BRAND" :loading="rsvpBusy === iv.name + 'Confirmed'" @click="rsvp(iv, 'Confirmed')">Confirm</Button>
+                <Button size="md" variant="outline" icon-left="x" :loading="rsvpBusy === iv.name + 'Declined'" @click="rsvp(iv, 'Declined')">Decline</Button>
+              </div>
+            </div>
+            <div v-else-if="!needsReply(iv)" class="flex items-center gap-2 text-sm font-medium" :class="iv.rsvp_status === 'Declined' ? 'text-red-700' : 'text-green-700'">
+              <FeatherIcon :name="iv.rsvp_status === 'Declined' ? 'x-circle' : 'check-circle'" class="h-5 w-5" />
+              {{ iv.rsvp_status === 'Declined' ? 'You declined this interview.' : 'You confirmed. See you then.' }}
+            </div>
+          </div>
+        </section>
+
         <!-- Progress: the same line as the staff application page -->
         <section class="isolate mb-6 rounded-xl border bg-white p-5 shadow-sm">
           <div class="mb-4 text-xs font-bold uppercase tracking-wide text-brand-700">Your progress</div>
@@ -38,7 +101,7 @@
 
         <div class="mb-6 grid grid-cols-1 items-start gap-6 md:grid-cols-2 xl:grid-cols-3">
             <!-- Files they uploaded with the application -->
-            <div class="rounded-xl border bg-white p-5 shadow-sm md:col-span-2 xl:col-span-3">
+            <div v-if="session.isCandidate" class="rounded-xl border bg-white p-5 shadow-sm md:col-span-2 xl:col-span-3">
               <div class="mb-3 flex items-center justify-between">
                 <span class="text-xs font-bold uppercase tracking-wide text-brand-700">My documents</span>
                 <Button v-if="myDocuments.length" size="sm" variant="ghost" icon-left="eye" @click="openViewer(0)">View all</Button>
@@ -65,9 +128,9 @@
               </ul>
             </div>
 
-            <div v-if="status.interviews?.length" class="rounded-xl border bg-white p-5 shadow-sm">
-              <div class="mb-3 text-xs font-bold uppercase tracking-wide text-brand-700">Interviews</div>
-              <div v-for="(iv, idx) in status.interviews" :key="iv.name || idx" class="mb-4 rounded-lg border p-3 text-sm last:mb-0">
+            <div v-if="pastInterviews.length" class="rounded-xl border bg-white p-5 shadow-sm">
+              <div class="mb-3 text-xs font-bold uppercase tracking-wide text-brand-700">Past interviews</div>
+              <div v-for="(iv, idx) in pastInterviews" :key="iv.name || idx" class="mb-4 rounded-lg border p-3 text-sm last:mb-0">
                 <div class="flex flex-wrap items-center justify-between gap-2">
                   <span class="font-semibold text-gray-900">{{ iv.round_type === 'HR Interaction' ? 'Round 1 · HR interaction' : 'Final interview' }}</span>
                   <span class="rounded-full px-2 py-0.5 text-xs font-medium" :class="ivTone(iv)">{{ ivLabel(iv) }}</span>
@@ -109,7 +172,7 @@
         </div>
 
         <!-- What they submitted, read-only, full width -->
-        <section>
+        <section v-if="session.isCandidate">
           <div class="mb-3 flex items-center justify-between">
             <h2 class="text-xs font-bold uppercase tracking-wide text-brand-700">My application</h2>
             <span class="flex items-center gap-1 text-xs text-gray-500"><FeatherIcon name="eye" class="h-3.5 w-3.5" />View only</span>
@@ -129,6 +192,7 @@
 </template>
 
 <script setup>
+import { useSessionStore } from '@/stores/session'
 import BackButton from '@/components/common/BackButton.vue'
 import { computed, onMounted, ref, watch } from 'vue'
 import { Button, FeatherIcon, FormControl } from 'frappe-ui'
@@ -145,6 +209,7 @@ import ProgressStepper from '@/components/common/ProgressStepper.vue'
 import { useApplicationStatus } from '@/composables/useApplications'
 import { useMyOffer } from '@/composables/useOffers'
 
+const session = useSessionStore()
 const props = defineProps({ id: { type: String, required: true } })
 
 const { status, loading, error, fetchStatus } = useApplicationStatus()
@@ -249,6 +314,11 @@ async function fetchSubmission(id) {
   }
 }
 
+// ----- interviews: upcoming ones at the top, past ones in the card below
+const upcomingInterviews = computed(() => (status.value?.interviews || []).filter((iv) => isOpen(iv)))
+const pastInterviews = computed(() => (status.value?.interviews || []).filter((iv) => !isOpen(iv)))
+const needsReply = (iv) => (iv.rsvp_status || 'Pending') === 'Pending'
+
 // ----- interviews: RSVP
 const rsvpBusy = ref('')
 const isOpen = (iv) => ['Scheduled', 'Rescheduled'].includes(iv.status) && dayjs(iv.scheduled_datetime).isAfter(dayjs())
@@ -314,11 +384,11 @@ async function respondDecline() {
 onMounted(() => {
   fetchStatus(props.id)
   offer.fetchOffer(props.id)
-  fetchSubmission(props.id)
+  if (session.isCandidate) fetchSubmission(props.id)
 })
 watch(() => props.id, (id) => {
   fetchStatus(id)
   offer.fetchOffer(id)
-  fetchSubmission(id)
+  if (session.isCandidate) fetchSubmission(id)
 })
 </script>

@@ -130,11 +130,12 @@ watch(() => route.fullPath, () => (menuOpen.value = false))
 // Signed-in candidates see their own pages first; Openings comes last.
 const links = computed(() => [
   ...(session.isLoggedIn ? [{ to: '/portal/applications', label: 'My Applications' }] : []),
-  ...(session.isCandidate ? [{ to: '/portal/change-password', label: 'Change password' }] : []),
+  ...(session.isCandidate ? [{ to: '/portal/profile', label: 'Profile' }] : []),
   { to: '/portal/jobs', label: 'Openings' },
 ])
 
 function isActive(to) {
+  if (to === '/portal/profile' && route.path === '/portal/change-password') return true
   return route.path === to || route.path.startsWith(`${to}/`)
 }
 </script>

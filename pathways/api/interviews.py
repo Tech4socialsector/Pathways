@@ -386,7 +386,7 @@ def _send_invite(iv, app, meeting_platform=None, rsvp_deadline=None):
 	context, candidate = candidate_email_context(app)
 	context.update(
 		{
-			"interview_date_time": frappe.utils.format_datetime(when, "EEEE, dd MMM yyyy 'at' h:mm a"),
+			"interview_date_time": frappe.utils.format_datetime(when, "EEEE, MMMM d, yyyy 'at' h:mm a"),
 			"interview_date": when.strftime("%d %b %Y"),
 			"interview_day": when.strftime("%A"),
 			"interview_time": when.strftime("%I:%M %p").lstrip("0") + " (IST)",
@@ -395,8 +395,10 @@ def _send_invite(iv, app, meeting_platform=None, rsvp_deadline=None):
 			"meeting_platform": meeting_platform or iv.get("meeting_platform") or "Microsoft Teams",
 			"meeting_link": iv.meeting_link or "",
 			"interview_location": iv.get("location") or "",
-			"rsvp_deadline": frappe.utils.format_datetime(rsvp_deadline, "dd MMM yyyy, h:mm a") if rsvp_deadline else "",
+			"rsvp_deadline": frappe.utils.format_datetime(rsvp_deadline, "MMMM d, yyyy '–' h:mm a") if rsvp_deadline else "",
 			"rsvp_link": get_url(f"/pathways/portal/applications/{app.name}"),
+			"rsvp_accept_link": rsvp_links(iv.name)["Confirmed"],
+			"rsvp_decline_link": rsvp_links(iv.name)["Declined"],
 		}
 	)
 	send_event(INVITE_EVENT[iv.round_type], "Interview", iv.name, context, candidate=candidate)
@@ -438,6 +440,66 @@ def set_interview_status(interview, status):
 # ----------------------------------------------------------- RSVP
 
 
+def _rsvp_token(interview, response):
+	"""Signature for the one-click RSVP links in the invite email."""
+	import hashlib
+	import hmac
+
+	key = (frappe.local.conf.get("encryption_key") or frappe.local.site).encode()
+	return hmac.new(key, f"{interview}:{response}".encode(), hashlib.sha256).hexdigest()[:32]
+
+
+def rsvp_links(interview):
+	base = get_url("/api/method/pathways.api.interviews.rsvp_from_email")
+	return {
+		r: f"{base}?interview={interview}&response={r}&token={_rsvp_token(interview, r)}"
+		for r in ("Confirmed", "Declined")
+	}
+
+
+def _record_rsvp(iv, response, via):
+	iv.db_set("rsvp_status", response)
+	frappe.get_doc("Application", iv.application).add_comment(
+		"Info", _("Candidate {0} the {1} interview on {2} ({3}).").format(
+			_("confirmed") if response == "Confirmed" else _("declined"), _(iv.round_type),
+			frappe.utils.format_datetime(iv.scheduled_datetime, "dd MMM yyyy, h:mm a"), via,
+		),
+	)
+
+
+@frappe.whitelist(allow_guest=True, methods=["GET"])
+def rsvp_from_email(interview=None, response=None, token=None):
+	"""One-click Confirm / Decline from the invite email; no login needed.
+	The signed token ties the link to this interview and this answer."""
+	import hmac
+
+	ok = (
+		interview and response in ("Confirmed", "Declined") and token
+		and hmac.compare_digest(str(token), _rsvp_token(interview, response))
+		and frappe.db.exists("Interview", interview)
+	)
+	if not ok:
+		frappe.respond_as_web_page(_("Link not valid"), _("This link is not valid. Please reply to the interview email instead."), http_status_code=400, indicator_color="red")
+		return
+	iv = frappe.get_doc("Interview", interview)
+	when = frappe.utils.format_datetime(iv.scheduled_datetime, "EEEE, MMMM d, yyyy 'at' h:mm a")
+	if iv.status not in ("Scheduled", "Rescheduled") or get_datetime(iv.scheduled_datetime) < frappe.utils.now_datetime():
+		frappe.respond_as_web_page(
+			_("Interview no longer open"),
+			_("This interview ({0}) is no longer open for a reply. Please check your latest email from the NLSIU Recruitment Team.").format(when),
+			indicator_color="orange",
+		)
+		return
+	frappe.flags.ignore_permissions = True
+	_record_rsvp(iv, response, _("from the email link"))
+	frappe.db.commit()
+	if response == "Confirmed":
+		title, message, colour = _("Thank you. Your interview is confirmed."), _("We look forward to meeting you on {0} (IST). The meeting details are in your email.").format(when), "green"
+	else:
+		title, message, colour = _("Your reply has been recorded."), _("You have let us know you cannot attend the interview on {0}. The Recruitment Team will be in touch.").format(when), "orange"
+	frappe.respond_as_web_page(title, message, indicator_color=colour)
+
+
 @frappe.whitelist(methods=["POST"])
 def respond_rsvp(interview, response):
 	"""Candidate portal: confirm or decline an interview."""
@@ -449,13 +511,7 @@ def respond_rsvp(interview, response):
 		frappe.throw(_("Not permitted."), frappe.PermissionError)
 	if iv.status not in ("Scheduled", "Rescheduled"):
 		frappe.throw(_("This interview is no longer open for a reply."))
-	iv.db_set("rsvp_status", response)
-	frappe.get_doc("Application", iv.application).add_comment(
-		"Info", _("Candidate {0} the {1} interview on {2}.").format(
-			_("confirmed") if response == "Confirmed" else _("declined"), _(iv.round_type),
-			frappe.utils.format_datetime(iv.scheduled_datetime, "dd MMM yyyy, h:mm a"),
-		),
-	)
+	_record_rsvp(iv, response, _("in the portal"))
 	return response
 
 

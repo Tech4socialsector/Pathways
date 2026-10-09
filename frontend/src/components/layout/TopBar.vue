@@ -265,7 +265,7 @@ const appMenuOptions = computed(() => {
     items.push({ label: 'Email Setup', icon: 'mail', onClick: () => router.push('/settings/email') })
   }
   items.push(
-    { label: 'Desk', icon: 'grid', onClick: () => (window.location.href = '/app') },
+    { label: 'Desk', icon: 'grid', onClick: () => window.open('/app', '_blank', 'noopener') },
     { label: 'Log out', icon: 'log-out', onClick: () => (confirmLogout.value = true) },
   )
   return [{ group: 'Pathways', hideLabel: true, items }]

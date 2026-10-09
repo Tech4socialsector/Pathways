@@ -138,3 +138,44 @@ def change_password(current_password, new_password):
 	update_password(user, new_password)
 	frappe.db.set_value("Candidate", {"email": user}, "password_change_required", 0, update_modified=False)
 	return True
+
+
+# ----------------------------------------------------------- profile
+
+PROFILE_EDITABLE = ("mobile_number", "date_of_birth", "gender", "address")
+
+
+def _my_candidate():
+	user = frappe.session.user
+	name = frappe.db.get_value("Candidate", {"email": user}, "name") if user != "Guest" else None
+	if not name or frappe.db.get_value("User", user, "user_type") == "System User":
+		frappe.throw(_("Only candidates have a profile here."), frappe.PermissionError)
+	return name
+
+
+@frappe.whitelist()
+def get_my_profile():
+	"""Candidate portal > Profile: their own details."""
+	name = _my_candidate()
+	fields = ["name", "full_name", "email", "mobile_number", "date_of_birth", "gender", "address"]
+	profile = frappe.db.get_value("Candidate", name, fields, as_dict=True)
+	meta = frappe.get_meta("Candidate")
+	profile["gender_options"] = [o for o in (meta.get_field("gender").options or "").split("\n") if o]
+	profile["applications"] = frappe.db.count("Application", {"candidate": name})
+	return profile
+
+
+@frappe.whitelist(methods=["POST"])
+def update_my_profile(data):
+	"""Candidates may update their contact details; name and email are
+	fixed (they identify the applications)."""
+	name = _my_candidate()
+	data = frappe.parse_json(data) if isinstance(data, str) else (data or {})
+	doc = frappe.get_doc("Candidate", name)
+	for field in PROFILE_EDITABLE:
+		if field in data:
+			doc.set(field, (data.get(field) or None) if field != "address" else (data.get(field) or ""))
+	if not (doc.mobile_number or "").strip():
+		frappe.throw(_("Enter your mobile number."))
+	doc.save(ignore_permissions=True)
+	return get_my_profile()

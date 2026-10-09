@@ -69,17 +69,22 @@ TEMPLATES = {
 		"<b>{{ interview_date_time }}</b> (IST){% if interview_location %} in person at <b>{{ interview_location }}</b>{% else %} via video conferencing{% endif %}.</p>"
 		"{% if interview_location %}<ol>"
 		"<li>Please arrive ten minutes before your start time at {{ interview_location }}.</li>"
-		"{% else %}<p>Please find below the {{ meeting_platform or 'Teams' }} link for the meeting:<br>"
+		"{% else %}<p>Please find below the {{ meeting_platform or 'Teams' }} link for the new meeting:<br>"
 		"<a href=\"{{ meeting_link }}\">{{ meeting_link }}</a></p><ol>"
 		"<li>Please login into the {{ meeting_platform or 'Teams' }} meeting ten minutes before your start time and please "
-		"remain logged in. You will be admitted into the call once the panel is ready.</li>{% endif %}"
+		"remain logged in. You will be admitted into the {{ meeting_platform or 'Teams' }} call once the panel is ready.</li>{% endif %}"
 		"<li>While our earnest attempt is to bring each candidate into the interview room as per schedule, we request you to "
 		"bear with us if there is a delay.<br><b>IMPORTANT</b> - We request you to keep a two-hour window for the interview to "
 		"factor for any delay.</li>"
 		"<li>If you face any technical glitches, please be assured that our team will reach out to you. You can also email us "
 		"at {{ contact_email or 'recruitment@nls.ac.in' }}.</li></ol>"
 		"<p>Please confirm your participation by replying to this email{% if rsvp_deadline %} by <b>{{ rsvp_deadline }}</b>{% endif %}."
-		"{% if rsvp_link %} You can also confirm or decline in your candidate portal: <a href=\"{{ rsvp_link }}\">{{ rsvp_link }}</a>{% endif %}</p>" + SIGN_OFF,
+		"</p>"
+		"{% if rsvp_accept_link %}<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:16px 0\"><tr>"
+		"<td style=\"background:#920C24;border-radius:6px\"><a href=\"{{ rsvp_accept_link }}\" style=\"display:inline-block;padding:11px 22px;color:#ffffff;font-weight:bold;text-decoration:none\">Click here to accept the interview</a></td>"
+		"<td style=\"width:12px\"></td>"
+		"<td style=\"border:1px solid #920C24;border-radius:6px\"><a href=\"{{ rsvp_decline_link }}\" style=\"display:inline-block;padding:10px 20px;color:#920C24;text-decoration:none\">I can't attend</a></td>"
+		"</tr></table>{% endif %}" + SIGN_OFF,
 	),
 	# No template in the workflow folder: invitation to the selection panel.
 	"Selection Committee Invitation": (
@@ -120,8 +125,12 @@ TEMPLATES = {
 		"bear with us if there is a delay.</li>"
 		"<li>If you face any technical glitches, please be assured that our recruitment team will reach out to you. You can "
 		"also email us at {{ contact_email or 'recruitment@nls.ac.in' }}.</li></ol>"
-		"{% if rsvp_link %}<p>Please confirm or decline your attendance in your candidate portal: "
-		"<a href=\"{{ rsvp_link }}\">{{ rsvp_link }}</a></p>{% endif %}"
+		"{% if rsvp_accept_link %}<p>Please confirm your attendance:</p>{% endif %}"
+		"{% if rsvp_accept_link %}<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:16px 0\"><tr>"
+		"<td style=\"background:#920C24;border-radius:6px\"><a href=\"{{ rsvp_accept_link }}\" style=\"display:inline-block;padding:11px 22px;color:#ffffff;font-weight:bold;text-decoration:none\">Click here to accept the interview</a></td>"
+		"<td style=\"width:12px\"></td>"
+		"<td style=\"border:1px solid #920C24;border-radius:6px\"><a href=\"{{ rsvp_decline_link }}\" style=\"display:inline-block;padding:10px 20px;color:#920C24;text-decoration:none\">I can't attend</a></td>"
+		"</tr></table>{% endif %}"
 		+ SIGN_OFF +
 		"<p><b>General Instructions:</b></p><ol>"
 		"<li>Ensure your room is well-illuminated and free of any background/external noise.</li>"
@@ -290,9 +299,9 @@ EVENTS = [
 		"A job's Selection Committee is set up, or a panellist is added to it (workflow step 15).",
 		"Selection Committee Invitation", {"send_to_approvers": 1}, True, True, JOB_VARS + ", interview_date, interview_time, panel, candidate_count"),
 	("Interviews", "interview_invite_round1", "Interview invite: Round 1 / HR interaction", "Round 1 is scheduled (workflow step 13).",
-		"Interview Invite (Round 1)", {"send_to_candidate": 1}, True, True, CANDIDATE_VARS + ", interview_date_time, meeting_link, meeting_platform, interview_location, rsvp_deadline, rsvp_link"),
+		"Interview Invite (Round 1)", {"send_to_candidate": 1}, True, True, CANDIDATE_VARS + ", interview_date_time, meeting_link, meeting_platform, interview_location, rsvp_deadline, rsvp_link, rsvp_accept_link, rsvp_decline_link"),
 	("Interviews", "interview_call_letter", "Interview call letter: final interview", "The final interview is scheduled (workflow steps 14-16).",
-		"Interview Call Letter", {"send_to_candidate": 1}, True, True, CANDIDATE_VARS + ", track, interview_date, interview_day, interview_time, interview_mode, meeting_platform, meeting_link, interview_location, meeting_details, login_time, rsvp_link"),
+		"Interview Call Letter", {"send_to_candidate": 1}, True, True, CANDIDATE_VARS + ", track, interview_date, interview_day, interview_time, interview_mode, meeting_platform, meeting_link, interview_location, meeting_details, login_time, rsvp_link, rsvp_accept_link, rsvp_decline_link"),
 	("Interviews", "interview_reminder", "Interview reminder (to candidate)", "Daily, the day before a scheduled interview.",
 		"Interview Reminder", {"send_to_candidate": 1}, True, True, CANDIDATE_VARS + ", interview_date_time, meeting_link"),
 	("Selection & Offer", "appointment_order", "Appointment order (to candidate)", "The signed appointment order is sent (workflow step 28).",

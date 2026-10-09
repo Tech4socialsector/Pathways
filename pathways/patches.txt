@@ -15,3 +15,5 @@ pathways.patches.v1_0.email_templates_from_workflow_folder
 pathways.patches.v1_0.shortlisting_rubrics_from_sheets
 pathways.patches.v1_0.interview_emails
 pathways.patches.v1_0.interview_emails #location
+pathways.patches.v1_0.interview_emails #folder-wording
+pathways.patches.v1_0.interview_emails #rsvp-buttons
