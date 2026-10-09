@@ -216,6 +216,8 @@ def schedule_interviews(
 			"Interview", {"application": app_name, "round_type": round_type, "status": ["in", ["Scheduled", "Rescheduled"]]}, "name"
 		)
 		iv = frappe.get_doc("Interview", existing) if existing else frappe.new_doc("Interview")
+		if existing:
+			_record_change(iv, when)
 		iv.update(
 			{
 				"application": app_name,
@@ -501,6 +503,21 @@ def get_email_recipients(round_type=None, job_openings=None, cancelled=0):
 	}
 
 
+def _record_change(iv, new_start, note=None):
+	"""Interviews > Rescheduled / edited: what changed last, and when. Call
+	before the new time is set on `iv`."""
+	before = get_datetime(iv.scheduled_datetime) if iv.scheduled_datetime else None
+	if before and get_datetime(new_start) != before:
+		iv.change_type = "Rescheduled"
+		iv.previous_datetime = before
+	else:
+		iv.change_type = "Details edited"
+	iv.change_count = cint(iv.get("change_count")) + 1
+	iv.last_changed_on = frappe.utils.now_datetime()
+	iv.last_changed_by = frappe.session.user
+	iv.change_note = (note or "").strip() or None
+
+
 @frappe.whitelist(methods=["POST"])
 def update_interview(
 	interview, start=None, minutes=None, mode=None, meeting_platform=None, meeting_link=None, location=None,
@@ -528,6 +545,7 @@ def update_interview(
 	if create_meet and not _meet_calendar():
 		frappe.throw(_("Google Meet is not set up: {0}").format(get_meet_status()["reason"]))
 
+	_record_change(iv, new_start, note)
 	iv.update(
 		{
 			"scheduled_datetime": new_start,
@@ -615,6 +633,7 @@ def list_interviews():
 		"Interview",
 		fields=[
 			"name", "application", "round_type", "status", "scheduled_datetime", "mode", "meeting_platform", "meeting_link", "location", "rsvp_status", "calendar_event", "modified",
+			"change_type", "previous_datetime", "change_count", "last_changed_on", "last_changed_by", "change_note",
 			"application.application_id as application_id", "application.job_opening as job_opening",
 		],
 		order_by="scheduled_datetime desc",
@@ -638,6 +657,7 @@ def list_interviews():
 		r.candidate_name = a.get("candidate_name")
 		r.job_title = a.get("job_title")
 		r.scores = scores.get(r.name)
+		r.last_changed_by_name = frappe.utils.get_fullname(r.last_changed_by) if r.last_changed_by else ""
 	return rows
 
 

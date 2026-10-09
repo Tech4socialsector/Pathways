@@ -24,7 +24,15 @@
   "meeting_link",
   "location",
   "calendar_event",
-  "rsvp_status"
+  "rsvp_status",
+  "changes_section",
+  "change_type",
+  "previous_datetime",
+  "change_count",
+  "column_break_changes",
+  "last_changed_on",
+  "last_changed_by",
+  "change_note"
  ],
  "fields": [
   {
@@ -159,11 +167,62 @@
    "fieldtype": "Select",
    "label": "RSVP Status",
    "options": "\nPending\nConfirmed\nDeclined"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "changes_section",
+   "fieldtype": "Section Break",
+   "label": "Changes"
+  },
+  {
+   "fieldname": "change_type",
+   "fieldtype": "Select",
+   "label": "Last Change",
+   "options": "\nRescheduled\nDetails edited",
+   "read_only": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "previous_datetime",
+   "fieldtype": "Datetime",
+   "label": "Previously Scheduled For",
+   "read_only": 1,
+   "description": "The time before the last reschedule."
+  },
+  {
+   "default": "0",
+   "fieldname": "change_count",
+   "fieldtype": "Int",
+   "label": "Times Changed",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_changes",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "last_changed_on",
+   "fieldtype": "Datetime",
+   "label": "Last Changed On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "last_changed_by",
+   "fieldtype": "Link",
+   "options": "User",
+   "label": "Last Changed By",
+   "read_only": 1
+  },
+  {
+   "fieldname": "change_note",
+   "fieldtype": "Small Text",
+   "label": "Change Note",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-09-21 00:00:00.000000",
+ "modified": "2026-10-09 18:00:00.000000",
  "modified_by": "Administrator",
  "module": "Pathways",
  "name": "Interview",

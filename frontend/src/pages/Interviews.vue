@@ -113,13 +113,14 @@
 
       <DataTable
         v-else
-        export-name="interviews"
-        :columns="columns"
-        :rows="activeRows"
+        :key="tab"
+        :export-name="tab === 'changed' ? 'interviews-rescheduled' : 'interviews'"
+        :columns="tab === 'changed' ? changedColumns : columns"
+        :rows="tab === 'changed' ? changedRows : activeRows"
         :loading="loading"
-        :filters="filters"
+        :filters="tab === 'changed' ? changedFilters : filters"
         clickable
-        empty-title="No interviews scheduled yet"
+        :empty-title="tab === 'changed' ? 'No interviews have been rescheduled or edited' : 'No interviews scheduled yet'"
         search-placeholder="Search candidate, job or application…"
         @row-click="(r) => router.push(`/applications/${r.application}`)"
       >
@@ -140,6 +141,10 @@
                   >
                     <FeatherIcon name="clipboard" class="h-3 w-3" />Scores {{ row.scores.scored }}/{{ row.scores.panel_size }}<template v-if="row.scores.scored"> · avg {{ row.scores.average }}/{{ row.scores.max_score }}</template>
                   </router-link>
+        </template>
+        <template #cell-change_type="{ row }">
+          <div class="text-gray-900">{{ changeLabel(row) }}<span v-if="row.change_count > 1" class="text-xs text-gray-500"> · {{ row.change_count }} times</span></div>
+          <div v-if="row.change_note" class="max-w-[16rem] truncate text-xs text-gray-500" :title="row.change_note">{{ row.change_note }}</div>
         </template>
         <template #cell-rsvp_status="{ row }">
           <span v-if="['Scheduled', 'Rescheduled'].includes(row.status)" class="rounded-full px-2 py-0.5 text-xs font-medium" :class="RSVP_TONE[row.rsvp_status || 'Pending']">
@@ -195,15 +200,31 @@ const rows = ref([])
 const toSchedule = ref([])
 const toScheduleCount = computed(() => toSchedule.value.reduce((n, j) => n + j.candidates.length, 0))
 const TABS = [
-  { key: 'scheduled', label: 'Scheduled' },
+  // In workflow order: waiting, booked, changed, called off.
   { key: 'to_schedule', label: 'To schedule' },
+  { key: 'scheduled', label: 'Scheduled' },
+  { key: 'changed', label: 'Rescheduled / edited' },
   { key: 'cancelled', label: 'Cancelled' },
 ]
 const tab = ref('scheduled')
 // Scheduled tab: open and completed interviews; cancelled ones have their own tab.
 const activeRows = computed(() => rows.value.filter((r) => r.status !== 'Cancelled'))
 const cancelledRows = computed(() => rows.value.filter((r) => r.status === 'Cancelled'))
-const tabCount = computed(() => ({ scheduled: activeRows.value.length, to_schedule: toScheduleCount.value, cancelled: cancelledRows.value.length }))
+// Rescheduled / edited: open or completed interviews changed after they were
+// scheduled (they stay on the Scheduled tab too).
+const changedRows = computed(() =>
+  activeRows.value
+    .filter((r) => r.change_count > 0 || r.status === 'Rescheduled')
+    // Rescheduled before changes were tracked: no change_type saved.
+    .map((r) => (r.change_type ? r : { ...r, change_type: 'Rescheduled' }))
+    .sort((a, b) => String(b.last_changed_on || b.modified || '').localeCompare(String(a.last_changed_on || a.modified || ''))),
+)
+const tabCount = computed(() => ({
+  scheduled: activeRows.value.length,
+  changed: changedRows.value.length,
+  to_schedule: toScheduleCount.value,
+  cancelled: cancelledRows.value.length,
+}))
 
 // To schedule: one row per candidate (the API groups them by job).
 const toScheduleRows = computed(() =>
@@ -345,6 +366,32 @@ const columns = [
 ]
 const filters = [
   { key: 'status', label: 'Statuses' },
+  { key: 'round_type', label: 'Rounds' },
+  { key: 'job_title', label: 'Job Openings' },
+]
+
+const changeLabel = (r) => r.change_type || 'Rescheduled'
+const changedColumns = [
+  { key: 'scheduled_datetime', label: 'Now scheduled for', format: columns[0].format },
+  {
+    key: 'previous_datetime',
+    label: 'Previously',
+    format: (r) => (r.previous_datetime ? dayjs(r.previous_datetime).format('DD MMM YYYY, h:mm A') : '—'),
+  },
+  { key: 'candidate_name', label: 'Candidate' },
+  { key: 'job_title', label: 'Job Opening' },
+  { key: 'round_type', label: 'Round', format: columns[3].format },
+  { key: 'change_type', label: 'Change', format: changeLabel },
+  {
+    key: 'last_changed_on',
+    label: 'Changed on',
+    format: (r) => (r.last_changed_on ? dayjs(r.last_changed_on).format('DD MMM YYYY, h:mm A') + (r.last_changed_by_name ? ` · ${r.last_changed_by_name}` : '') : '—'),
+  },
+  { key: 'rsvp_status', label: 'RSVP' },
+  { key: 'status', label: 'Status' },
+]
+const changedFilters = [
+  { key: 'change_type', label: 'Changes', options: ['Rescheduled', 'Details edited'] },
   { key: 'round_type', label: 'Rounds' },
   { key: 'job_title', label: 'Job Openings' },
 ]
