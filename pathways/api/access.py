@@ -92,6 +92,11 @@ def get_my_access():
 			doctypes[doctype] = _doctype_perms(doctype)
 		if is_approver(user):
 			menu.append("approvals")
+		# Interview Panel: Selection Committee members score final interviews.
+		if frappe.db.exists("Selection Committee", [["Committee Member Row", "member", "=", user]]) or (
+			"interviews" in menu and doctypes.get("Interview", {}).get("create")
+		):
+			menu.append("panel")
 		pipeline = has_full_access("Application")
 		if pipeline:
 			menu.append("reports")

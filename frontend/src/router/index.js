@@ -47,6 +47,26 @@ const routes = [
     meta: { requiresStaff: true },
   },
   {
+    path: '/panel',
+    name: 'InterviewPanel',
+    component: () => import('@/pages/InterviewPanel.vue'),
+    meta: { requiresStaff: true },
+  },
+  {
+    path: '/panel/sheet/:job',
+    name: 'ConsolidatedScores',
+    component: () => import('@/pages/ConsolidatedScores.vue'),
+    props: true,
+    meta: { requiresStaff: true },
+  },
+  {
+    path: '/panel/:interview',
+    name: 'InterviewAssessment',
+    component: () => import('@/pages/InterviewAssessment.vue'),
+    props: true,
+    meta: { requiresStaff: true },
+  },
+  {
     path: '/offers',
     name: 'Offers',
     component: () => import('@/pages/Offers.vue'),

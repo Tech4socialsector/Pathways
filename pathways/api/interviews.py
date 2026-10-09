@@ -77,8 +77,12 @@ def get_job_interviews(job_opening):
 		fields=["name", "application", "round_type", "status", "scheduled_datetime", "mode", "meeting_platform", "meeting_link", "location", "rsvp_status", "calendar_event"],
 		order_by="scheduled_datetime asc",
 	)
+	from pathways.api.panel import score_summary
+
+	scores = score_summary([iv.name for iv in interviews if iv.round_type == "Final"])
 	by_app = {}
 	for iv in interviews:
+		iv.scores = scores.get(iv.name)
 		by_app.setdefault(iv.application, {})[iv.round_type] = iv
 	rows = []
 	for a in apps:
@@ -626,22 +630,27 @@ def list_interviews():
 			fields=["name", "candidate.full_name as candidate_name", "job_opening.job_title as job_title"],
 		)
 	}
+	from pathways.api.panel import score_summary
+
+	scores = score_summary([r.name for r in rows if r.round_type == "Final"])
 	for r in rows:
 		a = apps.get(r.application) or {}
 		r.candidate_name = a.get("candidate_name")
 		r.job_title = a.get("job_title")
+		r.scores = scores.get(r.name)
 	return rows
 
 
 @frappe.whitelist()
 def list_to_schedule():
-	"""Interviews page > To schedule: shortlisted candidates with no open
-	interview yet, grouped by job, for the recruitment team."""
+	"""Interviews page > To schedule, grouped by job, for the recruitment
+	team: shortlisted candidates with no open interview (next: Round 1), and
+	candidates whose Round 1 is completed (next: the final interview)."""
 	if not _can_manage():
 		return []
 	apps = frappe.get_all(
 		"Application",
-		filters={"status": "Shortlisted"},
+		filters={"status": ["in", ["Shortlisted", "Interview Scheduled", "Interview Completed"]]},
 		fields=[
 			"name", "application_id", "job_opening", "status", "eligibility_status", "candidate.full_name as candidate_name",
 			"job_opening.job_title as job_title", "job_opening.position as position", "job_opening.track as track",
@@ -659,6 +668,7 @@ def list_to_schedule():
 	)
 	# Earlier interviews that did not go ahead (cancelled) or are done.
 	history = {}
+	done_rounds = {}
 	for iv in frappe.get_all(
 		"Interview",
 		filters={"application": ["in", [a.name for a in apps]], "status": ["in", ["Cancelled", "Completed"]]},
@@ -667,6 +677,8 @@ def list_to_schedule():
 	):
 		label = _("Round 1") if iv.round_type == "HR Interaction" else _("Final")
 		history.setdefault(iv.application, []).append(f"{label} {_(iv.status).lower()}")
+		if iv.status == "Completed":
+			done_rounds.setdefault(iv.application, set()).add(iv.round_type)
 	committees = {
 		c.job_opening: c
 		for c in frappe.get_all(
@@ -678,6 +690,16 @@ def list_to_schedule():
 	jobs = {}
 	for a in apps:
 		if a.name in booked:
+			continue
+		done = done_rounds.get(a.name, set())
+		if "Final" in done:
+			continue
+		if "HR Interaction" in done:
+			next_round = "Final"
+		elif a.status == "Shortlisted":
+			next_round = "HR Interaction"
+		else:
+			# Nothing open and no round completed: left as it is.
 			continue
 		job = jobs.setdefault(
 			a.job_opening,
@@ -691,6 +713,7 @@ def list_to_schedule():
 			{
 				"name": a.name, "application_id": a.application_id, "candidate_name": a.candidate_name,
 				"status": a.status, "eligibility_status": a.eligibility_status, "interview_history": ", ".join(history.get(a.name, [])),
+				"next_round": next_round,
 			}
 		)
 	return sorted(jobs.values(), key=lambda j: (-len(j["candidates"]), j["job_title"] or ""))

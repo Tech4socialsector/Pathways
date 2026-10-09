@@ -22,3 +22,6 @@ pathways.patches.v1_0.interview_applicant_details #candidate-id
 pathways.patches.v1_0.interview_emails #reschedule-cancel
 pathways.patches.v1_0.interview_emails #rsvp-via-portal
 pathways.patches.v1_0.interview_emails #single-respond-button
+pathways.patches.v1_0.final_interview_rubrics
+pathways.patches.v1_0.interview_emails #match-folder-formatting
+pathways.patches.v1_0.interview_emails #call-letter-confirm-bold

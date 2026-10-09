@@ -40,7 +40,7 @@
         :rows="toScheduleRows"
         :loading="loading"
         :filters="toScheduleFilters"
-        empty-title="Every shortlisted candidate has an interview scheduled"
+        empty-title="Nobody is waiting for an interview to be scheduled"
         search-placeholder="Search candidate, job or application…"
       >
         <template #cell-application_id="{ row }">
@@ -48,6 +48,9 @@
         </template>
         <template #cell-candidate_name="{ row }">
           <span class="font-medium text-gray-900">{{ row.candidate_name }}</span>
+        </template>
+        <template #cell-next_round_label="{ row }">
+          <span class="rounded-full px-2 py-0.5 text-xs font-medium" :class="row.next_round === 'Final' ? 'bg-brand-50 text-brand-700' : 'bg-blue-50 text-blue-700'">{{ row.next_round_label }}</span>
         </template>
         <template #cell-status="{ row }">
           <StatusBadge :status="row.status" />
@@ -80,8 +83,16 @@
         <template #cell-job_title="{ row }">
           <router-link :to="`/jobs/${row.job_opening}`" class="hover:text-brand-700 hover:underline" @click.stop>{{ row.job_title }}</router-link>
         </template>
-        <template #cell-status="{ value }">
+        <template #cell-status="{ row, value }">
           <span class="rounded-full px-2 py-0.5 text-xs font-medium" :class="STATUS_TONE[value] || 'bg-gray-100 text-gray-700'">{{ value }}</span>
+          <router-link
+                    v-if="row.scores?.panel_size"
+                    :to="`/panel/${row.name}`"
+                    class="mt-1 flex items-center gap-1 text-xs text-gray-600 hover:text-brand-700"
+                    @click.stop
+                  >
+                    <FeatherIcon name="clipboard" class="h-3 w-3" />Scores {{ row.scores.scored }}/{{ row.scores.panel_size }}<template v-if="row.scores.scored"> · avg {{ row.scores.average }}/{{ row.scores.max_score }}</template>
+                  </router-link>
         </template>
         <template #cell-rsvp_status="{ row }">
           <span v-if="['Scheduled', 'Rescheduled'].includes(row.status)" class="rounded-full px-2 py-0.5 text-xs font-medium" :class="RSVP_TONE[row.rsvp_status || 'Pending']">
@@ -111,7 +122,7 @@
     <EditInterviewDialog v-model:open="editDialog.open" :interview="editDialog.interview" @saved="load" />
     <CancelInterviewDialog v-model:open="cancelDialog.open" :interview="cancelDialog.interview" :interviews="cancelDialog.interviews" @saved="onCancelled" />
     <ConfirmActionDialog v-model:open="confirmBox.open" v-bind="confirmBox" />
-    <ScheduleInterviewDialog v-model:open="scheduleDialog.open" :candidates="scheduleDialog.candidates" @scheduled="onScheduled" />
+    <ScheduleInterviewDialog v-model:open="scheduleDialog.open" :candidates="scheduleDialog.candidates" :round="scheduleDialog.round" @scheduled="onScheduled" />
   </StaffLayout>
 </template>
 
@@ -120,7 +131,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import ScheduleInterviewDialog from '@/components/jobs/ScheduleInterviewDialog.vue'
 import { useRouter } from 'vue-router'
 import { BTN_BRAND } from '@/utils/buttonStyles'
-import { Button, Dropdown } from 'frappe-ui'
+import { Button, Dropdown, FeatherIcon } from 'frappe-ui'
 import ConfirmActionDialog from '@/components/common/ConfirmActionDialog.vue'
 import CancelInterviewDialog from '@/components/jobs/CancelInterviewDialog.vue'
 import EditInterviewDialog from '@/components/jobs/EditInterviewDialog.vue'
@@ -155,6 +166,7 @@ const toScheduleRows = computed(() =>
       has_committee: j.has_committee,
       committee_date: j.committee_date,
       committee_time: j.committee_time,
+      next_round_label: c.next_round === 'Final' ? 'Final interview' : 'Round 1 (HR)',
     })),
   ),
 )
@@ -163,6 +175,7 @@ const toScheduleColumns = [
   { key: 'candidate_name', label: 'Candidate Name' },
   { key: 'job_title', label: 'Job Opening' },
   { key: 'track', label: 'Track' },
+  { key: 'next_round_label', label: 'Next Round' },
   { key: 'status', label: 'Current Status' },
 ]
 // Available from the Columns menu.
@@ -172,15 +185,18 @@ const toScheduleExtra = [
   { key: 'eligibility_status', label: 'Eligibility' },
 ]
 const toScheduleFilters = [
+  { key: 'next_round_label', label: 'Next Rounds' },
   { key: 'job_title', label: 'Job Openings' },
   { key: 'track', label: 'Tracks' },
   { key: 'committee', label: 'Committee' },
 ]
 
 // ----- schedule from this page
-const scheduleDialog = reactive({ open: false, candidates: [], clear: null })
+const scheduleDialog = reactive({ open: false, candidates: [], clear: null, round: 'HR Interaction' })
+// The dialog opens on the candidates' next round: Final once Round 1 is completed.
 function openSchedule(chosen, clear = null) {
-  Object.assign(scheduleDialog, { open: true, candidates: chosen, clear })
+  const round = chosen.length && chosen.every((c) => c.next_round === 'Final') ? 'Final' : 'HR Interaction'
+  Object.assign(scheduleDialog, { open: true, candidates: chosen, clear, round })
 }
 async function onScheduled() {
   scheduleDialog.clear?.()
@@ -288,7 +304,7 @@ const tiles = computed(() => {
     { label: 'Upcoming', value: open.filter((r) => dayjs(r.scheduled_datetime).isAfter(now)).length },
     { label: 'Today', value: open.filter((r) => dayjs(r.scheduled_datetime).isSame(now, 'day')).length },
     { label: 'Awaiting RSVP', value: open.filter((r) => (r.rsvp_status || 'Pending') === 'Pending').length },
-    { label: 'Shortlisted, not scheduled', value: toScheduleCount.value },
+    { label: 'Waiting to be scheduled', value: toScheduleCount.value },
   ]
 })
 

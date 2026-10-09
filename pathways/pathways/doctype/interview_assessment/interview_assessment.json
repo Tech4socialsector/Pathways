@@ -7,11 +7,19 @@
  "engine": "InnoDB",
  "field_order": [
   "interview",
+  "application",
+  "candidate_name",
+  "job_title",
   "panelist",
+  "entered_by",
   "column_break_1",
   "total_score",
+  "max_score",
+  "score_percent",
+  "verdict",
   "panelist_signature_confirmed",
   "recommendation_section",
+  "area_of_specialization",
   "recommendation",
   "criteria_section",
   "criteria"
@@ -27,6 +35,28 @@
    "reqd": 1
   },
   {
+   "fieldname": "application",
+   "fieldtype": "Link",
+   "label": "Application",
+   "options": "Application",
+   "read_only": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "candidate_name",
+   "fieldtype": "Data",
+   "label": "Applicant Name",
+   "read_only": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "job_title",
+   "fieldtype": "Data",
+   "label": "Job Opening",
+   "read_only": 1,
+   "in_list_view": 1
+  },
+  {
    "fieldname": "panelist",
    "fieldtype": "Link",
    "in_list_view": 1,
@@ -34,6 +64,14 @@
    "label": "Panelist",
    "options": "User",
    "reqd": 1
+  },
+  {
+   "fieldname": "entered_by",
+   "fieldtype": "Link",
+   "label": "Entered By",
+   "options": "User",
+   "read_only": 1,
+   "description": "Set when the recruitment team typed in a panellist's form."
   },
   {
    "fieldname": "column_break_1",
@@ -47,6 +85,27 @@
    "read_only": 1
   },
   {
+   "fieldname": "max_score",
+   "fieldtype": "Float",
+   "label": "Max Score",
+   "read_only": 1
+  },
+  {
+   "fieldname": "score_percent",
+   "fieldtype": "Percent",
+   "label": "Score %",
+   "read_only": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "verdict",
+   "fieldtype": "Select",
+   "label": "Recommendation",
+   "options": "\nRecommended\nWaitlist\nNot Recommended",
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
    "default": "0",
    "fieldname": "panelist_signature_confirmed",
    "fieldtype": "Check",
@@ -58,9 +117,14 @@
    "label": "Recommendation"
   },
   {
+   "fieldname": "area_of_specialization",
+   "fieldtype": "Data",
+   "label": "Area of Specialization"
+  },
+  {
    "fieldname": "recommendation",
    "fieldtype": "Small Text",
-   "label": "Recommendation of the Panelist"
+   "label": "Additional Comments"
   },
   {
    "fieldname": "criteria_section",
@@ -121,5 +185,7 @@
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],
- "track_changes": 1
+ "track_changes": 1,
+ "title_field": "candidate_name",
+ "show_title_field_in_link": 0
 }

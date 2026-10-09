@@ -44,6 +44,10 @@
             Add panellist
           </Button>
         </template>
+        <p v-if="!loading && chosenCount < size.min" class="flex items-center gap-1.5 text-orange-700">
+          <FeatherIcon name="info" class="h-4 w-4 shrink-0" />
+          Choose at least {{ size.min }} panellists to save ({{ chosenCount }} chosen{{ state.members.length < size.min ? ' · use Add panellist' : '' }}).
+        </p>
         <p v-if="state.error" class="rounded-md bg-red-50 px-3 py-2 text-red-700">{{ state.error }}</p>
       </div>
     </template>
@@ -60,7 +64,7 @@
 
 <script setup>
 import { computed, reactive, ref, watch } from 'vue'
-import { Button, Dialog, FormControl } from 'frappe-ui'
+import { Button, Dialog, FeatherIcon, FormControl } from 'frappe-ui'
 import { interviewService } from '@/services/interviews'
 import { BTN_BRAND } from '@/utils/buttonStyles'
 import { toast } from '@/utils/notify'

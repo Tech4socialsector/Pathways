@@ -67,6 +67,7 @@ const ALL_ITEMS = [
   { key: 'jobs', to: '/jobs', label: 'Job Openings', icon: 'briefcase' },
   { key: 'applications', to: '/applications', label: 'Applications', icon: 'file-text' },
   { key: 'interviews', to: '/interviews', label: 'Interviews', icon: 'calendar' },
+  { key: 'panel', to: '/panel', label: 'Interview Panel', icon: 'clipboard' },
   { key: 'approvals', to: '/approvals', label: 'My Approvals', icon: 'check-square' },
   { key: 'offers', to: '/offers', label: 'Offers', icon: 'award' },
   { key: 'documents', to: '/documents', label: 'Documents', icon: 'folder' },

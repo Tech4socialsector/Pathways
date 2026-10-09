@@ -11,6 +11,7 @@
       <div v-if="data.can_manage" class="mb-3 flex flex-wrap items-center gap-2 rounded-lg bg-gray-50 px-3 py-2 text-sm">
         <span class="text-gray-600">{{ selected.length ? `${selected.length} selected` : 'Tick candidates to schedule them' }}</span>
         <div class="ml-auto flex flex-wrap gap-2">
+          <Button v-if="hasFinal" size="sm" variant="outline" icon-left="grid" @click="$router.push(`/panel/sheet/${jobOpening}`)">Score sheet</Button>
           <Button size="sm" variant="outline" icon-left="phone" :disabled="!selected.length" @click="openSchedule('HR Interaction')">Schedule Round 1 (HR)</Button>
           <Button
             size="sm"
@@ -76,6 +77,13 @@
                       </button>
                     </Dropdown>
                   </div>
+<router-link
+                    v-if="c.rounds[round].scores?.panel_size"
+                    :to="`/panel/${c.rounds[round].name}`"
+                    class="mt-1 flex items-center gap-1 text-xs text-gray-600 hover:text-brand-700"
+                                      >
+                    <FeatherIcon name="clipboard" class="h-3 w-3" />Scores {{ c.rounds[round].scores.scored }}/{{ c.rounds[round].scores.panel_size }}<template v-if="c.rounds[round].scores.scored"> · avg {{ c.rounds[round].scores.average }}/{{ c.rounds[round].scores.max_score }}</template>
+                  </router-link>
                   <div v-if="c.rounds[round].location" class="mt-1 flex items-center gap-1 text-xs text-gray-600">
                     <FeatherIcon name="map-pin" class="h-3 w-3" />{{ c.rounds[round].location }}
                   </div>
@@ -141,6 +149,7 @@ watch(
   },
 )
 
+const hasFinal = computed(() => (props.data?.candidates || []).some((c) => c.rounds.Final && c.rounds.Final.status !== 'Cancelled'))
 const subtitle = computed(() => {
   const list = props.data?.candidates || []
   if (!list.length) return ''
