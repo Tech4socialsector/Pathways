@@ -916,6 +916,22 @@ def seed_departments():
 def seed_designations():
 	for name, track, employment_type, pay_level, superannuation_age in DESIGNATIONS:
 		if frappe.db.exists("Designation", name):
+			# A designation already on the site (made by hand or by another
+			# app) gets the recruitment details it is missing; values that
+			# are already set are left alone.
+			current = frappe.db.get_value(
+				"Designation", name, ["track", "employment_type", "pay_level_range", "superannuation_age"], as_dict=True
+			) or {}
+			missing = {
+				field: value
+				for field, value in (
+					("track", track), ("employment_type", employment_type),
+					("pay_level_range", pay_level), ("superannuation_age", superannuation_age),
+				)
+				if not current.get(field) and value
+			}
+			if missing:
+				frappe.db.set_value("Designation", name, missing, update_modified=False)
 			continue
 		_insert(
 			{
@@ -990,13 +1006,15 @@ def seed_positions():
 			continue
 		designation = frappe.db.get_value(
 			"Designation", position["designation"], ["employment_type", "pay_level_range"], as_dict=True
-		)
+		) or frappe._dict()
+		# Fall back to the seeded defaults when the site's designation lacks them.
+		default = next((d for d in DESIGNATIONS if d[0] == position["designation"]), None)
 		doc = frappe.get_doc(
 			{
 				"doctype": "Position",
 				"is_active": 1,
-				"employment_type": designation.employment_type,
-				"pay_level": designation.pay_level_range,
+				"employment_type": designation.employment_type or (default[2] if default else None),
+				"pay_level": designation.pay_level_range or (default[3] if default else None),
 				**{k: v for k, v in position.items() if k not in ("screening_questions", "required_documents")},
 			}
 		)
