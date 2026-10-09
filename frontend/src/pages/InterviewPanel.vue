@@ -33,6 +33,10 @@
               {{ f.label }}
             </button>
           </div>
+          <div v-if="groups.length > 1" class="flex items-center gap-1">
+            <Button size="sm" variant="ghost" icon-left="chevrons-down" @click="setAll(false)">Expand all</Button>
+            <Button size="sm" variant="ghost" icon-left="chevrons-up" @click="setAll(true)">Collapse all</Button>
+          </div>
           <input
             v-model="search"
             type="search"
@@ -50,67 +54,109 @@
           <template v-else>Nothing matches.</template>
         </div>
 
-        <section v-for="g in groups" :key="g.job_opening" class="mb-5 overflow-hidden rounded-xl border bg-white shadow-sm">
-          <header class="flex flex-wrap items-center justify-between gap-2 border-b bg-gray-50/70 px-5 py-3">
-            <div>
-              <h2 class="font-semibold text-gray-900">{{ g.job_title }}</h2>
-              <p class="text-xs text-gray-500">{{ g.rows.length }} candidate{{ g.rows.length === 1 ? '' : 's' }}</p>
-            </div>
-            <div class="flex items-center gap-2">
+        <section v-for="g in groups" :key="g.job_opening" class="mb-4 overflow-hidden rounded-xl border bg-white shadow-sm">
+          <!-- Header: click to fold the job's candidates away -->
+          <header class="flex flex-wrap items-center gap-3 bg-gray-50/70 px-4 py-3" :class="!isCollapsed(g) && 'border-b'">
+            <button
+              type="button"
+              class="flex min-w-0 flex-1 items-center gap-3 text-left"
+              :aria-expanded="!isCollapsed(g)"
+              :aria-controls="`panel-${g.job_opening}`"
+              @click="toggle(g)"
+            >
+              <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-gray-500 transition hover:bg-gray-200/70">
+                <FeatherIcon name="chevron-right" class="h-4 w-4 transition-transform" :class="!isCollapsed(g) && 'rotate-90'" />
+              </span>
+              <span class="min-w-0">
+                <span class="block truncate font-semibold text-gray-900">{{ g.job_title }}</span>
+                <span class="block text-xs text-gray-500">
+                  {{ g.rows.length }} candidate{{ g.rows.length === 1 ? '' : 's' }}
+                  <template v-if="g.panelTotal"> · {{ g.fullyScored }} of {{ g.rows.length }} fully scored</template>
+                </span>
+              </span>
+            </button>
+            <div class="flex shrink-0 items-center gap-2">
               <span v-if="g.toScore" class="rounded-full bg-orange-50 px-2.5 py-0.5 text-xs font-medium text-orange-700">{{ g.toScore }} to score</span>
               <span v-else-if="g.anyMine" class="rounded-full bg-green-50 px-2.5 py-0.5 text-xs font-medium text-green-700">All scored</span>
               <Button v-if="g.anyMine" size="sm" variant="outline" icon-left="printer" @click="printMine(g)">My form (PDF)</Button>
               <Button size="sm" variant="outline" icon-left="grid" @click="router.push(`/panel/sheet/${g.job_opening}`)">Score sheet</Button>
             </div>
           </header>
-          <ul class="divide-y">
-            <li v-for="iv in g.rows" :key="iv.name" class="flex flex-wrap items-center gap-x-5 gap-y-2 px-5 py-3">
-              <div class="w-36 shrink-0 text-sm">
-                <div class="font-medium text-gray-900">{{ dayjs(iv.scheduled_datetime).format('ddd, DD MMM') }}</div>
-                <div class="text-gray-500">{{ dayjs(iv.scheduled_datetime).format('h:mm A') }}</div>
-              </div>
-              <div class="min-w-0 flex-1">
-                <div class="truncate font-medium text-gray-900">{{ iv.candidate_name }}</div>
-                <div class="flex flex-wrap items-center gap-x-2 text-xs text-gray-500">
-                  <span class="font-mono">{{ iv.application_id }}</span>
-                  <span>· {{ iv.mode === 'In-Person' ? iv.location || 'In person' : iv.meeting_platform || 'Online' }}</span>
-                </div>
-              </div>
-              <div class="w-40 shrink-0 text-xs text-gray-600">
-                <template v-if="iv.scores?.panel_size">
-                  <div>{{ iv.scores.scored }} of {{ iv.scores.panel_size }} panellists scored</div>
-                  <div class="mt-1 h-1.5 overflow-hidden rounded-full bg-gray-100">
-                    <div class="h-full rounded-full bg-brand-700" :style="{ width: `${Math.min(100, (iv.scores.scored / iv.scores.panel_size) * 100)}%` }" />
-                  </div>
-                  <div v-if="data.can_manage && iv.scores.scored" class="mt-1">Average {{ iv.scores.average }} / {{ iv.scores.max_score }}</div>
-                </template>
-              </div>
-              <div class="w-44 shrink-0">
-                <span
-                  v-if="iv.is_panellist && iv.my_score"
-                  class="inline-flex items-center gap-1 rounded-full bg-green-50 px-2.5 py-0.5 text-xs font-medium text-green-700"
-                >
-                  <FeatherIcon name="check" class="h-3 w-3" />
-                  You: {{ fmt(iv.my_score.total_score) }} / {{ fmt(iv.my_score.max_score) }}<template v-if="iv.my_score.verdict"> · {{ iv.my_score.verdict }}</template>
-                </span>
-                <span v-else-if="iv.is_panellist" class="rounded-full bg-orange-50 px-2.5 py-0.5 text-xs font-medium text-orange-700">Not scored yet</span>
-              </div>
-              <div class="flex shrink-0 items-center gap-2">
-                <a v-if="iv.meeting_link && isUpcoming(iv)" :href="iv.meeting_link" target="_blank" rel="noopener">
-                  <Button size="sm" variant="outline" icon-left="video">Join</Button>
-                </a>
-                <Button
-                  size="sm"
-                  :variant="iv.is_panellist && !iv.my_score ? 'solid' : 'outline'"
-                  :class="iv.is_panellist && !iv.my_score ? BTN_BRAND : ''"
-                  :icon-left="iv.is_panellist || data.can_manage ? 'edit-3' : 'eye'"
+
+          <div v-show="!isCollapsed(g)" :id="`panel-${g.job_opening}`" class="overflow-x-auto">
+            <table class="w-full min-w-[760px] text-sm">
+              <thead class="bg-white text-left text-xs uppercase tracking-wide text-gray-500">
+                <tr class="border-b">
+                  <th class="px-4 py-2.5 font-medium">Interview</th>
+                  <th class="px-4 py-2.5 font-medium">Candidate</th>
+                  <th class="px-4 py-2.5 font-medium">Mode</th>
+                  <th class="px-4 py-2.5 font-medium">Panel progress</th>
+                  <th v-if="g.anyMine" class="px-4 py-2.5 font-medium">Your score</th>
+                  <th class="px-4 py-2.5 text-right font-medium"><span class="sr-only">Actions</span></th>
+                </tr>
+              </thead>
+              <tbody class="divide-y">
+                <tr
+                  v-for="iv in g.rows"
+                  :key="iv.name"
+                  class="cursor-pointer transition hover:bg-gray-50"
                   @click="router.push(`/panel/${iv.name}`)"
                 >
-                  {{ iv.is_panellist ? (iv.my_score ? 'Edit score' : 'Score') : data.can_manage ? 'Enter scores' : 'View' }}
-                </Button>
-              </div>
-            </li>
-          </ul>
+                  <td class="whitespace-nowrap px-4 py-3">
+                    <div class="font-medium text-gray-900">{{ dayjs(iv.scheduled_datetime).format('ddd, DD MMM') }}</div>
+                    <div class="text-xs text-gray-500">{{ dayjs(iv.scheduled_datetime).format('h:mm A') }}</div>
+                  </td>
+                  <td class="px-4 py-3">
+                    <div class="font-medium text-gray-900">{{ iv.candidate_name }}</div>
+                    <div class="font-mono text-xs text-gray-500">{{ iv.application_id }}</div>
+                  </td>
+                  <td class="px-4 py-3 text-gray-700">
+                    <span class="inline-flex items-center gap-1.5">
+                      <FeatherIcon :name="iv.mode === 'In-Person' ? 'map-pin' : 'video'" class="h-3.5 w-3.5 text-gray-400" />
+                      {{ iv.mode === 'In-Person' ? iv.location || 'In person' : iv.meeting_platform || 'Online' }}
+                    </span>
+                  </td>
+                  <td class="w-48 px-4 py-3 text-xs text-gray-600">
+                    <template v-if="iv.scores?.panel_size">
+                      <div class="tabular-nums">{{ iv.scores.scored }} of {{ iv.scores.panel_size }} scored</div>
+                      <div class="mt-1 h-1.5 overflow-hidden rounded-full bg-gray-100">
+                        <div class="h-full rounded-full bg-brand-700" :style="{ width: `${Math.min(100, (iv.scores.scored / iv.scores.panel_size) * 100)}%` }" />
+                      </div>
+                      <div v-if="data.can_manage && iv.scores.scored" class="mt-1 tabular-nums">Avg {{ iv.scores.average }} / {{ iv.scores.max_score }}</div>
+                    </template>
+                    <span v-else class="text-gray-400">—</span>
+                  </td>
+                  <td v-if="g.anyMine" class="px-4 py-3">
+                    <span
+                      v-if="iv.is_panellist && iv.my_score"
+                      class="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-green-50 px-2.5 py-0.5 text-xs font-medium text-green-700"
+                    >
+                      <FeatherIcon name="check" class="h-3 w-3" />
+                      {{ fmt(iv.my_score.total_score) }} / {{ fmt(iv.my_score.max_score) }}<template v-if="iv.my_score.verdict"> · {{ iv.my_score.verdict }}</template>
+                    </span>
+                    <span v-else-if="iv.is_panellist" class="whitespace-nowrap rounded-full bg-orange-50 px-2.5 py-0.5 text-xs font-medium text-orange-700">Not scored yet</span>
+                    <span v-else class="text-gray-400">—</span>
+                  </td>
+                  <td class="whitespace-nowrap px-4 py-3 text-right" @click.stop>
+                    <div class="flex items-center justify-end gap-2">
+                      <a v-if="iv.meeting_link && isUpcoming(iv)" :href="iv.meeting_link" target="_blank" rel="noopener">
+                        <Button size="sm" variant="outline" icon-left="video">Join</Button>
+                      </a>
+                      <Button
+                        size="sm"
+                        :variant="iv.is_panellist && !iv.my_score ? 'solid' : 'outline'"
+                        :class="iv.is_panellist && !iv.my_score ? BTN_BRAND : ''"
+                        :icon-left="iv.is_panellist || data.can_manage ? 'edit-3' : 'eye'"
+                        @click="router.push(`/panel/${iv.name}`)"
+                      >
+                        {{ iv.is_panellist ? (iv.my_score ? 'Edit score' : 'Score') : data.can_manage ? 'Enter scores' : 'View' }}
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </section>
       </template>
     </div>
@@ -173,8 +219,44 @@ const groups = computed(() => {
     if (!map.has(iv.job_opening)) map.set(iv.job_opening, { job_opening: iv.job_opening, job_title: iv.job_title, rows: [] })
     map.get(iv.job_opening).rows.push(iv)
   }
-  return [...map.values()].map((g) => ({ ...g, toScore: g.rows.filter(toScore).length, anyMine: g.rows.some((iv) => iv.is_panellist) }))
+  return [...map.values()].map((g) => ({
+    ...g,
+    toScore: g.rows.filter(toScore).length,
+    anyMine: g.rows.some((iv) => iv.is_panellist),
+    panelTotal: g.rows.some((iv) => iv.scores?.panel_size),
+    fullyScored: g.rows.filter((iv) => iv.scores?.panel_size && iv.scores.scored >= iv.scores.panel_size).length,
+  }))
 })
+
+// Folded job groups, remembered in this browser (all open by default).
+const COLLAPSE_KEY = 'pathways-panel-collapsed'
+function readCollapsed() {
+  try {
+    return new Set(JSON.parse(localStorage.getItem(COLLAPSE_KEY) || '[]'))
+  } catch {
+    return new Set()
+  }
+}
+const collapsed = ref(readCollapsed())
+function persistCollapsed() {
+  try {
+    localStorage.setItem(COLLAPSE_KEY, JSON.stringify([...collapsed.value]))
+  } catch {
+    // storage unavailable: the choice lasts for this visit only
+  }
+}
+// While searching every group shows its matches; folds return when cleared.
+const isCollapsed = (g) => !search.value.trim() && collapsed.value.has(g.job_opening)
+function toggle(g) {
+  const next = new Set(collapsed.value)
+  next.has(g.job_opening) ? next.delete(g.job_opening) : next.add(g.job_opening)
+  collapsed.value = next
+  persistCollapsed()
+}
+function setAll(fold) {
+  collapsed.value = fold ? new Set(groups.value.map((g) => g.job_opening)) : new Set()
+  persistCollapsed()
+}
 
 async function printMine(g) {
   try {

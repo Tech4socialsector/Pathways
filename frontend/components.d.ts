@@ -55,5 +55,6 @@ declare module 'vue' {
     ToggleSwitch: typeof import('./src/components/common/ToggleSwitch.vue')['default']
     TopBar: typeof import('./src/components/layout/TopBar.vue')['default']
     UploadField: typeof import('./src/components/candidate/UploadField.vue')['default']
+    UserPicker: typeof import('./src/components/common/UserPicker.vue')['default']
   }
 }

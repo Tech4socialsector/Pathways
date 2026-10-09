@@ -112,7 +112,7 @@ def get_panel_options():
 	return frappe.get_all(
 		"User",
 		filters={"enabled": 1, "user_type": "System User", "name": ["not in", ["Guest", "Administrator"]]},
-		fields=["name", "full_name"],
+		fields=["name", "full_name", "email"],
 		order_by="full_name asc",
 	)
 

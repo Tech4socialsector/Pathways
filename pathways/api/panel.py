@@ -243,6 +243,29 @@ def _can_view_sheet(job_opening):
 	return bool(frappe.db.exists("Selection Committee", [["Committee Member Row", "member", "=", frappe.session.user], ["job_opening", "=", job_opening]]))
 
 
+def _sheet_jobs():
+	"""Job openings with final interviews whose score sheet the user can
+	open, for the position filter on the sheet."""
+	filters = {"round_type": "Final", "status": ["!=", "Cancelled"]}
+	if not _can_manage():
+		committees = _my_committees()
+		if not committees:
+			return []
+		filters["selection_committee"] = ["in", committees]
+	counts = {}
+	for r in frappe.get_all("Interview", filters=filters, fields=["application.job_opening as job_opening"]):
+		if r.job_opening:
+			counts[r.job_opening] = counts.get(r.job_opening, 0) + 1
+	if not counts:
+		return []
+	jobs = frappe.get_all(
+		"Job Opening", filters={"name": ["in", list(counts)]}, fields=["name", "job_title", "position"], order_by="job_title asc"
+	)
+	for j in jobs:
+		j.count = counts[j.name]
+	return jobs
+
+
 @frappe.whitelist()
 def get_consolidated(job_opening, interview_date=None):
 	"""Workflow folder "6. Final Interview / Consolidated score sheet": per
@@ -358,6 +381,7 @@ def get_consolidated(job_opening, interview_date=None):
 		"panel": [{"user": m, "full_name": frappe.utils.get_fullname(m)} for m in members],
 		"rows": rows,
 		"can_decide": 1 if _can_manage() else 0,
+		"jobs": _sheet_jobs(),
 	}
 
 
@@ -420,7 +444,7 @@ def export_consolidated(job_opening, interview_date=None):
 	center = Alignment(horizontal="center", vertical="center", wrap_text=True)
 
 	tail = [f"Total of {n_panel}", f"Average for {max_total:g} Marks", "%", f"Meets {data['pass_percent']:g}%", "Recommendations", "Decision"]
-	last_col = 2 + n_panel * block + len(tail)
+	last_col = 3 + n_panel * block + len(tail)
 	ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=last_col)
 	ws.cell(1, 1, "National Law School of India University, Bengaluru").font = Font(bold=True, size=14)
 	ws.cell(1, 1).alignment = center
@@ -430,10 +454,10 @@ def export_consolidated(job_opening, interview_date=None):
 	ws.cell(2, 1, f"Position : {data['job']['job_title']}" + (f"          Date of Interview: {when}" if when else "")).font = bold
 	ws.cell(2, 1).alignment = center
 
-	for col, label in ((1, "Sl.\nNo."), (2, "Name of the Candidate")):
+	for col, label in ((1, "Sl.\nNo."), (2, "Name of the Candidate"), (3, "Candidate ID")):
 		ws.merge_cells(start_row=3, start_column=col, end_row=4, end_column=col)
 		ws.cell(3, col, label)
-	col = 3
+	col = 4
 	for p in panel:
 		ws.merge_cells(start_row=3, start_column=col, end_row=3, end_column=col + block - 1)
 		ws.cell(3, col, p["full_name"])
@@ -452,7 +476,7 @@ def export_consolidated(job_opening, interview_date=None):
 
 	row_no = 5
 	for i, r in enumerate(data["rows"], start=1):
-		values = [i, f"{r['candidate_name']} ({r['application_id']})"]
+		values = [i, r["candidate_name"], r["application_id"]]
 		for p in panel:
 			s = r["scores"].get(p["user"])
 			values += [s["criteria"].get(c["label"]) if s else None for c in crit] + [s["total"] if s else None]
@@ -482,11 +506,12 @@ def export_consolidated(job_opening, interview_date=None):
 		row_no += 1
 
 	ws.column_dimensions["A"].width = 6
-	ws.column_dimensions["B"].width = 32
-	for c in range(3, last_col + 1):
+	ws.column_dimensions["B"].width = 28
+	ws.column_dimensions["C"].width = 22
+	for c in range(4, last_col + 1):
 		ws.column_dimensions[get_column_letter(c)].width = 13
 	ws.row_dimensions[4].height = 48
-	ws.freeze_panes = "C5"
+	ws.freeze_panes = "D5"
 
 	notes = wb.create_sheet("Panel Comments")
 	head = ["Candidate", "Candidate ID", "Panellist", "Total", "Recommendation", "Area of Specialization", "Additional Comments", "Entered By"]

@@ -25,49 +25,89 @@
           </div>
         </div>
 
-        <!-- Interview day: the sheet, the Excel and the PDF forms follow it -->
-        <div class="mb-4 flex flex-wrap items-center gap-2">
-          <span class="text-sm font-medium text-gray-700">Interview date</span>
-          <div class="flex flex-wrap rounded-lg bg-gray-100 p-1 text-sm" role="group" aria-label="Interview date">
-            <button
-              v-for="d in dateOptions"
-              :key="d.value"
-              type="button"
-              class="rounded-md px-3 py-1"
-              :class="date === d.value ? 'bg-white font-semibold text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'"
-              :aria-pressed="date === d.value"
-              @click="date = d.value"
-            >
-              {{ d.label }} <span class="text-xs text-gray-400">{{ d.count }}</span>
-            </button>
-          </div>
-          <label class="flex items-center gap-2 text-sm text-gray-600">
-            or pick a date
-            <input
-              v-model="date"
-              type="date"
-              class="rounded-md border-gray-300 py-1 text-sm focus:border-brand-700 focus:ring-brand-700"
-              aria-label="Interview date"
-            />
-          </label>
-          <button v-if="date" type="button" class="text-sm text-brand-700 hover:underline" @click="date = ''">Clear</button>
-          <span v-if="date" class="w-full text-xs text-gray-500">
-            Showing and downloading only the candidates interviewed on {{ dayjs(date).format('DD MMM YYYY') }}.
-          </span>
-        </div>
+        <!-- Filters: which position's sheet, which interview day, and the panel -->
+        <section class="mb-4 overflow-hidden rounded-xl border bg-white shadow-sm" aria-label="Score sheet filters">
+          <div class="grid grid-cols-1 gap-5 p-4 lg:grid-cols-[minmax(0,1fr)_auto]">
+            <!-- Position: each job opening has its own panel and rubric, so this opens that job's sheet -->
+            <div class="min-w-0">
+              <label for="sheet-position" class="mb-1.5 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                Position
+                <span v-if="jobOptions.length > 1" class="rounded-full bg-gray-100 px-1.5 py-px text-[11px] font-medium normal-case tracking-normal text-gray-600">
+                  {{ jobOptions.length }} with final interviews
+                </span>
+              </label>
+              <div class="relative">
+                <FeatherIcon name="briefcase" class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-700" />
+                <select
+                  id="sheet-position"
+                  :value="job"
+                  :disabled="jobOptions.length < 2"
+                  class="h-10 w-full truncate rounded-lg border-gray-300 bg-white pl-9 pr-9 text-sm font-medium text-gray-900 shadow-sm focus:border-brand-500 focus:ring-brand-500 disabled:cursor-default disabled:bg-gray-50 disabled:opacity-100"
+                  @change="router.push(`/panel/sheet/${$event.target.value}`)"
+                >
+                  <option v-for="j in jobOptions" :key="j.name" :value="j.name">{{ j.label }} · {{ j.count }} candidate{{ j.count === 1 ? '' : 's' }}</option>
+                </select>
+              </div>
+              <p v-if="jobOptions.length < 2" class="mt-1 text-xs text-gray-500">The only position with final interviews.</p>
+            </div>
 
-        <div class="mb-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-gray-600">
-          <span>
-            Panel:
-            <span v-for="(p, i) in data.panel" :key="p.user" class="font-medium text-gray-800">{{ p.full_name }}<template v-if="i < data.panel.length - 1">, </template></span>
-            <span v-if="!data.panel.length" class="text-orange-700">no Selection Committee yet</span>
-          </span>
-          <span>Out of {{ fmt(data.max_total) }} · {{ fmt(data.pass_percent) }}% needed for an offer</span>
-          <label class="ml-auto flex items-center gap-2">
-            <input v-model="showCriteria" type="checkbox" class="rounded border-gray-300 text-brand-700 focus:ring-brand-700" />
-            Show each criterion
-          </label>
-        </div>
+            <!-- Interview day: the sheet, the Excel and the PDF forms follow it -->
+            <div class="min-w-0">
+              <span class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">Interview date</span>
+              <div class="flex flex-wrap items-center gap-2">
+                <div class="flex flex-wrap rounded-lg bg-gray-100 p-1 text-sm" role="group" aria-label="Interview date">
+                  <button
+                    v-for="d in dateOptions"
+                    :key="d.value"
+                    type="button"
+                    class="flex items-center gap-1.5 rounded-md px-3 py-1.5"
+                    :class="date === d.value ? 'bg-white font-semibold text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'"
+                    :aria-pressed="date === d.value"
+                    @click="date = d.value"
+                  >
+                    {{ d.label }}
+                    <span class="rounded-full px-1.5 text-[11px] tabular-nums" :class="date === d.value ? 'bg-brand-50 text-brand-700' : 'bg-white/70 text-gray-500'">{{ d.count }}</span>
+                  </button>
+                </div>
+                <span class="text-sm text-gray-400">or</span>
+                <input
+                  v-model="date"
+                  type="date"
+                  class="h-9 rounded-lg border-gray-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500"
+                  aria-label="Pick an interview date"
+                />
+                <Button v-if="date" size="sm" variant="ghost" icon-left="x" @click="date = ''">Clear</Button>
+              </div>
+            </div>
+          </div>
+
+          <p v-if="date" class="flex items-center gap-2 border-t bg-brand-50/50 px-4 py-2 text-xs text-brand-800">
+            <FeatherIcon name="filter" class="h-3.5 w-3.5" />
+            Showing and downloading only the candidates interviewed on {{ dayjs(date).format('DD MMM YYYY') }}.
+          </p>
+
+          <!-- Panel and scoring rule -->
+          <div class="flex flex-wrap items-center gap-x-4 gap-y-2 border-t bg-gray-50/60 px-4 py-2.5 text-xs text-gray-600">
+            <div class="flex min-w-0 flex-wrap items-center gap-1.5">
+              <span class="font-medium text-gray-500">Panel</span>
+              <span
+                v-for="p in data.panel"
+                :key="p.user"
+                class="inline-flex items-center gap-1.5 rounded-full bg-white py-0.5 pl-0.5 pr-2.5 text-gray-800 ring-1 ring-inset ring-gray-200"
+              >
+                <span class="flex h-5 w-5 items-center justify-center rounded-full bg-brand-50 text-[10px] font-semibold text-brand-700">{{ initials(p.full_name) }}</span>
+                {{ p.full_name }}
+              </span>
+              <span v-if="!data.panel.length" class="text-orange-700">no Selection Committee yet</span>
+            </div>
+            <span class="hidden h-4 w-px bg-gray-300 sm:block" aria-hidden="true" />
+            <span>Out of <b class="font-semibold text-gray-800">{{ fmt(data.max_total) }}</b> · <b class="font-semibold text-gray-800">{{ fmt(data.pass_percent) }}%</b> needed for an offer</span>
+            <label class="ml-auto flex cursor-pointer items-center gap-2 text-sm text-gray-700">
+              Show each criterion
+              <ToggleSwitch v-model="showCriteria" label="Show each criterion" />
+            </label>
+          </div>
+        </section>
 
         <!-- Decision for the ticked candidates -->
         <div v-if="data.can_decide && selected.length" class="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-brand-200 bg-brand-50 px-3 py-2 text-sm">
@@ -173,14 +213,27 @@
                     </div>
                   </td>
                   <td class="px-3 py-2.5">
-                    <div class="flex items-center gap-1.5">
-                      <span v-if="r.outcome" class="rounded-full px-2 py-0.5 text-xs font-semibold" :class="OUTCOME_TONE[r.outcome]">{{ r.outcome }}</span>
-                      <span v-else-if="!r.can_decide" class="text-xs text-gray-500">{{ r.application_status }}</span>
-                      <span v-else class="text-xs text-gray-400">Not decided</span>
-                      <Dropdown v-if="data.can_decide && r.can_decide" :options="outcomeMenu(r)" placement="right">
-                        <Button size="sm" variant="ghost" icon="more-horizontal" :aria-label="`Decision for ${r.candidate_name}`" />
-                      </Dropdown>
-                    </div>
+                    <!-- The status is the control: click it to decide or change the decision. -->
+                    <Dropdown v-if="data.can_decide && r.can_decide" :options="outcomeMenu(r)" placement="right">
+                      <button
+                        type="button"
+                        class="inline-flex h-7 items-center gap-1.5 whitespace-nowrap rounded-full px-3 text-xs font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+                        :class="r.outcome ? [OUTCOME_TONE[r.outcome], 'hover:brightness-95'] : 'border border-dashed border-brand-300 bg-white text-brand-700 hover:border-brand-500 hover:bg-brand-50'"
+                        :aria-label="r.outcome ? `Decision for ${r.candidate_name}: ${r.outcome}. Change` : `Decide for ${r.candidate_name}`"
+                      >
+                        <FeatherIcon v-if="r.outcome" :name="OUTCOME_ICON[r.outcome]" class="h-3.5 w-3.5" />
+                        {{ r.outcome || 'Decide' }}
+                        <FeatherIcon name="chevron-down" class="h-3.5 w-3.5 opacity-70" />
+                      </button>
+                    </Dropdown>
+                    <span
+                      v-else-if="r.outcome"
+                      class="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-3 py-1 text-xs font-semibold"
+                      :class="OUTCOME_TONE[r.outcome]"
+                    >
+                      <FeatherIcon :name="OUTCOME_ICON[r.outcome]" class="h-3.5 w-3.5" />{{ r.outcome }}
+                    </span>
+                    <span v-else class="whitespace-nowrap text-xs text-gray-500">{{ r.can_decide ? 'Not decided' : r.application_status }}</span>
                   </td>
                 </tr>
                 <!-- Each panellist's recommendation and comments -->
@@ -226,21 +279,25 @@
 
 <script setup>
 import { computed, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { Button, Dropdown, FeatherIcon } from 'frappe-ui'
 import dayjs from 'dayjs'
 import StaffLayout from '@/layouts/StaffLayout.vue'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import ConfirmActionDialog from '@/components/common/ConfirmActionDialog.vue'
+import ToggleSwitch from '@/components/common/ToggleSwitch.vue'
 import { panelService } from '@/services/panel'
 import { toast } from '@/utils/notify'
 
 const props = defineProps({ job: { type: String, required: true } })
+const router = useRouter()
 
 const OUTCOMES = [
   { value: 'Selected', label: 'Selected', icon: 'award' },
   { value: 'Waitlisted', label: 'Waitlist', icon: 'clock' },
   { value: 'Not Selected', label: 'Not selected', icon: 'x' },
 ]
+const OUTCOME_ICON = { Selected: 'award', Waitlisted: 'clock', 'Not Selected': 'x-circle' }
 const OUTCOME_TONE = {
   Selected: 'bg-green-100 text-green-800',
   Waitlisted: 'bg-amber-100 text-amber-800',
@@ -261,6 +318,14 @@ const exporting = ref(false)
 const showCriteria = ref(false)
 const selected = ref([])
 const open = ref(new Set())
+// Other positions with final interviews; the current one is always listed.
+const jobOptions = computed(() => {
+  const jobs = data.value?.jobs || []
+  const label = (j) => (j.position && j.position !== j.job_title ? `${j.job_title} · ${j.position}` : j.job_title)
+  const list = jobs.map((j) => ({ name: j.name, label: label(j), count: j.count }))
+  if (data.value && !list.some((j) => j.name === props.job)) list.unshift({ name: props.job, label: label(data.value.job), count: data.value.rows.length })
+  return list
+})
 // '' = all dates
 const date = ref('')
 const dateOptions = computed(() => {
@@ -277,6 +342,10 @@ watch(date, () => {
 const confirmBox = reactive({ open: false, title: '', message: '', label: '', theme: 'gray', run: null })
 
 const fmt = (n) => (n === null || n === undefined || n === '' ? '' : Number(n).toLocaleString(undefined, { maximumFractionDigits: 2 }))
+function initials(name) {
+  const words = String(name || '').replace(/@.*/, '').split(/[\s._-]+/).filter(Boolean)
+  return words.slice(0, 2).map((w) => w[0].toUpperCase()).join('') || '?'
+}
 const short = (label) => label.split(' ').map((w) => w[0]).join('')
 const decidable = computed(() => (data.value?.rows || []).filter((r) => r.can_decide))
 const colCount = computed(() => {
@@ -309,7 +378,11 @@ function toggle(name) {
 }
 
 function outcomeMenu(r) {
-  const items = OUTCOMES.filter((o) => o.value !== r.outcome).map((o) => ({ label: `Mark ${o.label.toLowerCase()}`, icon: o.icon, onClick: () => askOutcome([r.application], o.value) }))
+  const items = OUTCOMES.filter((o) => o.value !== r.outcome).map((o) => ({
+    label: o.value === 'Selected' ? 'Select' : o.value === 'Waitlisted' ? 'Waitlist' : 'Not selected',
+    icon: o.icon,
+    onClick: () => askOutcome([r.application], o.value),
+  }))
   if (r.outcome) items.push({ label: 'Clear decision', icon: 'rotate-ccw', onClick: () => askOutcome([r.application], '') })
   return [{ group: 'Decision', hideLabel: true, items }]
 }
