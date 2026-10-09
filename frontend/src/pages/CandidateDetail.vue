@@ -81,7 +81,6 @@
               </li>
             </ul>
           </section>
-          <MatchingNote />
         </div>
       </div>
     </div>
@@ -95,7 +94,6 @@ import dayjs from 'dayjs'
 import StaffLayout from '@/layouts/StaffLayout.vue'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
-import MatchingNote from '@/components/candidates/MatchingNote.vue'
 import { candidateService } from '@/services/candidates'
 
 const props = defineProps({ id: { type: String, required: true } })
