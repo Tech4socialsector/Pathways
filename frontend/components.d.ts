@@ -32,6 +32,7 @@ declare module 'vue' {
     JobOpeningForm: typeof import('./src/components/jobs/JobOpeningForm.vue')['default']
     LinkField: typeof import('./src/components/master/LinkField.vue')['default']
     MasterField: typeof import('./src/components/master/MasterField.vue')['default']
+    MatchingNote: typeof import('./src/components/candidates/MatchingNote.vue')['default']
     MultiSelectFilter: typeof import('./src/components/common/MultiSelectFilter.vue')['default']
     NoticePanel: typeof import('./src/components/jobs/NoticePanel.vue')['default']
     PageHeader: typeof import('./src/components/layout/PageHeader.vue')['default']

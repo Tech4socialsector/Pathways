@@ -35,6 +35,19 @@ const routes = [
     meta: { requiresStaff: true },
   },
   {
+    path: '/candidates',
+    name: 'Candidates',
+    component: () => import('@/pages/Candidates.vue'),
+    meta: { requiresStaff: true },
+  },
+  {
+    path: '/candidates/:id',
+    name: 'CandidateDetail',
+    component: () => import('@/pages/CandidateDetail.vue'),
+    props: true,
+    meta: { requiresStaff: true },
+  },
+  {
     path: '/approvals',
     name: 'Approvals',
     component: () => import('@/pages/Approvals.vue'),

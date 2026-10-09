@@ -17,15 +17,6 @@
       </template>
       <template #actions>
         <Button variant="solid" icon-left="eye" :class="BTN_DARK" @click="openDocuments">View Documents</Button>
-        <Button
-          variant="solid"
-          icon-left="download"
-          :class="BTN_DARK"
-          :link="downloadAllUrl"
-          title="All documents merged into one PDF"
-        >
-          Download All
-        </Button>
         <Button v-if="statusOptions.can_change" variant="solid" icon-left="edit-3" :class="BTN_BRAND" @click="openStatusDialog">
           Change Status
         </Button>

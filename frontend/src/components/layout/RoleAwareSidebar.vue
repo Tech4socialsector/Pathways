@@ -65,6 +65,7 @@ const ALL_ITEMS = [
   { key: 'dashboard', to: '/', label: 'Dashboard', icon: 'home' },
   { key: 'master_setup', to: '/master-setup', label: 'Master Setup', icon: 'sliders' },
   { key: 'jobs', to: '/jobs', label: 'Job Openings', icon: 'briefcase' },
+  { key: 'candidates', to: '/candidates', label: 'Candidate Master', icon: 'users' },
   { key: 'applications', to: '/applications', label: 'Applications', icon: 'file-text' },
   { key: 'interviews', to: '/interviews', label: 'Interviews', icon: 'calendar' },
   { key: 'panel', to: '/panel', label: 'Interview Panel', icon: 'clipboard' },

@@ -49,6 +49,7 @@ PROTECTED_ROLES = {"Administrator", "Guest", "All", "Desk User", MANAGER_ROLE}
 # DocType visibly grants the menu.
 MENU_ITEMS = (
 	{"key": "jobs", "label": "Job Openings", "doctype": "Job Opening"},
+	{"key": "candidates", "label": "Candidate Master", "doctype": "Candidate"},
 	{"key": "applications", "label": "Applications", "doctype": "Application"},
 	{"key": "interviews", "label": "Interviews", "doctype": "Interview"},
 	{"key": "offers", "label": "Offers", "doctype": "Offer Appointment Order"},
