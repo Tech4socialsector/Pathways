@@ -54,6 +54,14 @@ h3 {
 .dialog-overlay {
   z-index: 50;
 }
+/* frappe-ui centres dialogs vertically, so a dialog whose content changes
+   height (the schedule dialog switching Mode or Platform, a validation
+   message appearing) jumps up and down. Anchor every dialog near the top
+   instead: it then only grows downwards, and long ones scroll as before. */
+.dialog-overlay > div {
+  justify-content: flex-start;
+  padding-top: 6vh;
+}
 [data-reka-popper-content-wrapper] {
   z-index: 60 !important;
 }

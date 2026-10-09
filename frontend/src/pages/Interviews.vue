@@ -3,9 +3,16 @@
     <PageHeader
       title="Interviews"
       subtitle="Every scheduled interview across job openings. Schedule shortlisted candidates from the To schedule tab."
-      :breadcrumbs="[{ label: 'Dashboard', to: '/' }, { label: 'Interviews' }]"
     />
     <div class="flex-1 overflow-y-auto bg-gray-50/60 p-6">
+      <!-- A list that fails to load says so, instead of looking empty. -->
+      <div v-if="loadErrors.length" class="mb-5 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3" role="alert">
+        <FeatherIcon name="alert-octagon" class="mt-0.5 h-4 w-4 shrink-0 text-red-600" />
+        <div class="min-w-0 flex-1 text-sm text-red-800">
+          <p v-for="e in loadErrors" :key="e">{{ e }}</p>
+        </div>
+        <Button size="sm" :loading="loading" @click="load">Retry</Button>
+      </div>
       <div class="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <div v-for="t in tiles" :key="t.label" class="rounded-xl border bg-white p-4 shadow-sm">
           <div class="text-2xl font-bold tabular-nums text-gray-900">{{ t.value }}</div>
@@ -308,13 +315,18 @@ const tiles = computed(() => {
   ]
 })
 
+// The two lists load independently: one failing must not empty the other.
+const loadErrors = ref([])
 async function load() {
   loading.value = true
-  try {
-    ;[rows.value, toSchedule.value] = await Promise.all([interviewService.listInterviews(), interviewService.listToSchedule()])
-  } finally {
-    loading.value = false
-  }
+  const [scheduled, waiting] = await Promise.allSettled([interviewService.listInterviews(), interviewService.listToSchedule()])
+  const errors = []
+  if (scheduled.status === 'fulfilled') rows.value = scheduled.value || []
+  else errors.push(`Could not load scheduled interviews: ${scheduled.reason?.messages?.[0] || 'please try again.'}`)
+  if (waiting.status === 'fulfilled') toSchedule.value = waiting.value || []
+  else errors.push(`Could not load candidates to schedule: ${waiting.reason?.messages?.[0] || 'please try again.'}`)
+  loadErrors.value = errors
+  loading.value = false
 }
 
 onMounted(async () => {
