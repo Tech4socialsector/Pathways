@@ -8,6 +8,10 @@
  "field_order": [
   "naming_series",
   "application",
+  "candidate",
+  "candidate_name",
+  "job_title",
+  "position",
   "round_type",
   "column_break_1",
   "selection_committee",
@@ -32,11 +36,43 @@
   {
    "fieldname": "application",
    "fieldtype": "Link",
-   "in_list_view": 1,
+   "in_list_view": 0,
    "in_standard_filter": 1,
    "label": "Application",
    "options": "Application",
    "reqd": 1
+  },
+  {
+   "fieldname": "candidate",
+   "fieldtype": "Data",
+   "label": "Candidate ID",
+   "read_only": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "description": "The candidate's ID (also their portal username)."
+  },
+  {
+   "fieldname": "candidate_name",
+   "fieldtype": "Data",
+   "label": "Applicant Name",
+   "read_only": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "bold": 1
+  },
+  {
+   "fieldname": "job_title",
+   "fieldtype": "Data",
+   "label": "Job Opening",
+   "read_only": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "position",
+   "fieldtype": "Data",
+   "label": "Position",
+   "read_only": 1,
+   "in_standard_filter": 1
   },
   {
    "fieldname": "round_type",
@@ -181,5 +217,8 @@
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],
- "track_changes": 1
+ "track_changes": 1,
+ "title_field": "candidate_name",
+ "show_title_field_in_link": 1,
+ "search_fields": "candidate,candidate_name,job_title,position"
 }

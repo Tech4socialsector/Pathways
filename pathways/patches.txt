@@ -17,3 +17,5 @@ pathways.patches.v1_0.interview_emails
 pathways.patches.v1_0.interview_emails #location
 pathways.patches.v1_0.interview_emails #folder-wording
 pathways.patches.v1_0.interview_emails #rsvp-buttons
+pathways.patches.v1_0.interview_applicant_details
+pathways.patches.v1_0.interview_applicant_details #candidate-id
