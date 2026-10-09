@@ -614,7 +614,7 @@ def list_interviews():
 	rows = frappe.get_list(
 		"Interview",
 		fields=[
-			"name", "application", "round_type", "status", "scheduled_datetime", "mode", "meeting_platform", "meeting_link", "location", "rsvp_status", "calendar_event",
+			"name", "application", "round_type", "status", "scheduled_datetime", "mode", "meeting_platform", "meeting_link", "location", "rsvp_status", "calendar_event", "modified",
 			"application.application_id as application_id", "application.job_opening as job_opening",
 		],
 		order_by="scheduled_datetime desc",

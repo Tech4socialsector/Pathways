@@ -32,7 +32,7 @@
         >
           {{ t.label }}
           <span class="rounded-full px-1.5 text-xs font-semibold" :class="tab === t.key ? 'bg-brand-50 text-brand-700' : 'bg-gray-100 text-gray-600'">
-            {{ t.key === 'scheduled' ? rows.length : toScheduleCount }}
+            {{ tabCount[t.key] }}
           </span>
           <span v-if="tab === t.key" class="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-brand-700" />
         </button>
@@ -71,11 +71,51 @@
         </template>
       </DataTable>
 
+      <!-- Cancelled: kept for the record; nothing more can be done with them here -->
+      <DataTable
+        v-else-if="tab === 'cancelled'"
+        export-name="interviews-cancelled"
+        :columns="cancelledColumns"
+        :rows="cancelledRows"
+        :loading="loading"
+        :filters="cancelledFilters"
+        clickable
+        empty-title="No cancelled interviews"
+        search-placeholder="Search candidate, job or application…"
+        @row-click="(r) => router.push(`/applications/${r.application}`)"
+      >
+        <template #cell-candidate_name="{ row }">
+          <div class="font-medium text-gray-900">{{ row.candidate_name }}</div>
+          <div class="font-mono text-xs text-gray-500">{{ row.application_id }}</div>
+        </template>
+        <template #cell-job_title="{ row }">
+          <router-link :to="`/jobs/${row.job_opening}`" class="hover:text-brand-700 hover:underline" @click.stop>{{ row.job_title }}</router-link>
+        </template>
+        <template #cell-status="{ row, value }">
+          <span class="rounded-full px-2 py-0.5 text-xs font-medium" :class="STATUS_TONE[value] || 'bg-gray-100 text-gray-700'">{{ value }}</span>
+          <router-link
+            v-if="row.scores?.scored"
+            :to="`/panel/${row.name}`"
+            class="mt-1 flex items-center gap-1 text-xs text-gray-600 hover:text-brand-700"
+            @click.stop
+          >
+            <FeatherIcon name="clipboard" class="h-3 w-3" />Scores {{ row.scores.scored }}/{{ row.scores.panel_size }} · avg {{ row.scores.average }}/{{ row.scores.max_score }}
+          </router-link>
+        </template>
+        <template #actions="{ row }">
+          <div class="flex items-center justify-end gap-1" @click.stop>
+            <Dropdown :options="rowMenu(row)" placement="right">
+              <Button size="sm" variant="ghost" icon="more-horizontal" :aria-label="`Actions for ${row.candidate_name}`" />
+            </Dropdown>
+          </div>
+        </template>
+      </DataTable>
+
       <DataTable
         v-else
         export-name="interviews"
         :columns="columns"
-        :rows="rows"
+        :rows="activeRows"
         :loading="loading"
         :filters="filters"
         clickable
@@ -157,8 +197,13 @@ const toScheduleCount = computed(() => toSchedule.value.reduce((n, j) => n + j.c
 const TABS = [
   { key: 'scheduled', label: 'Scheduled' },
   { key: 'to_schedule', label: 'To schedule' },
+  { key: 'cancelled', label: 'Cancelled' },
 ]
 const tab = ref('scheduled')
+// Scheduled tab: open and completed interviews; cancelled ones have their own tab.
+const activeRows = computed(() => rows.value.filter((r) => r.status !== 'Cancelled'))
+const cancelledRows = computed(() => rows.value.filter((r) => r.status === 'Cancelled'))
+const tabCount = computed(() => ({ scheduled: activeRows.value.length, to_schedule: toScheduleCount.value, cancelled: cancelledRows.value.length }))
 
 // To schedule: one row per candidate (the API groups them by job).
 const toScheduleRows = computed(() =>
@@ -304,6 +349,20 @@ const filters = [
   { key: 'job_title', label: 'Job Openings' },
 ]
 
+const cancelledColumns = [
+  { key: 'scheduled_datetime', label: 'Was scheduled for', format: (r) => (r.scheduled_datetime ? dayjs(r.scheduled_datetime).format('DD MMM YYYY, h:mm A') : '') },
+  { key: 'candidate_name', label: 'Candidate' },
+  { key: 'job_title', label: 'Job Opening' },
+  { key: 'round_type', label: 'Round', format: (r) => (r.round_type === 'HR Interaction' ? 'Round 1 (HR)' : r.round_type) },
+  { key: 'mode', label: 'Mode', format: columns[4].format },
+  { key: 'modified', label: 'Cancelled on', format: (r) => (r.modified ? dayjs(r.modified).format('DD MMM YYYY, h:mm A') : '') },
+  { key: 'status', label: 'Status' },
+]
+const cancelledFilters = [
+  { key: 'round_type', label: 'Rounds' },
+  { key: 'job_title', label: 'Job Openings' },
+]
+
 const tiles = computed(() => {
   const now = dayjs()
   const open = rows.value.filter((r) => ['Scheduled', 'Rescheduled'].includes(r.status))
@@ -332,6 +391,6 @@ async function load() {
 onMounted(async () => {
   await load()
   // Nothing scheduled yet: open on the candidates waiting for one.
-  if (!rows.value.length && toSchedule.value.length) tab.value = 'to_schedule'
+  if (!activeRows.value.length && toSchedule.value.length) tab.value = 'to_schedule'
 })
 </script>

@@ -339,11 +339,15 @@ function clearFilters() {
   conditions.value = []
 }
 
+const filterByKey = computed(() => Object.fromEntries(props.filters.map((f) => [f.key, f])))
 const filteredRows = computed(() => {
   const term = search.value.trim().toLowerCase()
   return props.rows.filter((row) => {
     for (const [key, values] of Object.entries(filterValues)) {
-      if (values.length && !values.includes(String(row[key] ?? ''))) return false
+      if (!values.length) continue
+      // A filter may supply value(row) to match on, e.g. treating blank as "Pending".
+      const read = filterByKey.value[key]?.value
+      if (!values.includes(String((read ? read(row) : row[key]) ?? ''))) return false
     }
     if (conditions.value.length && !matchesConditions(row, conditions.value, allColumns.value, props.rows, display)) return false
     if (!term) return true

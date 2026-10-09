@@ -165,7 +165,7 @@
 </template>
 
 <script setup>
-import { nextTick, reactive, ref, watch } from 'vue'
+import { computed, nextTick, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import dayjs from 'dayjs'
 import { Button, FeatherIcon } from 'frappe-ui'
@@ -222,11 +222,30 @@ const extraColumns = [
   { key: 'regret_sent_on', label: 'Regret Sent', format: (row) => fmtDate(row.regret_sent_on, true) },
   { key: 'modified', label: 'Last Updated', format: (row) => fmtDate(row.modified, true) },
 ]
-const filters = [
-  { key: 'eligibility_status', label: 'Eligibility' },
-  { key: 'status', label: 'Statuses' },
-  { key: 'job_title', label: 'Job Openings' },
+// Status and Eligibility list every value in workflow order (not only the
+// ones present), each with how many applications have it.
+const ELIGIBILITY = [
+  { value: 'Pending', label: 'To check' },
+  { value: 'Eligible', label: 'Eligible' },
+  { value: 'Not Eligible', label: 'Not eligible' },
 ]
+const eligibilityOf = (row) => row.eligibility_status || 'Pending'
+const filters = computed(() => {
+  const rows = applications.data || []
+  const count = (read) => rows.reduce((m, r) => ((m[read(r)] = (m[read(r)] || 0) + 1), m), {})
+  const byEligibility = count(eligibilityOf)
+  const byStatus = count((r) => r.status)
+  return [
+    {
+      key: 'eligibility_status',
+      label: 'Eligibility',
+      value: eligibilityOf,
+      options: ELIGIBILITY.map((e) => ({ ...e, count: byEligibility[e.value] || 0 })),
+    },
+    { key: 'status', label: 'Statuses', options: STATUSES.map((s) => ({ label: s, value: s, count: byStatus[s] || 0 })) },
+    { key: 'job_title', label: 'Job Openings' },
+  ]
+})
 
 // ----- bulk actions
 const STATUSES = [

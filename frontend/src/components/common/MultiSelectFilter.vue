@@ -42,9 +42,10 @@
           <ul class="max-h-64 overflow-y-auto py-1" role="listbox" aria-multiselectable="true">
             <li v-for="opt in visible" :key="String(opt.value)">
               <label class="flex cursor-pointer items-center gap-2.5 px-3 py-1.5 text-sm hover:bg-gray-50">
+                <!-- Ring only for keyboard focus: the list focuses its first item on open. -->
                 <input
                   type="checkbox"
-                  class="rounded border-gray-300 text-brand-700 focus:ring-brand-700"
+                  class="rounded border-gray-300 text-brand-700 focus:ring-0 focus:ring-offset-0 focus-visible:ring-2 focus-visible:ring-brand-500"
                   :checked="modelValue.includes(opt.value)"
                   @change="toggle(opt.value)"
                 />
