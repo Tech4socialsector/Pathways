@@ -178,11 +178,13 @@ def share_with_panel(applications, changes, note=None, notify=1):
 		base = job_email_context(job)
 		for panelist, candidates in added.items():
 			context = dict(base)
+			# Email Templates are not auto-escaped: escape what people typed.
+			esc = frappe.utils.escape_html
 			context.update(
 				{
-					"candidates": candidates,
+					"candidates": [{k: esc(v or "") for k, v in c.items()} for c in candidates],
 					"candidate_count": len(candidates),
-					"note": note,
+					"note": esc(note),
 					"documents_link": frappe.utils.get_url(f"/pathways/panel/documents?job={job_opening}"),
 					"shared_by": frappe.utils.get_fullname(frappe.session.user),
 				}

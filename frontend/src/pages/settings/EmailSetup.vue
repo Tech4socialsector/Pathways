@@ -76,7 +76,7 @@
           </template>
           <DataTable
             :columns="RULE_COLUMNS"
-            :rows="setup.rules"
+            :rows="sortedRules"
             :filters="RULE_FILTERS"
             :selectable="false"
             clickable
@@ -269,7 +269,7 @@
               <div class="flex flex-col gap-2 text-sm">
                 <label class="flex items-center gap-2"><input v-model="edit.form.send_to_candidate" type="checkbox" class="rounded border-gray-300" /> The candidate</label>
                 <label class="flex items-center gap-2"><input v-model="edit.form.send_to_committee" type="checkbox" class="rounded border-gray-300" /> The job's shortlisting committee</label>
-                <label class="flex items-center gap-2"><input v-model="edit.form.send_to_approvers" type="checkbox" class="rounded border-gray-300" /> The approvers of the current step</label>
+                <label class="flex items-center gap-2"><input v-model="edit.form.send_to_approvers" type="checkbox" class="rounded border-gray-300" /> {{ PEOPLE_LABEL[edit.rule.name]?.long || 'The approvers of the current step' }}</label>
               </div>
               <div>
                 <div class="mb-1 text-sm text-gray-700">Everyone with these roles</div>
@@ -482,11 +482,21 @@ async function sendTest() {
 }
 
 // ----- rules by stage
+// Listed A-Z by email name; the column headers can still re-sort.
+const sortedRules = computed(() =>
+  [...(setup.value?.rules || [])].sort((a, b) => (a.label || a.name).localeCompare(b.label || b.name, undefined, { sensitivity: 'base' })),
+)
+// "Approvers" is the channel for the people an action names; for these
+// emails they are panellists, so say so.
+const PEOPLE_LABEL = {
+  selection_committee_assigned: { short: 'New panellists', long: 'Panellists newly added to the Selection Committee' },
+  panel_documents_shared: { short: 'Panellists shared with', long: 'The panellists the documents are shared with (Documents page > Share)' },
+}
 function recipientChips(rule) {
   return [
     rule.send_to_candidate && 'Candidate',
     rule.send_to_committee && 'Shortlisting committee',
-    rule.send_to_approvers && 'Current approvers',
+    rule.send_to_approvers && (PEOPLE_LABEL[rule.name]?.short || 'Current approvers'),
     ...(rule.recipient_roles || []).map((r) => r.replace(/^Pathways /, '')),
     ...(rule.extra_recipients || '').split(',').map((e) => e.trim()).filter(Boolean),
   ].filter(Boolean)

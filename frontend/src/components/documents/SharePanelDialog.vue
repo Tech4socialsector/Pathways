@@ -24,12 +24,13 @@
         </div>
         <template v-else>
           <div class="flex flex-wrap items-center gap-2 text-xs text-gray-600">
-            <span>Tick what each panellist should see.</span>
-            <span class="inline-flex items-center gap-1"><span class="h-3 w-3 rounded-sm bg-brand-700" /> shared</span>
-            <span v-if="options.applications.length > 1" class="inline-flex items-center gap-1"><span class="h-3 w-3 rounded-sm border-2 border-brand-700 bg-brand-100" /> shared for some candidates</span>
+            <span>
+              Check the documents each panellist should see. Documents already shared are checked.
+              <template v-if="options.applications.length > 1"> A dash means shared for some of the candidates.</template>
+            </span>
             <div class="ml-auto flex gap-1">
-              <Button size="sm" variant="ghost" @click="setAll(true)">Tick all</Button>
-              <Button size="sm" variant="ghost" @click="setAll(false)">Untick all</Button>
+              <Button size="sm" variant="outline" @click="setAll(true)">Check all</Button>
+              <Button size="sm" variant="outline" @click="setAll(false)">Uncheck all</Button>
             </div>
           </div>
           <div class="max-h-[50vh] overflow-auto rounded-lg border">
@@ -48,7 +49,7 @@
                         :aria-label="`All documents for ${p.full_name}`"
                         @change="setColumn(p.user, $event.target.checked)"
                       />
-                      all
+                      All
                     </label>
                   </th>
                 </tr>
@@ -77,7 +78,6 @@
                       <input
                         type="checkbox"
                         class="rounded border-gray-300 text-brand-700 focus:ring-brand-700"
-                        :class="{ 'ring-2 ring-amber-300 ring-offset-1': isChanged(p.user, d.label) }"
                         :checked="cell(p.user, d.label) === true"
                         :indeterminate.prop="cell(p.user, d.label) === 'some'"
                         :aria-label="`${d.label} for ${p.full_name}`"
@@ -189,7 +189,6 @@ function cell(user, label) {
   const c = changes.value[user]
   return c && label in c ? c[label] : initial(user, label)
 }
-const isChanged = (user, label) => !!changes.value[user] && label in changes.value[user]
 function setCell(user, label, on) {
   const next = { ...changes.value, [user]: { ...(changes.value[user] || {}) } }
   // Back to how it was: not a change any more.

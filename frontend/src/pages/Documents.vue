@@ -40,8 +40,22 @@
           </span>
         </template>
         <template #cell-status="{ value }"><StatusBadge :status="value" /></template>
+        <template v-if="canShare" #bulk-actions="{ rows: chosen, clear }">
+          <Button size="sm" variant="solid" icon-left="share-2" :class="BTN_BRAND" @click="openShare(chosen, clear)">Share with panel</Button>
+        </template>
         <template #actions="{ row }">
-          <div class="flex justify-end gap-1.5">
+          <div class="flex justify-end gap-1.5" @click.stop>
+            <Button
+              v-if="canShare"
+              size="sm"
+              icon-left="share-2"
+              :disabled="!row.document_count"
+              :aria-label="`Share documents of ${row.application_id} with the panel`"
+              title="Share with panel"
+              @click="openShare([row])"
+            >
+              Share
+            </Button>
             <Button size="sm" icon-left="eye" :disabled="!row.document_count" @click="openViewer(row)">View</Button>
             <Button
               size="sm"
@@ -77,11 +91,12 @@
       :loading="viewerLoading"
       :download-all-url="viewerRow ? applicationService.downloadAllDocumentsUrl(viewerRow.name) : ''"
     />
+    <SharePanelDialog v-model:open="share.open" :applications="share.applications" @saved="share.clear?.()" />
   </StaffLayout>
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import dayjs from 'dayjs'
 import { Button, FeatherIcon, createListResource } from 'frappe-ui'
 import StaffLayout from '@/layouts/StaffLayout.vue'
@@ -89,7 +104,11 @@ import PageHeader from '@/components/layout/PageHeader.vue'
 import DataTable from '@/components/common/DataTable.vue'
 import DocumentViewer from '@/components/common/DocumentViewer.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
+import SharePanelDialog from '@/components/documents/SharePanelDialog.vue'
 import { applicationService } from '@/services/applications'
+import { useSessionStore } from '@/stores/session'
+import { BTN_BRAND } from '@/utils/buttonStyles'
+import { toast } from '@/utils/notify'
 
 const TABS = [
   { key: 'candidate', label: 'Candidate Documents' },
@@ -110,6 +129,8 @@ const columns = [
   { key: 'application_date', label: 'Applied On', format: (r) => (r.application_date ? dayjs(r.application_date).format('DD MMM YYYY') : '') },
 ]
 const filters = [
+  { key: 'candidate_name', label: 'Candidates' },
+  { key: 'application_id', label: 'Application IDs' },
   { key: 'job_title', label: 'Job Openings' },
   { key: 'status', label: 'Statuses' },
 ]
@@ -124,6 +145,24 @@ async function load() {
 }
 
 onMounted(load)
+
+// ----- share with the panel (recruitment team: whoever can schedule interviews)
+const session = useSessionStore()
+const canShare = computed(() => session.can('Interview', 'create'))
+const share = reactive({ open: false, applications: [], clear: null })
+function openShare(chosen, clear = null) {
+  const withDocs = chosen.filter((r) => r.document_count)
+  if (!withDocs.length) {
+    toast({ title: 'None of these candidates has uploaded documents.', icon: 'alert-triangle', iconClasses: 'text-orange-500' })
+    return
+  }
+  // Each job has its own Selection Committee, so one job at a time.
+  if (new Set(withDocs.map((r) => r.job_opening)).size > 1) {
+    toast({ title: 'Choose candidates from one job opening at a time: each job has its own panel. Filter by job opening first.', icon: 'alert-triangle', iconClasses: 'text-orange-500' })
+    return
+  }
+  Object.assign(share, { open: true, applications: withDocs.map((r) => r.name), clear })
+}
 
 // ----- viewer
 const viewerOpen = ref(false)

@@ -5,7 +5,11 @@
       :subtitle="data?.can_manage && !data?.is_panellist
         ? 'Final interviews and how far each panel has got with scoring.'
         : 'Your final interviews. Score each candidate on the Interview Assessment Form.'"
-    />
+    >
+      <template #actions>
+        <Button variant="outline" icon-left="folder" @click="router.push('/panel/documents')">Shared documents</Button>
+      </template>
+    </PageHeader>
     <div class="flex-1 overflow-y-auto bg-gray-50/60 p-6">
       <div v-if="loading && !data" class="grid gap-3">
         <div v-for="i in 3" :key="i" class="h-24 animate-pulse rounded-xl border bg-white" />

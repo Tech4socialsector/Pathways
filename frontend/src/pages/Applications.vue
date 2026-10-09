@@ -1,6 +1,10 @@
 <template>
   <StaffLayout>
-    <PageHeader title="Applications" />
+    <PageHeader title="Applications">
+      <template v-if="session.can('Application', 'create')" #actions>
+        <Button variant="outline" icon-left="upload" @click="showImport = true">Import</Button>
+      </template>
+    </PageHeader>
     <div class="flex-1 overflow-y-auto p-6">
       <DataTable
         ref="table"
@@ -161,6 +165,7 @@
     </Dialog>
 
     <BulkResultDialog :result="bulk.result" :label-for="labelFor" @close="bulk.result = null" />
+    <ImportApplicationsDialog v-model:open="showImport" @imported="applications.reload()" />
   </StaffLayout>
 </template>
 
@@ -174,6 +179,7 @@ import StaffLayout from '@/layouts/StaffLayout.vue'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import DataTable from '@/components/common/DataTable.vue'
 import BulkResultDialog from '@/components/common/BulkResultDialog.vue'
+import ImportApplicationsDialog from '@/components/applications/ImportApplicationsDialog.vue'
 import { BTN_BRAND, BTN_DANGER, BTN_DARK } from '@/utils/buttonStyles'
 import { scoringService } from '@/services/scoring'
 import StatusBadge from '@/components/common/StatusBadge.vue'
@@ -182,6 +188,7 @@ import { applicationService } from '@/services/applications'
 import { useSessionStore } from '@/stores/session'
 
 const session = useSessionStore()
+const showImport = ref(false)
 const applications = useApplicationList()
 
 // /applications?job=<Job Opening>: open the list filtered to that job

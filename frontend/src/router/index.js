@@ -53,6 +53,12 @@ const routes = [
     meta: { requiresStaff: true },
   },
   {
+    path: '/panel/documents',
+    name: 'SharedDocuments',
+    component: () => import('@/pages/SharedDocuments.vue'),
+    meta: { requiresStaff: true },
+  },
+  {
     path: '/panel/sheet/:job',
     name: 'ConsolidatedScores',
     component: () => import('@/pages/ConsolidatedScores.vue'),

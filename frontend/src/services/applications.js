@@ -1,6 +1,21 @@
 import { callMethod, downloadMethod, serverMessages } from './api'
 
 export const applicationService = {
+  // Applications page > Import (Excel / CSV)
+  downloadImportTemplate() {
+    return downloadMethod('pathways.api.application_import.download_template', {}, 'Applications Import Template.xlsx')
+  },
+  previewImport(filename, content) {
+    return callMethod('pathways.api.application_import.preview_import', { filename, content })
+  },
+  runImport(filename, content, { sendLogin = false, sendAcknowledgement = false } = {}) {
+    return callMethod('pathways.api.application_import.run_import', {
+      filename,
+      content,
+      send_login: sendLogin ? 1 : 0,
+      send_acknowledgement: sendAcknowledgement ? 1 : 0,
+    })
+  },
   // Not via callMethod: frappe-ui's call() drops the response's
   // field_errors ({ field: message }), which the apply form shows per field.
   async submitApplication(jobOpening, data) {
