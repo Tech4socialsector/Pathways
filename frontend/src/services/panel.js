@@ -26,6 +26,22 @@ export const panelService = {
       `Interview Assessment Form - ${jobTitle}.pdf`,
     )
   },
+  // Documents page > Share with panel
+  getShareOptions(applications) {
+    return callMethod('pathways.api.panel_documents.get_share_options', { applications: JSON.stringify(applications) })
+  },
+  // changes: { panelist: { documentLabel: true (share) | false (stop sharing) } }
+  shareWithPanel(applications, changes, note = '', notify = true) {
+    return callMethod('pathways.api.panel_documents.share_with_panel', {
+      applications: JSON.stringify(applications),
+      changes: JSON.stringify(changes),
+      note,
+      notify: notify ? 1 : 0,
+    })
+  },
+  getSharedDocuments(jobOpening = '') {
+    return callMethod('pathways.api.panel_documents.get_shared_documents', { job_opening: jobOpening || null })
+  },
   submitAssessment({ interview, panelist, scores, verdict, additionalComments, areaOfSpecialization }) {
     return callMethod('pathways.api.panel.submit_assessment', {
       interview,

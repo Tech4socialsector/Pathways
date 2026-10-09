@@ -194,6 +194,10 @@ has_permission = {
 # ---------------
 # Hook on document methods and events
 
+# Candidates may log in with a mobile number typed as +91 / with spaces:
+# bring it to the stored form before Frappe looks the user up.
+before_login = ["pathways.utils.candidate_account.before_login"]
+
 doc_events = {
 	# Master Setup integrity guards — no-ops for DocTypes not in
 	# pathways.utils.master_setup's registry / INACTIVE_LINK_GUARDS.

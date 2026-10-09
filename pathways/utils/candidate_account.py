@@ -6,7 +6,14 @@
 A candidate who applies without an account gets one: a Website User whose
 username is their Candidate ID, with a temporary password emailed to them
 ("Candidate portal login" in Email Setup). They must set their own password
-on first login (Candidate.password_change_required)."""
+on first login (Candidate.password_change_required).
+
+Candidates log in with their email address, their mobile number or their
+Candidate ID. The mobile number is kept on the User (mobile_no) in one
+standard form, and only when no other login uses it, so it always points at
+exactly one account; before_login() brings what is typed into that form."""
+
+import re
 
 import secrets
 import string
@@ -29,9 +36,74 @@ def _temporary_password(length=12):
 			return pwd
 
 
-def enable_username_login():
-	if not frappe.db.get_single_value("System Settings", "allow_login_using_user_name"):
-		frappe.db.set_single_value("System Settings", "allow_login_using_user_name", 1)
+def enable_login_methods():
+	"""Let candidates log in with their Candidate ID or mobile number as well
+	as their email (Frappe always accepts the email)."""
+	for setting in ("allow_login_using_user_name", "allow_login_using_mobile_number"):
+		if not frappe.db.get_single_value("System Settings", setting):
+			frappe.db.set_single_value("System Settings", setting, 1)
+
+
+# Kept for callers of the old name.
+enable_username_login = enable_login_methods
+
+
+# ----------------------------------------------------------- mobile login
+
+PHONE_LIKE = re.compile(r"^\+?[\d\s\-().]{7,20}$")
+
+
+def normalize_mobile(value):
+	"""One standard form for a mobile number: digits only, and for Indian
+	numbers the 10-digit number without +91 / 91 / 0 in front.
+	"+91 90000-18512", "091 9000018512" and "9000018512" all give
+	"9000018512". Returns "" when it is not a phone number."""
+	value = (value or "").strip()
+	if not PHONE_LIKE.match(value):
+		return ""
+	digits = re.sub(r"\D", "", value)
+	if len(digits) == 12 and digits.startswith("91"):
+		digits = digits[2:]
+	elif len(digits) == 11 and digits.startswith("0"):
+		digits = digits[1:]
+	return digits if 7 <= len(digits) <= 15 else ""
+
+
+def mobile_owner(mobile, exclude_user=None):
+	"""The login (User) already using this mobile number, if any."""
+	filters = {"mobile_no": mobile}
+	if exclude_user:
+		filters["name"] = ["!=", exclude_user]
+	return frappe.db.get_value("User", filters, "name")
+
+
+def sync_login_mobile(user, mobile):
+	"""Put the candidate's mobile number on their login so they can log in
+	with it. Skipped when another login already uses the number: a number
+	must lead to exactly one account. Returns True when it was set."""
+	if not user or not frappe.db.exists("User", user):
+		return False
+	number = normalize_mobile(mobile)
+	if not number:
+		return False
+	if mobile_owner(number, exclude_user=user):
+		return False
+	if frappe.db.get_value("User", user, "mobile_no") != number:
+		frappe.db.set_value("User", user, "mobile_no", number, update_modified=False)
+	return True
+
+
+def before_login(login_manager=None):
+	"""hooks.before_login: a mobile number may be typed with +91, spaces or
+	dashes; match it to the stored form. Emails and Candidate IDs pass
+	through unchanged (apart from stray spaces)."""
+	typed = (frappe.form_dict.get("usr") or "").strip()
+	if not typed:
+		return
+	number = normalize_mobile(typed)
+	if number and number != typed and frappe.db.exists("User", {"mobile_no": number}):
+		typed = number
+	frappe.form_dict.usr = typed
 
 
 def claim_records(candidate, email=None):
@@ -52,7 +124,10 @@ def create_portal_account(candidate):
 	cand = frappe.get_doc("Candidate", candidate)
 	if not cand.email or frappe.db.exists("User", cand.email):
 		return False
-	enable_username_login()
+	enable_login_methods()
+	number = normalize_mobile(cand.mobile_number)
+	if number and mobile_owner(number):
+		number = ""  # someone else logs in with it; email and Candidate ID still work
 
 	password = _temporary_password()
 	first, _sep, last = (cand.full_name or cand.email).partition(" ")
@@ -63,6 +138,7 @@ def create_portal_account(candidate):
 			"first_name": first,
 			"last_name": last or None,
 			"username": cand.name,
+			"mobile_no": number or None,
 			"user_type": "Website User",
 			"send_welcome_email": 0,
 			"new_password": password,
@@ -86,6 +162,7 @@ def create_portal_account(candidate):
 			"candidate_name": cand.full_name,
 			"candidate_id": cand.name,
 			"username": cand.name,
+			"login_mobile": number,
 			"temporary_password": password,
 			"login_link": frappe.utils.get_url(f"/login?redirect-to={PORTAL_PATH}"),
 		},
@@ -177,5 +254,10 @@ def update_my_profile(data):
 			doc.set(field, (data.get(field) or None) if field != "address" else (data.get(field) or ""))
 	if not (doc.mobile_number or "").strip():
 		frappe.throw(_("Enter your mobile number."))
-	doc.save(ignore_permissions=True)
+	number = normalize_mobile(doc.mobile_number)
+	if not number:
+		frappe.throw(_("Enter a valid mobile number."))
+	if mobile_owner(number, exclude_user=frappe.session.user):
+		frappe.throw(_("This mobile number is already used by another account. Enter a different number."))
+	doc.save(ignore_permissions=True)  # Candidate.on_update puts it on the login
 	return get_my_profile()

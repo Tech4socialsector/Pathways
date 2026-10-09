@@ -25,3 +25,5 @@ pathways.patches.v1_0.interview_emails #single-respond-button
 pathways.patches.v1_0.final_interview_rubrics
 pathways.patches.v1_0.interview_emails #match-folder-formatting
 pathways.patches.v1_0.interview_emails #call-letter-confirm-bold
+pathways.patches.v1_0.candidate_mobile_login
+pathways.patches.v1_0.seed_email_events #panel-documents-shared

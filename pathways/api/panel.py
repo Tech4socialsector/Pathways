@@ -146,7 +146,7 @@ def get_assessment_form(interview, panelist=None):
 			"meeting_link": iv.meeting_link, "location": iv.get("location"),
 		},
 		"application": app,
-		"brief": candidate_brief(iv.application),
+		"brief": candidate_brief(iv.application, panelist),
 		"track": track,
 		"rubric": {
 			"name": rubric.name,
@@ -546,10 +546,11 @@ def _doc(label, url):
 	return {"label": label, "file_url": url, "file_name": (url or "").rsplit("/", 1)[-1], "kind": kind}
 
 
-def candidate_brief(application):
+def candidate_brief(application, panelist=None):
 	"""What the workflow lists for the panel (step 16): CV, SOP, writing
 	sample and other documents, qualifications, experience, the shortlisting
-	note and how Round 1 went; not the whole application."""
+	note and how Round 1 went; not the whole application. Documents the
+	recruitment team shared with `panelist` are added to the list."""
 	app = frappe.get_doc("Application", application)
 	app.check_permission("read")
 	docs = []
@@ -559,6 +560,12 @@ def candidate_brief(application):
 	for row in app.get("documents") or []:
 		if row.attachment and row.attachment not in [d["file_url"] for d in docs]:
 			docs.append(_doc(row.document_type or _("Document"), row.attachment))
+	if panelist:
+		from pathways.api.panel_documents import shared_for_panelist
+
+		for d in shared_for_panelist(app.name, panelist):
+			if d["file_url"] not in [x["file_url"] for x in docs]:
+				docs.append(_doc(d["label"], d["file_url"]))
 	institutions = {}
 	for q in app.get("qualifications") or []:
 		if q.institution and q.institution not in institutions:

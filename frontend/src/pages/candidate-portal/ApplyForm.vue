@@ -117,8 +117,8 @@
             >
               <div class="flex items-center gap-2 font-semibold"><FeatherIcon name="key" class="h-4 w-4" />Track your application online</div>
               <p class="mt-1">
-                We've emailed your portal login to <b>{{ submittedEmail }}</b>. Your username is your Candidate ID
-                <b class="font-mono">{{ candidateId }}</b>, with a temporary password you'll change on first login.
+                We've emailed a temporary password to <b>{{ submittedEmail }}</b>; you'll set your own the first time you log in.
+                Log in with your email, your mobile number or your Candidate ID <b class="font-mono">{{ candidateId }}</b>.
               </p>
             </div>
             <div

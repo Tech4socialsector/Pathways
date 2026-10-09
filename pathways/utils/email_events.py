@@ -172,11 +172,12 @@ TEMPLATES = {
 		"and view what you submitted.</p>"
 		"<table style=\"border-collapse:collapse;margin:12px 0\">"
 		"<tr><td style=\"padding:4px 16px 4px 0;color:#555\">Login page</td><td><a href=\"{{ login_link }}\">{{ login_link }}</a></td></tr>"
-		"<tr><td style=\"padding:4px 16px 4px 0;color:#555\">Username</td><td><b>{{ username }}</b> (your Candidate ID)</td></tr>"
+		"<tr><td style=\"padding:4px 16px 4px 0;color:#555\">Log in with</td><td>your email address"
+		"{% if login_mobile %}, your mobile number <b>{{ login_mobile }}</b>{% endif %} or your Candidate ID <b>{{ username }}</b></td></tr>"
 		"<tr><td style=\"padding:4px 16px 4px 0;color:#555\">Temporary password</td><td><b>{{ temporary_password }}</b></td></tr>"
 		"</table>"
-		"<p>You will be asked to set your own password the first time you log in. You can also log in with your email address "
-		"instead of the username. Please do not share these details with anyone.</p>" + SIGN_OFF,
+		"<p>You will be asked to set your own password the first time you log in. "
+		"Please do not share these details with anyone.</p>" + SIGN_OFF,
 	),
 	"Green Sheet Approval Request": (
 		"Approval needed: Green Sheet for {{ job_title }}",
@@ -280,6 +281,17 @@ TEMPLATES = {
 	),
 }
 
+TEMPLATES["Panel Documents Shared"] = (
+	"Candidate documents for {{ job_title }}",
+	"<p>Dear {{ recipient_name }},</p>"
+	"<p>The recruitment team has shared candidate documents with you for the position of <b>{{ job_title }}</b>, "
+	"for your review ahead of the interview.</p>"
+	"<ul>{% for c in candidates %}<li><b>{{ c.name }}</b> ({{ c.application_id }}): {{ c.documents }}</li>{% endfor %}</ul>"
+	"{% if note %}<p><b>Note from {{ shared_by }}:</b> {{ note }}</p>{% endif %}"
+	"<p>Please log in to view them: <a href=\"{{ documents_link }}\">{{ documents_link }}</a></p>"
+	"<p>Please keep these documents confidential and do not share them outside the panel.</p>" + SIGN_OFF,
+)
+
 JOB_VARS = "job_title, job_code, department, vacancies, deadline, posting_link, job_link, recipient_name, contact_email"
 CANDIDATE_VARS = "candidate_name, application_id, job_title, recipient_name, contact_email"
 
@@ -297,8 +309,8 @@ EVENTS = [
 	("Applications", "application_received", "Application received (to candidate)", "A candidate submits an application.",
 		"Application Acknowledgement", {"send_to_candidate": 1}, True, True, CANDIDATE_VARS),
 	("Applications", "candidate_portal_access", "Candidate portal login (to candidate)",
-		"A candidate's first application: their portal account is created and the username (Candidate ID) and a temporary password are emailed.",
-		"Candidate Portal Login", {"send_to_candidate": 1}, True, True, "candidate_name, candidate_id, username, temporary_password, login_link, contact_email"),
+		"A candidate's first application: their portal account is created and how to log in (email, mobile number or Candidate ID) and a temporary password are emailed.",
+		"Candidate Portal Login", {"send_to_candidate": 1}, True, True, "candidate_name, candidate_id, username, login_mobile, temporary_password, login_link, contact_email"),
 	("Screening & Shortlisting", "committee_assigned", "Shortlisting committee invitation", "A job's Shortlisting Committee is set up (one email per member).",
 		"Shortlisting Committee Invitation", {"send_to_committee": 1}, True, True, JOB_VARS + ", application_count, ratio"),
 	("Screening & Shortlisting", "candidate_not_eligible", "Regret: not eligible (to candidate)", "A candidate is marked not eligible. Off by default: regrets are usually sent together later.",
@@ -313,6 +325,9 @@ EVENTS = [
 	("Interviews", "selection_committee_assigned", "Selection committee invitation (to panellists)",
 		"A job's Selection Committee is set up, or a panellist is added to it (workflow step 15).",
 		"Selection Committee Invitation", {"send_to_approvers": 1}, True, True, JOB_VARS + ", interview_date, interview_time, panel, candidate_count"),
+	("Interviews", "panel_documents_shared", "Candidate documents shared (to panellists)",
+		"The recruitment team shares candidates' documents with Selection Committee panellists from the Documents page (one email per panellist).",
+		"Panel Documents Shared", {"send_to_approvers": 1}, True, True, JOB_VARS + ", candidates, candidate_count, note, shared_by, documents_link"),
 	("Interviews", "interview_invite_round1", "Interview invite: Round 1 / HR interaction", "Round 1 is scheduled (workflow step 13).",
 		"Interview Invite (Round 1)", {"send_to_candidate": 1}, True, True, CANDIDATE_VARS + ", interview_date_time, meeting_link, meeting_platform, interview_location, rsvp_deadline, rsvp_link, rsvp_respond_link, updated, change_note"),
 	("Interviews", "interview_call_letter", "Interview call letter: final interview", "The final interview is scheduled (workflow steps 14-16).",
