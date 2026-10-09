@@ -99,7 +99,7 @@
             <div class="prose mt-4 max-w-none text-gray-700 prose-a:text-brand-700" v-html="form.instructions.job" />
           </section>
 
-          <!-- Eligibility -->
+          <!-- Eligibility (hidden for now)
           <section v-if="eligibility.length || questions.length" class="p-6 sm:p-8" aria-labelledby="eligibility-heading">
             <h2 id="eligibility-heading" class="section-title">Eligibility at a glance</h2>
             <p class="mt-1 text-p-sm text-gray-500">The official notification has the full criteria.</p>
@@ -118,6 +118,7 @@
               </ol>
             </template>
           </section>
+          -->
 
           <!-- Documents -->
           <section class="p-6 sm:p-8" aria-labelledby="documents-heading">
