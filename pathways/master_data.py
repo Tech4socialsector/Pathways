@@ -905,12 +905,12 @@ def seed_tracks():
 
 def seed_departments():
 	for name, code in DEPARTMENTS:
-		if frappe.db.exists("Department", name):
+		if frappe.db.exists("Pathways Department", name):
 			continue
 		# The code is unique but optional — never let it block the department.
-		if frappe.db.exists("Department", {"department_code": code}):
+		if frappe.db.exists("Pathways Department", {"department_code": code}):
 			code = None
-		_insert({"doctype": "Department", "department_name": name, "department_code": code, "is_active": 1})
+		_insert({"doctype": "Pathways Department", "department_name": name, "department_code": code, "is_active": 1})
 
 
 def seed_designations():

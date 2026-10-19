@@ -195,7 +195,7 @@ const STAGES = [
     hint: 'Start here. Everything else links to these.',
     masters: [
       { doctype: 'Recruitment Track', needs: [] },
-      { doctype: 'Department', needs: [] },
+      { doctype: 'Pathways Department', needs: [] },
       { doctype: 'Designation', needs: ['Recruitment Tracks'] },
     ],
   },

@@ -35,8 +35,9 @@ MASTER_SETUP = [
 		"label": "Organisation",
 		"masters": [
 			{
-				"doctype": "Department",
+				"doctype": "Pathways Department",
 				"label": "Departments",
+				"singular": "Department",
 				"description": "Manage university departments.",
 				"icon": "layers",
 				"keywords": ["centre", "school", "unit", "office"],
@@ -152,7 +153,7 @@ INACTIVE_LINK_GUARDS = {
 	"Job Opening": ["position", "track", "department", "designation"],
 	"Position": ["track", "department", "designation", "reports_to"],
 	"Application": ["source"],
-	"Department": ["parent_department"],
+	"Pathways Department": ["parent_department"],
 	"Designation": ["track"],
 	"Document Type Master": ["track"],
 	"Scoring Rubric Template": ["track"],
@@ -236,11 +237,13 @@ def _prevent_inactive_references(doc):
 			continue
 
 		if frappe.db.get_value(df.options, value, active_field) != active_value:
+			master = get_master(df.options)
+			label = _(_singular(master) if master else df.options)
 			frappe.throw(
 				_("{0} '{1}' is inactive and cannot be used. Choose an active {0} or reactivate it in Master Setup.").format(
-					_(df.options), value
+					label, value
 				),
-				title=_("Inactive {0}").format(_(df.options)),
+				title=_("Inactive {0}").format(label),
 			)
 
 

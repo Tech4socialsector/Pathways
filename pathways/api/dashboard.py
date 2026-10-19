@@ -488,7 +488,7 @@ def get_dashboard(filters=None):
 		"activity": activity[:10],
 		"options": {
 			"tracks": frappe.get_all("Recruitment Track", filters={"is_active": 1}, pluck="name", order_by="name asc"),
-			"departments": frappe.get_all("Department", filters={"is_active": 1}, pluck="name", order_by="name asc"),
+			"departments": frappe.get_all("Pathways Department", filters={"is_active": 1}, pluck="name", order_by="name asc"),
 			"positions": [{"value": p.name, "label": f"{p.name} · {p.position_title}"} for p in positions],
 			"employment_types": [o for o in frappe.get_meta("Job Opening").get_field("employment_type").options.split("\n") if o],
 			"statuses": [o for o in frappe.get_meta("Application").get_field("status").options.split("\n") if o],

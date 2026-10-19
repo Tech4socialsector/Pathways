@@ -31,7 +31,7 @@ export function useRecruitmentTrackOptions() {
 }
 
 export function useDepartmentOptions() {
-  return useActiveRecordOptions('Department', 'department_name')
+  return useActiveRecordOptions('Pathways Department', 'department_name')
 }
 
 export function useDesignationOptions() {

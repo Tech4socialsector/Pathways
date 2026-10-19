@@ -44,7 +44,7 @@
    "fieldtype": "Link",
    "in_list_view": 1,
    "label": "Department",
-   "options": "Department"
+   "options": "Pathways Department"
   },
   {
    "fieldname": "column_break_1",
@@ -94,7 +94,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-09-21 00:00:00.000000",
+ "modified": "2026-10-19 10:30:00.000000",
  "modified_by": "Administrator",
  "module": "Pathways",
  "name": "Employee",

@@ -529,7 +529,7 @@ def _options():
 	return {
 		"positions": [{"value": p.name, "label": f"{p.name} · {p.position_title}"} for p in positions],
 		"tracks": frappe.get_all("Recruitment Track", pluck="name", order_by="name asc"),
-		"departments": frappe.get_all("Department", filters={"is_active": 1}, pluck="name", order_by="name asc"),
+		"departments": frappe.get_all("Pathways Department", filters={"is_active": 1}, pluck="name", order_by="name asc"),
 		"employment_types": [o for o in (frappe.get_meta("Job Opening").get_field("employment_type").options or "").split("\n") if o],
 		"statuses": [o for o in (frappe.get_meta("Application").get_field("status").options or "").split("\n") if o],
 		"eligibility": ["Pending", "Eligible", "Not Eligible"],
