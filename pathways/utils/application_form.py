@@ -13,6 +13,8 @@ Per-job configuration (Job Opening > Application Form):
 	require_postgraduate   PG degree section becomes mandatory
 	screening_questions    e.g. "Do you have 15 years of ... experience?"
 	required_documents     supporting uploads; defaults to Document Type Master
+	ask_* switches         turn the optional academic sections on or off
+	                       (copied from the Position, editable per job)
 """
 
 import hashlib
@@ -127,6 +129,7 @@ def not_accepting_message(job):
 	return _("Applications for this position are closed.")
 
 
+# Sent with the job to the apply page: the one form shows only what this job asks for.
 def get_form_config(job):
 	"""Public description of the form for this job (safe for guests)."""
 	questions = [
@@ -166,6 +169,7 @@ def get_form_config(job):
 	}
 
 
+# The same switches are read here for the page and in validate_submission for the checks.
 def get_form_sections(job):
 	"""The academic sections this job's form shows (Job Opening switches)."""
 	return {
@@ -366,6 +370,7 @@ def validate_submission(job, data, user, email=None):
 	the typed address for a guest (user == "Guest")."""
 	errors = FormErrors()
 	rule = default_upload_rule()
+	# Rebuilt from the job, never taken from the browser.
 	sections = get_form_sections(job)
 	options = _form_options(job)
 	files = []
@@ -640,6 +645,7 @@ def validate_submission(job, data, user, email=None):
 			}
 		)
 
+	# Sections this job switched off are skipped, so their fields are never saved.
 	academic = _validate_academic_sections(sections, options, app, errors, upload, dob)
 	qualifications += academic.pop("doctoral", [])
 
