@@ -356,7 +356,7 @@ const STATUS_TONE = {
 const RSVP_TONE = { Pending: 'bg-orange-50 text-orange-700', Confirmed: 'bg-green-50 text-green-700', Declined: 'bg-red-50 text-red-700' }
 
 const columns = [
-  { key: 'scheduled_datetime', label: 'When', format: (r) => (r.scheduled_datetime ? dayjs(r.scheduled_datetime).format('DD MMM YYYY, h:mm A') : '') },
+  { key: 'scheduled_datetime', label: 'When', format: (r) => (r.scheduled_datetime ? dayjs(r.scheduled_datetime).format('DD MMM YYYY, h:mm A [IST]') : '') },
   { key: 'candidate_name', label: 'Candidate' },
   { key: 'job_title', label: 'Job Opening' },
   { key: 'round_type', label: 'Round', format: (r) => (r.round_type === 'HR Interaction' ? 'Round 1 (HR)' : r.round_type) },
@@ -376,7 +376,7 @@ const changedColumns = [
   {
     key: 'previous_datetime',
     label: 'Previously',
-    format: (r) => (r.previous_datetime ? dayjs(r.previous_datetime).format('DD MMM YYYY, h:mm A') : '—'),
+    format: (r) => (r.previous_datetime ? dayjs(r.previous_datetime).format('DD MMM YYYY, h:mm A [IST]') : '—'),
   },
   { key: 'candidate_name', label: 'Candidate' },
   { key: 'job_title', label: 'Job Opening' },
@@ -385,7 +385,7 @@ const changedColumns = [
   {
     key: 'last_changed_on',
     label: 'Changed on',
-    format: (r) => (r.last_changed_on ? dayjs(r.last_changed_on).format('DD MMM YYYY, h:mm A') + (r.last_changed_by_name ? ` · ${r.last_changed_by_name}` : '') : '—'),
+    format: (r) => (r.last_changed_on ? dayjs(r.last_changed_on).format('DD MMM YYYY, h:mm A [IST]') + (r.last_changed_by_name ? ` · ${r.last_changed_by_name}` : '') : '—'),
   },
   { key: 'rsvp_status', label: 'RSVP' },
   { key: 'status', label: 'Status' },
@@ -397,12 +397,12 @@ const changedFilters = [
 ]
 
 const cancelledColumns = [
-  { key: 'scheduled_datetime', label: 'Was scheduled for', format: (r) => (r.scheduled_datetime ? dayjs(r.scheduled_datetime).format('DD MMM YYYY, h:mm A') : '') },
+  { key: 'scheduled_datetime', label: 'Was scheduled for', format: (r) => (r.scheduled_datetime ? dayjs(r.scheduled_datetime).format('DD MMM YYYY, h:mm A [IST]') : '') },
   { key: 'candidate_name', label: 'Candidate' },
   { key: 'job_title', label: 'Job Opening' },
   { key: 'round_type', label: 'Round', format: (r) => (r.round_type === 'HR Interaction' ? 'Round 1 (HR)' : r.round_type) },
   { key: 'mode', label: 'Mode', format: columns[4].format },
-  { key: 'modified', label: 'Cancelled on', format: (r) => (r.modified ? dayjs(r.modified).format('DD MMM YYYY, h:mm A') : '') },
+  { key: 'modified', label: 'Cancelled on', format: (r) => (r.modified ? dayjs(r.modified).format('DD MMM YYYY, h:mm A [IST]') : '') },
   { key: 'status', label: 'Status' },
 ]
 const cancelledFilters = [

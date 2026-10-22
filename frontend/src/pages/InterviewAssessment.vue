@@ -3,7 +3,7 @@
     <PageHeader :title="form ? form.interview.candidate_name : 'Interview Assessment'" back-to="/panel">
       <template v-if="form" #meta>
         <span class="text-sm text-gray-500">
-          {{ form.interview.job_title }} · Final interview · {{ dayjs(form.interview.scheduled_datetime).format('ddd, DD MMM YYYY, h:mm A') }}
+          {{ form.interview.job_title }} · Final interview · {{ dayjs(form.interview.scheduled_datetime).format('ddd, DD MMM YYYY, h:mm A [IST]') }}
         </span>
       </template>
       <template v-if="form" #actions>
@@ -217,7 +217,7 @@
                 <Button variant="solid" :class="BTN_BRAND" :loading="saving" :disabled="!!blocker" :title="blocker" @click="save">
                   {{ form.mine ? 'Update scores' : 'Submit scores' }}
                 </Button>
-                <span v-if="form.mine" class="text-xs text-gray-500">Saved {{ dayjs(form.mine.modified).format('DD MMM, h:mm A') }}<template v-if="form.entered_by"> · entered by {{ form.entered_by }}</template></span>
+                <span v-if="form.mine" class="text-xs text-gray-500">Saved {{ dayjs(form.mine.modified).format('DD MMM, h:mm A [IST]') }}<template v-if="form.entered_by"> · entered by {{ form.entered_by }}</template></span>
               </div>
               <p v-if="blocker" class="text-xs text-gray-500">{{ blocker }}</p>
             </template>

@@ -68,7 +68,7 @@ TEMPLATES = {
 		"This email replaces our earlier invitation.</b>{% if change_note %}<br>{{ change_note }}{% endif %}</p>{% endif %}"
 		"<p>This is with reference to your interviews (Round 1) for the position <b>{{ job_title }} at NLS.</b> We are pleased to "
 		"inform you that your application has been selected for the <b>Round 1 interview</b>. <b>This round is scheduled on "
-		"{{ interview_date_time }} (IST){% if interview_location %} in person at {{ interview_location }}{% else %} via video conferencing{% endif %}.</b></p>"
+		"{{ interview_date_time }}{% if interview_location %} in person at {{ interview_location }}{% else %} via video conferencing{% endif %}.</b></p>"
 		"{% if interview_location %}<ol>"
 		"<li>Please arrive <b>ten minutes</b> before your start time at {{ interview_location }}.</li>"
 		"{% else %}<p><b>Please find below the {{ meeting_platform or 'Teams' }} link for the new meeting:</b><br>"
@@ -106,7 +106,7 @@ TEMPLATES = {
 		"<p>Dear Applicant,</p>"
 		"<p>Greetings from National Law School of India University (NLSIU), Bangalore!</p>"
 		"<p>We regret to inform you that your {{ interview_round }} for the position of {{ job_title }}, scheduled on "
-		"<b>{{ interview_date_time }}</b> (IST), has been cancelled.{% if reason %} {{ reason }}{% endif %}</p>"
+		"<b>{{ interview_date_time }}</b>, has been cancelled.{% if reason %} {{ reason }}{% endif %}</p>"
 		"<p>The Recruitment Team will get in touch with you about the next steps. You can also email us at "
 		"{{ contact_email or 'recruitment@nls.ac.in' }}.</p>" + SIGN_OFF,
 	),

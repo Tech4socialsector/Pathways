@@ -36,6 +36,7 @@ def daily():
 	flag_ads_closing_soon()
 	expire_overdue_offers()
 	send_interview_reminders()
+	delete_stale_application_drafts()
 
 
 def flag_ads_closing_soon():
@@ -105,8 +106,19 @@ def send_interview_reminders():
 		context, candidate = candidate_email_context(interview.application)
 		context.update(
 			{
-				"interview_date_time": frappe.utils.format_datetime(interview.scheduled_datetime, "dd MMM yyyy, h:mm a"),
+				"interview_date_time": frappe.utils.format_datetime(interview.scheduled_datetime, "dd MMM yyyy, h:mm a 'IST'"),
 				"meeting_link": interview.meeting_link,
 			}
 		)
 		send_event("interview_reminder", "Interview", interview.name, context, candidate=candidate)
+
+
+def delete_stale_application_drafts():
+	"""Drafts for jobs that are gone, or closed for a month (long enough for
+	a deadline extension to reopen them)."""
+	cutoff = add_days(now_datetime(), -30)
+	for draft in frappe.get_all("Application Draft", fields=["name", "job_opening", "saved_at"]):
+		status = frappe.db.get_value("Job Opening", draft.job_opening, "status")
+		if not status or (status != "Advertised" and (not draft.saved_at or draft.saved_at < cutoff)):
+			frappe.delete_doc("Application Draft", draft.name, ignore_permissions=True, force=True)
+	frappe.db.commit()

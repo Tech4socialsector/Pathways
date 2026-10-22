@@ -1,6 +1,7 @@
 # Copyright (c) 2026, NLSIU and contributors
 # For license information, please see license.txt
 
+import json
 import re
 
 import frappe
@@ -224,6 +225,9 @@ def submit_application(job_opening, data):
 			update_modified=False,
 		)
 
+	if user != "Guest":
+		frappe.db.delete("Application Draft", {"user": user, "job_opening": job.name})
+
 	if user != "Guest" and not frappe.db.exists("Has Role", {"parenttype": "User", "parent": user, "role": CANDIDATE_ROLE}):
 		user_doc = frappe.get_doc("User", user)
 		# roles is a permlevel-1 field: without this flag Frappe silently
@@ -268,6 +272,117 @@ def send_acknowledgement(application_name):
 
 	context, candidate = candidate_email_context(application_name)
 	send_event("application_received", "Application", application_name, context, candidate=candidate)
+
+
+# ----------------------------------------------------------- drafts
+
+# A full form with every optional row is well under this; it stops the
+# endpoint being used as free storage.
+DRAFT_MAX_BYTES = 512 * 1024
+
+
+def _draft_user():
+	"""Drafts are kept for logged-in candidates only (guests' stay on their
+	device). Staff accounts cannot apply, so they get none either."""
+	user = frappe.session.user
+	if user == "Guest" or frappe.db.get_value("User", user, "user_type") != "Website User":
+		frappe.throw(_("Log in with your candidate account to save a draft."), frappe.PermissionError)
+	return user
+
+
+def _already_applied(user, job_opening):
+	candidate = frappe.db.get_value("Candidate", {"email": user}, "name")
+	return bool(
+		candidate
+		and frappe.db.exists("Application", {"candidate": candidate, "job_opening": job_opening, "status": ["!=", "Withdrawn"]})
+	)
+
+
+@frappe.whitelist()
+def get_application_draft(job_opening):
+	"""The candidate's saved draft for this job, or None."""
+	user = _draft_user()
+	row = frappe.db.get_value(
+		"Application Draft", {"user": user, "job_opening": job_opening}, ["form_data", "saved_at"], as_dict=True
+	)
+	if not row:
+		return None
+	try:
+		data = json.loads(row.form_data or "null")
+	except ValueError:
+		data = None
+	return {"data": data, "saved_at": row.saved_at} if isinstance(data, dict) else None
+
+
+@frappe.whitelist(methods=["POST"])
+# The form autosaves a few seconds after typing stops.
+@rate_limit(limit=600, seconds=60 * 60)
+def save_application_draft(job_opening, data):
+	"""Save (replace) the candidate's draft for this job. Stored as-is and
+	never trusted: submit_application validates everything again."""
+	user = _draft_user()
+	job = _get_public_job(job_opening)
+	if not is_accepting_applications(job):
+		frappe.throw(not_accepting_message(job))
+	if _already_applied(user, job.name):
+		frappe.throw(_("You have already applied for this position. An application can be submitted only once."))
+
+	if isinstance(data, str):
+		data = frappe.parse_json(data)
+	if not isinstance(data, dict):
+		frappe.throw(_("Invalid draft."))
+	form_data = json.dumps(data, separators=(",", ":"), default=str)
+	if len(form_data.encode()) > DRAFT_MAX_BYTES:
+		frappe.throw(_("This draft is too large to save."))
+
+	saved_at = now_datetime()
+	# Lock this candidate's row so two tabs saving at once cannot create two drafts.
+	frappe.db.get_value("User", user, "name", for_update=True)
+	name = frappe.db.get_value("Application Draft", {"user": user, "job_opening": job.name}, "name")
+	if name:
+		frappe.db.set_value("Application Draft", name, {"form_data": form_data, "saved_at": saved_at})
+	else:
+		frappe.get_doc(
+			{"doctype": "Application Draft", "user": user, "job_opening": job.name, "form_data": form_data, "saved_at": saved_at}
+		).insert(ignore_permissions=True)
+	return {"saved_at": saved_at}
+
+
+@frappe.whitelist(methods=["POST"])
+def discard_application_draft(job_opening):
+	user = _draft_user()
+	frappe.db.delete("Application Draft", {"user": user, "job_opening": job_opening})
+
+
+@frappe.whitelist()
+def get_my_application_drafts():
+	"""Unsubmitted drafts for jobs still taking applications, for My Applications."""
+	user = frappe.session.user
+	if user == "Guest":
+		return []
+	drafts = frappe.get_all(
+		"Application Draft", filters={"user": user}, fields=["job_opening", "saved_at"], order_by="saved_at desc"
+	)
+	out = []
+	for d in drafts:
+		job = frappe.db.get_value(
+			"Job Opening", d.job_opening,
+			["name", "status", "job_title", "department", "track", "application_start", "application_deadline"],
+			as_dict=True,
+		)
+		if not job or not is_accepting_applications(job) or _already_applied(user, job.name):
+			continue
+		out.append(
+			{
+				"job_opening": job.name,
+				"job_title": job.job_title,
+				"department": job.department,
+				"track": job.track,
+				"application_deadline": job.application_deadline,
+				"saved_at": d.saved_at,
+			}
+		)
+	return out
 
 
 @frappe.whitelist()

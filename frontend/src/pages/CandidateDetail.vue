@@ -69,7 +69,7 @@
                 Login: <span class="font-medium">{{ data.candidate.email }}</span>
                 <span class="ml-1 rounded-full px-2 py-0.5 text-[11px] font-medium" :class="data.portal.enabled ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-500'">{{ data.portal.enabled ? 'Active' : 'Disabled' }}</span>
               </p>
-              <p class="mt-1 text-xs text-gray-500">Last signed in: {{ data.portal.last_login ? dayjs(data.portal.last_login).format('DD MMM YYYY, h:mm A') : 'never' }}</p>
+              <p class="mt-1 text-xs text-gray-500">Last signed in: {{ data.portal.last_login ? dayjs(data.portal.last_login).format('DD MMM YYYY, h:mm A [IST]') : 'never' }}</p>
             </template>
           </section>
           <section v-if="data.same_mobile.length" class="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">

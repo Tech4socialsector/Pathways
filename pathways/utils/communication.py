@@ -201,7 +201,7 @@ def job_email_context(job):
 		"job_code": job.position or job.name,
 		"department": job.department,
 		"vacancies": job.vacancies,
-		"deadline": frappe.utils.format_datetime(job.application_deadline, "dd MMM yyyy, h:mm a") if job.application_deadline else "",
+		"deadline": frappe.utils.format_datetime(job.application_deadline, "dd MMM yyyy, h:mm a 'IST'") if job.application_deadline else "",
 		"posting_link": get_advertisement_url(job.name),
 		"job_link": frappe.utils.get_url(f"/pathways/jobs/{job.name}"),
 	}

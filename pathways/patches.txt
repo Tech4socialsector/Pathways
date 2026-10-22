@@ -29,3 +29,4 @@ pathways.patches.v1_0.interview_emails #call-letter-confirm-bold
 pathways.patches.v1_0.candidate_mobile_login
 pathways.patches.v1_0.seed_email_events #panel-documents-shared
 pathways.patches.v1_0.copy_shared_departments
+pathways.patches.v1_0.ist_in_email_times

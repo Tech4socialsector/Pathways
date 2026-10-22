@@ -237,7 +237,7 @@ const extraColumns = [
   { key: 'tenure_description', label: 'Tenure' },
   { key: 'shortlisting_ratio', label: 'Shortlisting Ratio', format: (row) => (row.shortlisting_ratio ? `1:${row.shortlisting_ratio}` : 'Default') },
   { key: 'creation', label: 'Created On', format: (row) => (row.creation ? dayjs(row.creation).format('DD MMM YYYY') : '') },
-  { key: 'modified', label: 'Last Updated', format: (row) => (row.modified ? dayjs(row.modified).format('DD MMM YYYY, h:mm A') : '') },
+  { key: 'modified', label: 'Last Updated', format: (row) => (row.modified ? dayjs(row.modified).format('DD MMM YYYY, h:mm A [IST]') : '') },
   { key: 'name', label: 'Record ID' },
 ]
 function deadlineInfo(row) {

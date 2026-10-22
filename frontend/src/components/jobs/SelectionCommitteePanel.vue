@@ -53,7 +53,7 @@ const committee = computed(() => props.data?.committee)
 const editorOpen = ref(false)
 
 function timeLabel(t) {
-  return dayjs(`2000-01-01 ${t}`).format('h:mm A')
+  return dayjs(`2000-01-01 ${t}`).format('h:mm A [IST]')
 }
 
 function openEditor() {

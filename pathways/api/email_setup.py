@@ -242,11 +242,11 @@ def _sample_context():
 
 	context = {"recipient_name": frappe.utils.get_fullname(frappe.session.user), "doc_name": "PWY-PREGS-2026-00001",
 		"approver_label": "Registrar", "link": frappe.utils.get_url("/pathways/jobs"), "application_count": 0, "ratio": 5,
-		"change": "deadline extended", "remarks": "", "interview_date_time": "12 Nov 2026, 10:30 AM",
+		"change": "deadline extended", "remarks": "", "interview_date_time": "12 Nov 2026, 10:30 AM IST",
 		"meeting_link": "https://zoom.us/j/0000000000", "rsvp_deadline": "08 Nov 2026", "acceptance_deadline": "20 Nov 2026",
 		"joining_date": "01 Dec 2026", "notification_number": "Notification No. 21/2026", "interview_date": "12 Nov 2026",
-		"interview_day": "Thursday", "interview_time": "10:30 AM", "interview_mode": "Online", "meeting_platform": "Teams",
-		"login_time": "10:10 AM", "pnc_contacts": "", "reporting_location": "", "reporting_time": ""}
+		"interview_day": "Thursday", "interview_time": "10:30 AM IST", "interview_mode": "Online", "meeting_platform": "Teams",
+		"login_time": "10:10 AM IST", "pnc_contacts": "", "reporting_location": "", "reporting_time": ""}
 	job = frappe.get_all("Job Opening", filters={"status": "Advertised"}, pluck="name", order_by="creation desc", limit=1)
 	if job:
 		context.update(job_email_context(frappe.get_doc("Job Opening", job[0])))

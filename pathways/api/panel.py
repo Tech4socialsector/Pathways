@@ -720,7 +720,7 @@ def download_assessment_forms(job_opening, panelist=None, interview_date=None):
 			"max_total": f"{data['max_total']:g}",
 			"ask_area": job.track in SPECIALIZATION_TRACKS,
 			"date": ", ".join(frappe.utils.formatdate(d, "dd MMM yyyy") for d in data["interview_dates"]) or (frappe.utils.formatdate(data["interview_date"], "dd MMM yyyy") if data["interview_date"] else ""),
-			"time": frappe.utils.format_datetime(when, "h:mm a") if when else "",
+			"time": frappe.utils.format_datetime(when, "h:mm a 'IST'") if when else "",
 		},
 	)
 	from frappe.utils.pdf import get_pdf

@@ -168,7 +168,7 @@ def save_selection_committee(job_opening, members, scheduled_date=None, schedule
 def _time_label(value):
 	if not value:
 		return ""
-	return frappe.utils.format_time(value, "h:mm a")
+	return frappe.utils.format_time(value, "h:mm a 'IST'")
 
 
 # ----------------------------------------------------------- scheduling
@@ -246,7 +246,7 @@ def schedule_interviews(
 			"Info",
 			_("{0} interview {1} for {2} by {3}.").format(
 				_(round_type), _("rescheduled") if existing else _("scheduled"),
-				frappe.utils.format_datetime(when, "dd MMM yyyy, h:mm a"), frappe.utils.get_fullname(frappe.session.user),
+				frappe.utils.format_datetime(when, "dd MMM yyyy, h:mm a 'IST'"), frappe.utils.get_fullname(frappe.session.user),
 			),
 		)
 		if cint(send_invite):
@@ -392,16 +392,16 @@ def _send_invite(iv, app, meeting_platform=None, rsvp_deadline=None, updated=Fal
 	context, candidate = candidate_email_context(app)
 	context.update(
 		{
-			"interview_date_time": frappe.utils.format_datetime(when, "EEEE, MMMM d, yyyy 'at' h:mm a"),
+			"interview_date_time": frappe.utils.format_datetime(when, "EEEE, MMMM d, yyyy 'at' h:mm a 'IST'"),
 			"interview_date": when.strftime("%d %b %Y"),
 			"interview_day": when.strftime("%A"),
-			"interview_time": when.strftime("%I:%M %p").lstrip("0") + " (IST)",
-			"login_time": add_to_date(when, minutes=-20).strftime("%I:%M %p").lstrip("0"),
+			"interview_time": when.strftime("%I:%M %p").lstrip("0") + " IST",
+			"login_time": add_to_date(when, minutes=-20).strftime("%I:%M %p").lstrip("0") + " IST",
 			"interview_mode": "Online" if iv.mode == "Video Conference" else "In person",
 			"meeting_platform": meeting_platform or iv.get("meeting_platform") or "Microsoft Teams",
 			"meeting_link": iv.meeting_link or "",
 			"interview_location": iv.get("location") or "",
-			"rsvp_deadline": frappe.utils.format_datetime(rsvp_deadline, "MMMM d, yyyy '–' h:mm a") if rsvp_deadline else "",
+			"rsvp_deadline": frappe.utils.format_datetime(rsvp_deadline, "MMMM d, yyyy '–' h:mm a 'IST'") if rsvp_deadline else "",
 			"rsvp_link": get_url(f"/pathways/portal/applications/{app.name}"),
 			# The buttons open the portal; the candidate signs in and replies there.
 			"rsvp_respond_link": portal_rsvp_link(app.name, iv.name),
@@ -453,7 +453,7 @@ def set_interview_status(interview, status, reason=None, notify=0, cc=None):
 		context.update(
 			{
 				"interview_round": _("Round 1 (HR interaction)") if iv.round_type == "HR Interaction" else _("final interview"),
-				"interview_date_time": frappe.utils.format_datetime(iv.scheduled_datetime, "EEEE, MMMM d, yyyy 'at' h:mm a"),
+				"interview_date_time": frappe.utils.format_datetime(iv.scheduled_datetime, "EEEE, MMMM d, yyyy 'at' h:mm a 'IST'"),
 				"reason": (reason or "").strip(),
 			}
 		)
@@ -566,7 +566,7 @@ def update_interview(
 	elif create_meet or (iv.get("calendar_event") and _meet_calendar()):
 		_sync_meet_event(iv, app, minutes or 30, committee)
 
-	what = _("rescheduled to {0}").format(frappe.utils.format_datetime(new_start, "dd MMM yyyy, h:mm a")) if time_changed else _("details updated")
+	what = _("rescheduled to {0}").format(frappe.utils.format_datetime(new_start, "dd MMM yyyy, h:mm a 'IST'")) if time_changed else _("details updated")
 	comment = _("{0} interview {1} by {2}.").format(_(iv.round_type), what, frappe.utils.get_fullname(frappe.session.user))
 	if note:
 		comment += " " + _("Note: {0}").format(frappe.utils.escape_html(note))
@@ -591,7 +591,7 @@ def _record_rsvp(iv, response, via):
 	frappe.get_doc("Application", iv.application).add_comment(
 		"Info", _("Candidate {0} the {1} interview on {2} ({3}).").format(
 			_("confirmed") if response == "Confirmed" else _("declined"), _(iv.round_type),
-			frappe.utils.format_datetime(iv.scheduled_datetime, "dd MMM yyyy, h:mm a"), via,
+			frappe.utils.format_datetime(iv.scheduled_datetime, "dd MMM yyyy, h:mm a 'IST'"), via,
 		),
 	)
 

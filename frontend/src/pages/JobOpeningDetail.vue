@@ -264,8 +264,8 @@ const facts = computed(() => {
         days < 0
           ? `Closed ${plural(-days, 'day')} ago`
           : days === 0
-            ? `Closes today at ${close.format('h:mm A')}`
-            : `${plural(days, 'day')} left · ${close.format('h:mm A')}`,
+            ? `Closes today at ${close.format('h:mm A [IST]')}`
+            : `${plural(days, 'day')} left · ${close.format('h:mm A [IST]')}`,
       tone: days < 0 ? 'text-gray-600' : days <= 3 ? 'text-orange-700' : 'text-green-700',
       theme: days < 0 ? 'gray' : days <= 3 ? 'orange' : 'green',
     }

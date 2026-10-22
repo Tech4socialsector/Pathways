@@ -278,7 +278,7 @@ def _plain(value):
 	if value is None:
 		return ""
 	if hasattr(value, "isoformat"):
-		return frappe.utils.formatdate(value) if not hasattr(value, "hour") else frappe.utils.format_datetime(value)
+		return frappe.utils.formatdate(value) if not hasattr(value, "hour") else f"{frappe.utils.format_datetime(value)} IST"
 	return value
 
 

@@ -122,7 +122,7 @@ def not_accepting_message(job):
 	"""Why a job is not taking applications, for error messages."""
 	if job.status == "Advertised" and job.get("application_start") and get_datetime(job.application_start) > now_datetime():
 		return _("Applications for this position open on {0}.").format(
-			frappe.utils.format_datetime(job.application_start, "dd MMM yyyy, h:mm a")
+			frappe.utils.format_datetime(job.application_start, "dd MMM yyyy, h:mm a 'IST'")
 		)
 	return _("Applications for this position are closed.")
 
@@ -186,10 +186,22 @@ def _select_options(doctype, fieldname):
 	return [o for o in (frappe.get_meta(doctype).get_field(fieldname).options or "").split("\n") if o]
 
 
+# Nature of Relationship for a referee, by track (alphabetical).
+ADMIN_REFEREE_RELATIONSHIPS = ["Current Supervisor", "Former Supervisor", "Senior Colleague", "Skip-level Supervisor"]
+ACADEMIC_REFEREE_RELATIONSHIPS = [
+	"Current Supervisor", "Former Faculty", "Former Supervisor", "Senior Colleague", "Skip-level Supervisor",
+]
+
+
+def referee_relationships(job):
+	"""Admin posts have their own list; Faculty, Research and Clinics share one."""
+	return ADMIN_REFEREE_RELATIONSHIPS if job.get("track") == "Admin" else ACADEMIC_REFEREE_RELATIONSHIPS
+
+
 def _form_options(job):
 	"""Dropdown lists for the sections this job turns on (empty otherwise)."""
 	sections = get_form_sections(job)
-	options = {}
+	options = {"referee_relationships": referee_relationships(job)}
 	if sections["institution_list"] != "Free Text":
 		options["institutions"] = frappe.get_all(
 			"Institution Master",
@@ -573,6 +585,8 @@ def validate_submission(job, data, user, email=None):
 			("mobile", _("Mobile Number")),
 		):
 			errors.require(values[field], f"{label}: {field_label}", f"{key}.{field}")
+		if values["relationship"] and values["relationship"] not in options["referee_relationships"]:
+			errors.add(_("{0}: choose the Nature of Relationship from the list.").format(label), f"{key}.relationship")
 		if values["email"] and not validate_email_address(values["email"]):
 			errors.add(_("{0}: enter a valid email address.").format(label), f"{key}.email")
 		if values["email"] and values["email"] == email:

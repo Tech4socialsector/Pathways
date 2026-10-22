@@ -374,7 +374,7 @@ async function markEligible(eligible) {
 }
 
 function formatDateTime(value) {
-  return value ? dayjs(value).format('DD MMM YYYY, h:mm A') : ''
+  return value ? dayjs(value).format('DD MMM YYYY, h:mm A [IST]') : ''
 }
 
 // ----- confirm before a decision is saved

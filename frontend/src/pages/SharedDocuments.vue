@@ -64,7 +64,7 @@
                   <span v-if="data.can_manage" class="ml-2 text-xs text-gray-600">→ {{ r.panelist_name }}</span>
                 </div>
                 <span class="text-xs text-gray-500">
-                  Shared {{ r.shared_on ? dayjs(r.shared_on).format('DD MMM YYYY, h:mm A') : '' }}<template v-if="r.shared_by"> by {{ r.shared_by }}</template>
+                  Shared {{ r.shared_on ? dayjs(r.shared_on).format('DD MMM YYYY, h:mm A [IST]') : '' }}<template v-if="r.shared_by"> by {{ r.shared_by }}</template>
                 </span>
               </div>
               <p v-if="r.note" class="mt-1 whitespace-pre-line rounded-md bg-amber-50 px-2 py-1 text-xs text-amber-900">{{ r.note }}</p>

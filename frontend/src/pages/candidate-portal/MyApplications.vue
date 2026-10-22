@@ -17,6 +17,35 @@
         </div>
       </div>
 
+      <!-- Drafts: started, not yet submitted, job still open -->
+      <template v-if="drafts.length">
+        <div class="mt-8 mb-3 flex items-center justify-between">
+          <h2 class="text-xs font-bold uppercase tracking-wide text-brand-700">Drafts — not yet submitted</h2>
+          <span class="text-xs text-gray-500">{{ drafts.length }} draft{{ drafts.length === 1 ? '' : 's' }}</span>
+        </div>
+        <div class="flex flex-col divide-y overflow-hidden rounded-2xl border bg-white shadow-sm">
+          <router-link
+            v-for="d in drafts"
+            :key="d.job_opening"
+            :to="`/portal/jobs/${d.job_opening}/apply`"
+            class="group flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-4 transition hover:bg-brand-50/40"
+          >
+            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-700">
+              <FeatherIcon name="edit-3" class="h-5 w-5" />
+            </span>
+            <div class="min-w-0 flex-1">
+              <div class="font-semibold text-gray-900 group-hover:text-brand-700">{{ d.job_title || d.job_opening }}</div>
+              <div class="mt-0.5 text-xs text-gray-500">
+                Saved {{ formatDateTime(d.saved_at) }}<template v-if="d.application_deadline"> · Applications close {{ formatDateTime(d.application_deadline) }}</template>
+              </div>
+            </div>
+            <span class="flex items-center gap-1 text-sm font-semibold text-brand-700">
+              Continue <FeatherIcon name="arrow-right" class="h-4 w-4 transition group-hover:translate-x-0.5" />
+            </span>
+          </router-link>
+        </div>
+      </template>
+
       <!-- Summary -->
       <div v-if="applications.length" class="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
         <div v-for="c in summary" :key="c.label" class="flex items-center gap-3 rounded-xl border bg-white p-4 shadow-sm">
@@ -110,13 +139,14 @@
 </template>
 
 <script setup>
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { Button, FeatherIcon } from 'frappe-ui'
 import dayjs from 'dayjs'
 import CandidatePortalLayout from '@/layouts/CandidatePortalLayout.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
 import { useMyApplications } from '@/composables/useApplications'
+import { applicationService } from '@/services/applications'
 import { useSessionStore } from '@/stores/session'
 import { BTN_BRAND } from '@/utils/buttonStyles'
 
@@ -180,5 +210,16 @@ const summary = computed(() => {
   ]
 })
 
-onMounted(fetchApplications)
+const drafts = ref([])
+function formatDateTime(value) {
+  return value ? dayjs(value).format('DD MMM YYYY, h:mm A [IST]') : ''
+}
+
+onMounted(() => {
+  fetchApplications()
+  applicationService
+    .getMyDrafts()
+    .then((rows) => (drafts.value = rows || []))
+    .catch(() => (drafts.value = []))
+})
 </script>

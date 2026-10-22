@@ -347,7 +347,7 @@ function errorText(e, fallback) {
 }
 
 function formatDate(value) {
-  return value ? dayjs(value).format('DD MMM YYYY, h:mm A') : ''
+  return value ? dayjs(value).format('DD MMM YYYY, h:mm A [IST]') : ''
 }
 
 function escapeHtml(text) {

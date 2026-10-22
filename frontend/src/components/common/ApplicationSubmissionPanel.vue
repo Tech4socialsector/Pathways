@@ -205,7 +205,7 @@ const FieldValue = (p) => {
     case 'Date':
       return dayjs(value).format('DD MMM YYYY')
     case 'Datetime':
-      return dayjs(value).format('DD MMM YYYY, h:mm A')
+      return dayjs(value).format('DD MMM YYYY, h:mm A [IST]')
     case 'Currency':
       return `₹ ${Number(value).toLocaleString('en-IN')}`
     default:

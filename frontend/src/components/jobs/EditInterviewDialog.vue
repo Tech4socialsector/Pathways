@@ -6,7 +6,7 @@
       <div v-if="interview" class="flex flex-col gap-4 text-sm">
         <div class="rounded-lg bg-gray-50 px-3 py-2 text-gray-700">
           {{ interview.round_type === 'Final' ? 'Final interview' : 'Round 1 (HR interaction)' }}<template v-if="interview.job_title"> · {{ interview.job_title }}</template>
-          <div class="text-xs text-gray-500">Currently {{ dayjs(interview.scheduled_datetime).format('ddd, DD MMM YYYY, h:mm A') }}</div>
+          <div class="text-xs text-gray-500">Currently {{ dayjs(interview.scheduled_datetime).format('ddd, DD MMM YYYY, h:mm A [IST]') }}</div>
         </div>
 
         <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">

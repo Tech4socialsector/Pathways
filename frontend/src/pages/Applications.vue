@@ -215,7 +215,7 @@ const columns = [
   { key: 'application_date', label: 'Applied On', format: (row) => (row.application_date ? dayjs(row.application_date).format('DD MMM YYYY') : '') },
 ]
 // More fields users can add from the Columns menu.
-const fmtDate = (v, withTime) => (v ? dayjs(v).format(withTime ? 'DD MMM YYYY, h:mm A' : 'DD MMM YYYY') : '')
+const fmtDate = (v, withTime) => (v ? dayjs(v).format(withTime ? 'DD MMM YYYY, h:mm A [IST]' : 'DD MMM YYYY') : '')
 const extraColumns = [
   { key: 'candidate_email', label: 'Email' },
   { key: 'candidate_mobile', label: 'Mobile' },

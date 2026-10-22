@@ -9,7 +9,7 @@
           <ul class="mt-2 max-h-40 overflow-y-auto rounded-lg border bg-gray-50 px-3 py-2 text-xs">
             <li v-for="iv in list" :key="iv.name" class="flex justify-between gap-3 py-0.5">
               <span class="truncate">{{ iv.candidate_name }}</span>
-              <span class="shrink-0 text-gray-500">{{ dayjs(iv.scheduled_datetime).format('DD MMM, h:mm A') }}</span>
+              <span class="shrink-0 text-gray-500">{{ dayjs(iv.scheduled_datetime).format('DD MMM, h:mm A [IST]') }}</span>
             </li>
           </ul>
         </div>
@@ -24,7 +24,7 @@
       <div v-else-if="interview" class="flex flex-col gap-4 text-sm">
         <p class="text-gray-700">
           Cancel the {{ interview.round_type === 'Final' ? 'final interview' : 'Round 1 (HR) interview' }} of
-          <b>{{ interview.candidate_name }}</b> on {{ dayjs(interview.scheduled_datetime).format('ddd, DD MMM YYYY, h:mm A') }}?
+          <b>{{ interview.candidate_name }}</b> on {{ dayjs(interview.scheduled_datetime).format('ddd, DD MMM YYYY, h:mm A [IST]') }}?
           <span v-if="interview.calendar_event" class="block text-xs text-gray-500">The Google Calendar event is cancelled too.</span>
         </p>
         <FormControl label="Reason (optional)" type="textarea" v-model="form.reason" :rows="2" placeholder="e.g. The panel is not available on this date." />

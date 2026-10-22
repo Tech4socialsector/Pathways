@@ -59,7 +59,7 @@
               </td>
               <td v-for="round in ROUNDS" :key="round" class="px-3 py-3">
                 <template v-if="c.rounds[round]">
-                  <div class="whitespace-nowrap text-gray-900">{{ dayjs(c.rounds[round].scheduled_datetime).format('DD MMM, h:mm A') }}</div>
+                  <div class="whitespace-nowrap text-gray-900">{{ dayjs(c.rounds[round].scheduled_datetime).format('DD MMM, h:mm A [IST]') }}</div>
                   <div class="mt-1 flex flex-wrap items-center gap-1">
                     <span class="rounded-full px-2 py-0.5 text-[11px] font-medium" :class="STATUS_TONE[c.rounds[round].status] || 'bg-gray-100 text-gray-700'">
                       {{ c.rounds[round].status }}

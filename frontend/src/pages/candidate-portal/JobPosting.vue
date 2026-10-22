@@ -124,7 +124,7 @@
           <section class="p-6 sm:p-8" aria-labelledby="documents-heading">
             <h2 id="documents-heading" class="section-title">What you'll need</h2>
             <p class="mt-1 text-p-sm text-gray-500">
-              Keep these ready. The form takes about {{ formMinutes }} minutes, saves your progress on this device, and can be submitted once.
+              Keep these ready. The form takes about {{ formMinutes }} minutes, can be saved as a draft and finished later, and can be submitted once.
             </p>
             <ul class="mt-5 grid grid-cols-1 gap-x-8 gap-y-3 sm:grid-cols-2">
               <li v-for="doc in documents" :key="doc.label" class="flex items-start gap-3">
@@ -144,20 +144,6 @@
             <p v-if="extraSections.length" class="mt-3 text-p-sm text-gray-600">
               <span class="font-semibold text-gray-900">The form also asks about</span> {{ joinList(extraSections) }}.
             </p>
-          </section>
-
-          <!-- Process -->
-          <section class="p-6 sm:p-8" aria-labelledby="process-heading">
-            <h2 id="process-heading" class="section-title">How selection works</h2>
-            <ol class="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">
-              <li v-for="(step, idx) in PROCESS" :key="step.title" class="flex gap-3">
-                <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-700 text-xs font-semibold text-white">{{ idx + 1 }}</span>
-                <div class="min-w-0">
-                  <h3 class="text-base font-semibold text-gray-900">{{ step.title }}</h3>
-                  <p class="mt-1 text-p-sm text-gray-600">{{ step.text }}</p>
-                </div>
-              </li>
-            </ol>
           </section>
 
           <!-- Official notification and corrigenda: only when there is something to show. -->
@@ -270,19 +256,11 @@ const router = useRouter()
 // Public: the endpoint only returns Advertised jobs, otherwise job stays null.
 const { job, loading, fetchJob } = useJobOpeningDetail()
 
-const PROCESS = [
-  { title: 'Apply online', text: 'Fill in the form and upload your documents before the closing date. You get an application ID when you submit.' },
-  { title: 'Eligibility check', text: 'Applications are checked against the criteria in the official notification.' },
-  { title: 'Shortlisting', text: 'A committee reviews eligible applications and shortlists candidates for interview.' },
-  { title: 'Interview', text: 'Shortlisted candidates are told the interview date, time and format.' },
-  { title: 'Offer', text: 'Selected candidates receive an offer, then submit their documents for verification.' },
-]
-
 const form = computed(() => job.value?.form || {})
 const viewer = computed(() => job.value?.viewer || {})
 const isOpen = computed(() => form.value.is_open !== false)
 const opensOn = computed(() =>
-  form.value.opens_later && form.value.application_start ? dayjs(form.value.application_start).format('D MMM YYYY, h:mm A') : '',
+  form.value.opens_later && form.value.application_start ? dayjs(form.value.application_start).format('D MMM YYYY, h:mm A [IST]') : '',
 )
 
 // Rich-text fields can hold just "<p></p>" when emptied in the editor.
@@ -362,9 +340,9 @@ const deadline = computed(() => {
   const left = closed
     ? 'Closed'
     : days === 0
-      ? `Closes today at ${close.format('h:mm A')}`
+      ? `Closes today at ${close.format('h:mm A [IST]')}`
       : `${days} day${days === 1 ? '' : 's'} left`
-  return { date: close.format('D MMMM YYYY, h:mm A'), left, closed, urgent: !closed && days <= 3 }
+  return { date: close.format('D MMMM YYYY, h:mm A [IST]'), left, closed, urgent: !closed && days <= 3 }
 })
 
 const eligibility = computed(() => (form.value.require_postgraduate ? ['A postgraduate degree is required.'] : []))
@@ -375,7 +353,8 @@ const documents = computed(() => {
   const list = [
     { label: 'Resume / CV', required: true },
     { label: 'Statement of Purpose', required: true },
-    { label: 'Degree certificates and transcripts', required: true },
+    { label: 'Educational certificates and transcripts', required: true },
+    { label: 'Contact details of 2 professional references', required: true },
   ]
   for (const d of form.value.required_documents || []) list.push({ label: d.label, required: Boolean(d.mandatory) })
   return list
@@ -417,7 +396,7 @@ function formatDate(value) {
   return value ? dayjs(value).format('D MMM YYYY') : ''
 }
 function formatDateTime(value) {
-  return value ? dayjs(value).format('D MMM YYYY, h:mm A') : ''
+  return value ? dayjs(value).format('D MMM YYYY, h:mm A [IST]') : ''
 }
 
 function apply() {

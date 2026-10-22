@@ -152,7 +152,7 @@
                 <li v-for="iv in recruiter.upcoming_interviews" :key="iv.name">
                   <router-link :to="`/applications/${iv.application}`" class="flex items-center justify-between gap-2 rounded-md px-2 py-2 text-sm hover:bg-brand-50">
                     <span class="text-gray-800">{{ iv.application }} · {{ iv.round_type }}</span>
-                    <span class="text-xs text-gray-500">{{ dayjs(iv.scheduled_datetime).format('DD MMM, h:mm A') }}</span>
+                    <span class="text-xs text-gray-500">{{ dayjs(iv.scheduled_datetime).format('DD MMM, h:mm A [IST]') }}</span>
                   </router-link>
                 </li>
               </ul>
@@ -255,7 +255,7 @@
                     </span>
                     <div class="min-w-0 flex-1">
                       <div class="truncate font-medium text-gray-900">{{ a.candidate_name }}</div>
-                      <div class="truncate text-xs text-gray-500">{{ a.job_title }} · {{ dayjs(a.creation).format('DD MMM, h:mm A') }}</div>
+                      <div class="truncate text-xs text-gray-500">{{ a.job_title }} · {{ dayjs(a.creation).format('DD MMM, h:mm A [IST]') }}</div>
                     </div>
                     <StatusBadge :status="a.status" />
                   </router-link>
@@ -276,7 +276,7 @@
                     <span class="font-medium text-gray-900">{{ e.subject }}</span>
                     <span class="block text-gray-700">{{ e.text }}</span>
                   </router-link>
-                  <div class="text-xs text-gray-500">{{ e.who }} · {{ dayjs(e.at).format('DD MMM, h:mm A') }}</div>
+                  <div class="text-xs text-gray-500">{{ e.who }} · {{ dayjs(e.at).format('DD MMM, h:mm A [IST]') }}</div>
                 </li>
               </ol>
             </SectionCard>

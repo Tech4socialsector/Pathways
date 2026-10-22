@@ -258,6 +258,6 @@ function formatDate(value) {
   return value ? dayjs(value).format('DD MMM YYYY') : ''
 }
 function formatDateTime(value) {
-  return value ? dayjs(value).format('DD MMM YYYY, h:mm A') : ''
+  return value ? dayjs(value).format('DD MMM YYYY, h:mm A [IST]') : ''
 }
 </script>

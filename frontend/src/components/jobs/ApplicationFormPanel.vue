@@ -290,7 +290,7 @@ function previousOptions(idx) {
 }
 
 function formatDateTime(value) {
-  return dayjs(value).format('DD MMM YYYY, h:mm A')
+  return dayjs(value).format('DD MMM YYYY, h:mm A [IST]')
 }
 
 async function startEdit() {

@@ -97,6 +97,19 @@ export const applicationService = {
   getMyApplications() {
     return callMethod('pathways.api.application.get_my_applications')
   },
+  // Drafts saved to a logged-in candidate's account (one per job).
+  getMyDrafts() {
+    return callMethod('pathways.api.application.get_my_application_drafts')
+  },
+  getDraft(jobOpening) {
+    return callMethod('pathways.api.application.get_application_draft', { job_opening: jobOpening })
+  },
+  saveDraft(jobOpening, data) {
+    return callMethod('pathways.api.application.save_application_draft', { job_opening: jobOpening, data })
+  },
+  discardDraft(jobOpening) {
+    return callMethod('pathways.api.application.discard_application_draft', { job_opening: jobOpening })
+  },
   getApplicationStatus(applicationName) {
     return callMethod('pathways.api.application.get_application_status', {
       application_name: applicationName,

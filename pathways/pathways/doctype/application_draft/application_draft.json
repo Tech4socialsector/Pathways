@@ -1,0 +1,64 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "hash",
+ "creation": "2026-10-22 11:00:00.000000",
+ "description": "A candidate's unsubmitted application form, saved from the careers portal (one per candidate per job). Never trusted: the form is validated again on submit.",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "user",
+  "job_opening",
+  "saved_at",
+  "form_data"
+ ],
+ "fields": [
+  {
+   "fieldname": "user",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "User",
+   "reqd": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "job_opening",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Job Opening",
+   "reqd": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "saved_at",
+   "fieldtype": "Datetime",
+   "in_list_view": 1,
+   "label": "Saved At"
+  },
+  {
+   "fieldname": "form_data",
+   "fieldtype": "Long Text",
+   "label": "Form Data (JSON)"
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "links": [],
+ "modified": "2026-10-22 11:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Pathways",
+ "name": "Application Draft",
+ "naming_rule": "Random",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "delete": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager"
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 0
+}

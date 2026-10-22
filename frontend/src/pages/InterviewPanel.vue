@@ -108,7 +108,7 @@
                 >
                   <td class="whitespace-nowrap px-4 py-3">
                     <div class="font-medium text-gray-900">{{ dayjs(iv.scheduled_datetime).format('ddd, DD MMM') }}</div>
-                    <div class="text-xs text-gray-500">{{ dayjs(iv.scheduled_datetime).format('h:mm A') }}</div>
+                    <div class="text-xs text-gray-500">{{ dayjs(iv.scheduled_datetime).format('h:mm A [IST]') }}</div>
                   </td>
                   <td class="px-4 py-3">
                     <div class="font-medium text-gray-900">{{ iv.candidate_name }}</div>

@@ -27,7 +27,7 @@
               :class="form.is_open ? 'text-amber-700' : 'text-red-600'"
             >
               <FeatherIcon name="clock" class="h-4 w-4" />
-              Applications close {{ formatDateTime(form.application_deadline) }} (IST)
+              Applications close {{ formatDateTime(form.application_deadline) }}
             </p>
           </div>
           <div class="flex flex-wrap items-center justify-between gap-3 border-b bg-brand-700 px-5 py-3 text-white sm:px-6">
@@ -173,9 +173,30 @@
         <!-- The form -->
         <form v-else class="mt-6 flex flex-col gap-6 [counter-reset:section]" novalidate @submit.prevent="handleSubmit">
           <p class="text-sm text-gray-600">
-            Fields marked <span class="text-red-500">*</span> are required. Your progress is saved on this device until you
-            submit.
+            Fields marked <span class="text-red-500">*</span> are required.
+            <template v-if="accountDrafts">
+              Your progress is saved to your account as a draft as you go, so you can continue later on any device until you submit.
+            </template>
+            <template v-else>
+              Your progress is saved on this device only, for {{ GUEST_DRAFT_DAYS }} days.
+              <a :href="loginToApplyUrl" class="font-medium text-brand-700 hover:underline">Log in</a> to save a draft to your
+              account and continue on any device.
+            </template>
           </p>
+
+          <div
+            v-if="draft.restoredAt"
+            class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-brand-100 bg-brand-50 px-4 py-3 text-sm text-brand-900"
+          >
+            <span class="flex items-center gap-2">
+              <FeatherIcon name="rotate-ccw" class="h-4 w-4 shrink-0" />
+              <span>
+                Continuing your draft saved {{ formatSavedAt(draft.restoredAt) }}.
+                <template v-if="!viewer.logged_in"> Not yours? Start over to clear it from this device.</template>
+              </span>
+            </span>
+            <button type="button" class="font-semibold text-brand-700 hover:underline" @click="showDiscard = true">Start over</button>
+          </div>
 
           <Section v-if="sec.specialization" title="Area of Specialization" subtitle="Must be relevant to the area notified in the advertisement. Choose all that apply.">
             <FormField name="academic.specializations" :error="errors['academic.specializations']">
@@ -573,7 +594,7 @@
                   <FormControl label="Current Designation and Organization" v-model="r.current_designation_org" required />
                 </FormField>
                 <FormField :name="`ref.${idx}.relationship`" :error="errors[`ref.${idx}.relationship`]">
-                  <FormControl label="Nature of Relationship" v-model="r.relationship" required placeholder="e.g. Reporting manager" />
+                  <FormControl label="Nature of Relationship" type="select" v-model="r.relationship" :options="['', ...(opt.referee_relationships || [])]" required />
                 </FormField>
                 <FormField :name="`ref.${idx}.email`" :error="errors[`ref.${idx}.email`]">
                   <FormControl label="Email Address" type="email" v-model="r.email" required />
@@ -655,15 +676,39 @@
           </div>
 
           <div class="sticky bottom-0 -mx-4 flex flex-wrap items-center justify-between gap-3 border-t bg-white/95 px-4 py-3 backdrop-blur sm:mx-0 sm:rounded-xl sm:border sm:px-5 sm:shadow-lg">
-            <span class="text-xs text-gray-500">
+            <span class="min-w-0 flex-1 text-xs" :class="draft.state === 'error' ? 'text-red-600' : 'text-gray-500'" aria-live="polite">
               <template v-if="errorCount">{{ errorCount }} field{{ errorCount === 1 ? '' : 's' }} to fix</template>
+              <template v-else-if="draft.state === 'error'">{{ draft.error }}</template>
+              <template v-else-if="draft.state === 'saving'">Saving draft…</template>
+              <template v-else-if="draft.state === 'saved'">
+                <FeatherIcon name="check" class="inline h-3.5 w-3.5 text-green-600" />
+                {{ accountDrafts ? 'Draft saved' : 'Saved on this device' }} {{ formatSavedAt(draft.savedAt) }}
+              </template>
               <template v-else>Please review your details. An application can be submitted only once.</template>
             </span>
-            <Button variant="solid" size="lg" :loading="submitting" type="submit" icon-right="send">Submit Application</Button>
+            <div class="flex flex-wrap gap-2">
+              <Button size="lg" icon-left="save" :loading="draft.state === 'saving'" :disabled="submitting" @click="saveDraftNow">
+                Save as draft
+              </Button>
+              <Button variant="solid" size="lg" :loading="submitting" type="submit" icon-right="send">Submit Application</Button>
+            </div>
           </div>
         </form>
       </template>
     </div>
+    <Dialog
+      v-model="showDiscard"
+      :options="{
+        title: 'Start over?',
+        message: accountDrafts
+          ? 'This clears everything you have filled in for this application, here and in your account. It cannot be undone.'
+          : 'This clears everything filled in for this application from this device. It cannot be undone.',
+        actions: [
+          { label: 'Clear and start over', variant: 'solid', theme: 'red', onClick: () => discardDraft() },
+          { label: 'Cancel' },
+        ],
+      }"
+    />
     <Dialog v-model="showInstructions" :options="{ size: '3xl' }">
       <template #body>
         <div class="flex max-h-[85vh] flex-col">
@@ -706,7 +751,7 @@
 
 <script setup>
 import BackButton from '@/components/common/BackButton.vue'
-import { computed, h, nextTick, onMounted, provide, reactive, ref, watch } from 'vue'
+import { computed, h, nextTick, onBeforeUnmount, onMounted, provide, reactive, ref, watch } from 'vue'
 import { Autocomplete, Button, Dialog, FeatherIcon, FormControl } from 'frappe-ui'
 import { BTN_BRAND } from '@/utils/buttonStyles'
 import dayjs from 'dayjs'
@@ -717,6 +762,7 @@ import FormField from '@/components/candidate/FormField.vue'
 import { isQuestionVisible, validateApplication } from '@/utils/applicationValidation'
 import { useJobOpeningDetail } from '@/composables/useJobOpenings'
 import { useApplicationForm } from '@/composables/useApplications'
+import { applicationService } from '@/services/applications'
 
 const props = defineProps({ id: { type: String, required: true } })
 
@@ -821,7 +867,7 @@ const instructionFacts = computed(() => {
     form.value.application_deadline && {
       icon: 'clock',
       label: 'Deadline',
-      value: `${dayjs(form.value.application_deadline).format('D MMM YYYY, h:mm A')} (IST)`,
+      value: `${dayjs(form.value.application_deadline).format('D MMM YYYY, h:mm A [IST]')}`,
     },
     { icon: 'watch', label: 'Time needed', value: academicForm.value ? 'About 90 minutes' : 'About 30 minutes' },
     {
@@ -909,33 +955,164 @@ function addEmployment() {
   data.application.employment_history.push({ is_current: false })
 }
 
-// ----- draft kept on this device only (convenience; never trusted)
+// ----- drafts (a convenience; never trusted — the server validates on submit)
+// Logged-in candidates: saved to their account a few seconds after they stop
+// typing, or at once with "Save as draft", so they can continue on any
+// device. A copy is also kept on this device, marked unsynced until the
+// account save succeeds, so a dropped connection loses nothing.
+// Guests: on this device only, and only for GUEST_DRAFT_DAYS, since a shared
+// computer would otherwise show the next person someone else's details.
+const GUEST_DRAFT_DAYS = 7
+const ACCOUNT_SAVE_DELAY = 3000
+const accountDrafts = computed(
+  () => !!viewer.value.logged_in && !viewer.value.is_staff && !viewer.value.already_applied && !!form.value.is_open,
+)
 const draftKey = computed(() => `pathways-apply-${props.id}-${viewer.value.email || 'guest'}`)
+const guestDraftKey = computed(() => `pathways-apply-${props.id}-guest`)
 
-function saveDraft() {
-  if (submitted.value) return
+// state: idle | saving | saved | error
+const draft = reactive({ state: 'idle', savedAt: '', restoredAt: '', error: '' })
+const showDiscard = ref(false)
+let ready = false // false while the form is being filled from a draft: that is not an edit
+let dirty = false // edited since the last successful save to the account
+let saving = null // the account save in flight
+let localTimer = null
+let accountTimer = null
+
+function readLocal(key) {
   try {
-    localStorage.setItem(
-      draftKey.value,
-      JSON.stringify({ data, answers, documents, uploadTokens: Object.fromEntries(uploadTokens) }),
-    )
+    const saved = JSON.parse(localStorage.getItem(key) || 'null')
+    return saved?.data ? saved : null
   } catch {
-    // storage unavailable — drafts are a convenience only
+    return null // corrupt or unavailable — start clean
   }
 }
 
-function clearDraft() {
+function removeLocal(key) {
   try {
-    localStorage.removeItem(draftKey.value)
+    localStorage.removeItem(key)
   } catch {
     // ignore
   }
 }
 
-function restore() {
+function draftContent() {
+  // The declaration is never saved: it is agreed to at submission.
+  const { declaration_accepted, ...rest } = data
+  return { data: rest, answers, documents }
+}
+
+function saveLocal(synced) {
+  if (submitted.value) return ''
+  const savedAt = new Date().toISOString()
+  try {
+    localStorage.setItem(
+      draftKey.value,
+      JSON.stringify({ ...draftContent(), uploadTokens: Object.fromEntries(uploadTokens), savedAt, synced }),
+    )
+  } catch {
+    // storage unavailable — logged-in candidates still have the account copy
+  }
+  return savedAt
+}
+
+function clearDraft() {
+  clearTimeout(localTimer)
+  clearTimeout(accountTimer)
+  dirty = false
+  removeLocal(draftKey.value)
+}
+
+function saveToAccount() {
+  if (!accountDrafts.value || submitted.value) return Promise.resolve()
+  if (saving) return saving // the save in flight re-runs when it ends if more was typed
+  clearTimeout(accountTimer)
+  dirty = false
+  draft.state = 'saving'
+  saving = applicationService
+    .saveDraft(props.id, draftContent())
+    .then((result) => {
+      draft.savedAt = result.saved_at
+      draft.error = ''
+      draft.state = 'saved'
+      if (!dirty) saveLocal(true)
+    })
+    .catch((e) => {
+      dirty = true
+      draft.state = 'error'
+      draft.error = e?.messages?.[0] || "Couldn't save to your account. Your progress is kept on this device; try again."
+    })
+    .finally(() => {
+      saving = null
+      if (dirty && draft.state !== 'error' && !submitted.value) accountTimer = setTimeout(saveToAccount, ACCOUNT_SAVE_DELAY)
+    })
+  return saving
+}
+
+async function saveDraftNow() {
+  clearTimeout(localTimer)
+  const savedAt = saveLocal(false)
+  if (accountDrafts.value) {
+    dirty = true
+    await saving
+    await saveToAccount()
+  } else {
+    draft.savedAt = savedAt
+    draft.state = 'saved'
+  }
+}
+
+watch([() => data, answers, documents], () => {
+  if (!ready || submitted.value) return
+  dirty = true
+  clearTimeout(localTimer)
+  localTimer = setTimeout(() => saveLocal(false), 600)
+  if (accountDrafts.value) {
+    clearTimeout(accountTimer)
+    accountTimer = setTimeout(saveToAccount, ACCOUNT_SAVE_DELAY)
+  }
+}, { deep: true })
+
+// The newest copy of this candidate's draft, or null.
+async function findDraft() {
+  const local = readLocal(draftKey.value)
+  if (!viewer.value.logged_in) {
+    const expired = local && dayjs().diff(dayjs(local.savedAt), 'day') >= GUEST_DRAFT_DAYS
+    if (expired) removeLocal(draftKey.value)
+    return expired ? null : local
+  }
+  if (!accountDrafts.value) return null
+  // Edits on this device that never reached the account are the newest.
+  if (local && !local.synced) return { ...local, unsynced: true }
+  let server = null
+  try {
+    server = await applicationService.getDraft(props.id)
+  } catch {
+    // offline or failed — fall back to this device's copy
+  }
+  if (server?.data) return { ...server.data, savedAt: server.saved_at, synced: true }
+  if (local) return { ...local, unsynced: true }
+  // Started on this device before logging in: take it over only if it is
+  // this person's (same email), never someone else's on a shared computer.
+  const guest = readLocal(guestDraftKey.value)
+  const guestEmail = (guest?.data?.candidate?.email || '').trim().toLowerCase()
+  if (guest && guestEmail && guestEmail === (viewer.value.email || '').toLowerCase()) {
+    removeLocal(guestDraftKey.value)
+    return { ...guest, unsynced: true }
+  }
+  return null
+}
+
+async function restore() {
+  ready = false
+  clearTimeout(localTimer)
+  clearTimeout(accountTimer)
+  dirty = false
+  Object.assign(draft, { state: 'idle', savedAt: '', restoredAt: '', error: '' })
   Object.assign(data, emptyData())
   for (const key of Object.keys(answers)) delete answers[key]
   for (const key of Object.keys(documents)) delete documents[key]
+  uploadTokens.clear()
   for (const q of form.value.screening_questions) answers[q.idx] = { idx: q.idx, answer: '', details: '' }
 
   // Prefill from the candidate's profile (earlier application), then any draft.
@@ -943,31 +1120,65 @@ function restore() {
   if (profile) {
     for (const key of Object.keys(data.candidate)) data.candidate[key] = profile[key] || ''
   }
-  try {
-    const saved = JSON.parse(localStorage.getItem(draftKey.value) || 'null')
-    if (saved?.data) {
-      Object.assign(data.candidate, saved.data.candidate || {})
-      Object.assign(data.application, saved.data.application || {})
-      data.declaration_accepted = false
-      for (const [idx, a] of Object.entries(saved.answers || {})) if (answers[idx]) Object.assign(answers[idx], a)
-      Object.assign(documents, saved.documents || {})
-      for (const [url, token] of Object.entries(saved.uploadTokens || {})) uploadTokens.set(url, token)
+  if (viewer.value.already_applied) removeLocal(draftKey.value)
+  const saved = await findDraft()
+  if (saved) {
+    Object.assign(data.candidate, saved.data.candidate || {})
+    Object.assign(data.application, saved.data.application || {})
+    data.declaration_accepted = false
+    for (const [idx, a] of Object.entries(saved.answers || {})) if (answers[idx]) Object.assign(answers[idx], a)
+    Object.assign(documents, saved.documents || {})
+    for (const [url, token] of Object.entries(saved.uploadTokens || {})) uploadTokens.set(url, token)
+    draft.restoredAt = saved.savedAt || ''
+    if (saved.synced) {
+      draft.savedAt = saved.savedAt
+      draft.state = 'saved'
     }
-  } catch {
-    // corrupt or unavailable draft — start clean
   }
   if (!data.application.qualifications.some((q) => q.degree_level === 'Doctoral')) {
     data.application.qualifications.push({ degree_level: 'Doctoral' })
   }
   ensurePublicationRows()
   markOtherInstitutions()
+  await nextTick() // let the watcher see the filled-in form before edits count
+  ready = true
+  if (saved?.unsynced && accountDrafts.value) {
+    dirty = true
+    saveToAccount()
+  }
 }
 
-let draftTimer = null
-watch([() => data, answers, documents], () => {
-  clearTimeout(draftTimer)
-  draftTimer = setTimeout(saveDraft, 600)
-}, { deep: true })
+async function discardDraft() {
+  showDiscard.value = false
+  clearDraft()
+  await saving
+  if (accountDrafts.value) {
+    try {
+      await applicationService.discardDraft(props.id)
+    } catch {
+      // the local copy is gone; a stale account copy is replaced on the next save
+    }
+  }
+  attempted.value = false
+  setErrors({})
+  await restore()
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
+// Local drafts carry an ISO instant; the server's saved_at is already IST.
+function formatSavedAt(value) {
+  if (!value) return ''
+  const at = /[zZ]$/.test(value) ? dayjs(new Date(value).toLocaleString('en-US', { timeZone: 'Asia/Kolkata' })) : dayjs(value)
+  return at.format('D MMM, h:mm A [IST]')
+}
+
+onBeforeUnmount(() => {
+  clearTimeout(localTimer)
+  if (dirty && !submitted.value) {
+    saveLocal(false)
+    saveToAccount()
+  }
+})
 
 // ----- submit
 const submitted = ref(false)
@@ -977,6 +1188,8 @@ const candidateId = ref('')
 const loginSent = ref(false)
 const hasAccount = ref(false)
 const loginUrl = '/login?redirect-to=' + encodeURIComponent('/pathways/portal/applications')
+// Back to this form after logging in, so a draft can be kept in the account.
+const loginToApplyUrl = computed(() => '/login?redirect-to=' + encodeURIComponent(`/pathways/portal/jobs/${props.id}/apply`))
 const submittedAt = ref('')
 const copied = ref(false)
 
@@ -1032,6 +1245,11 @@ async function handleSubmit() {
   setErrors(runChecks())
   if (errorCount.value) return scrollToFirstError()
 
+  // A draft save still in flight must not land after the application exists.
+  clearTimeout(localTimer)
+  clearTimeout(accountTimer)
+  await saving
+
   const payload = {
     candidate: { ...data.candidate },
     application: {
@@ -1051,11 +1269,13 @@ async function handleSubmit() {
     candidateId.value = result.candidate_id || ''
     loginSent.value = !!result.login_sent
     hasAccount.value = !!result.has_account
-    submittedAt.value = dayjs().format('DD MMMM YYYY, h:mm A')
+    // The clock in India, whatever the browser's timezone, since it is labelled IST.
+    submittedAt.value = dayjs(new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' })).format('DD MMMM YYYY, h:mm A [IST]')
     submitted.value = true
     clearDraft()
     window.scrollTo({ top: 0, behavior: 'smooth' })
   } catch (e) {
+    saveLocal(false)
     setErrors(e?.fieldErrors || {})
     if (errorCount.value) return scrollToFirstError()
     submitError.value = e?.messages?.[0] || 'Something went wrong. Please try again.'
@@ -1063,7 +1283,7 @@ async function handleSubmit() {
 }
 
 function formatDateTime(value) {
-  return dayjs(value).format('DD MMMM YYYY, h:mm A')
+  return dayjs(value).format('DD MMMM YYYY, h:mm A [IST]')
 }
 
 async function load(id) {
@@ -1072,7 +1292,7 @@ async function load(id) {
   attempted.value = false
   setErrors({})
   await fetchJob(id)
-  if (job.value) restore()
+  if (job.value) await restore()
 }
 
 onMounted(() => load(props.id))

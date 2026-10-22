@@ -224,7 +224,7 @@ const slots = computed(() => {
     name: c.name,
     candidate: c.candidate_name,
     job: c.job_title,
-    time: start.add(Number(form.slot || 0) * i, 'minute').format('DD MMM, h:mm A'),
+    time: start.add(Number(form.slot || 0) * i, 'minute').format('DD MMM, h:mm A [IST]'),
   }))
 })
 

@@ -670,6 +670,6 @@ async function copy(text) {
 }
 
 function formatDateTime(value) {
-  return dayjs(value).format('DD MMM, h:mm A')
+  return dayjs(value).format('DD MMM, h:mm A [IST]')
 }
 </script>

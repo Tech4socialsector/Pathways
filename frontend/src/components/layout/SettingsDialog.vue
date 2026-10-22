@@ -188,6 +188,7 @@
                   <FormControl v-model="form.status_override_role" type="select" :options="roleSelectOptions" />
                 </SettingsField>
               </div>
+              <!-- Hidden for now; the saved value still applies.
               <label class="flex cursor-pointer items-start gap-2.5">
                 <input
                   v-model="form.allow_same_approver_multiple_steps"
@@ -201,6 +202,7 @@
                   <span class="mt-0.5 block text-p-sm text-gray-500">When off, someone who approved one step cannot approve a later step of that sheet.</span>
                 </span>
               </label>
+              -->
               <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <SettingsField
                   v-for="duty in DUTIES"

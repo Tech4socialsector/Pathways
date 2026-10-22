@@ -65,7 +65,7 @@
               </div>
               <div class="min-w-0 text-sm">
                 <div class="text-lg font-semibold text-gray-900">{{ dayjs(iv.scheduled_datetime).format('dddd, DD MMMM YYYY') }}</div>
-                <div class="mt-0.5 text-gray-700">{{ dayjs(iv.scheduled_datetime).format('h:mm A') }} (IST) · {{ iv.mode === 'In-Person' ? 'In person' : 'Online' }}</div>
+                <div class="mt-0.5 text-gray-700">{{ dayjs(iv.scheduled_datetime).format('h:mm A [IST]') }} · {{ iv.mode === 'In-Person' ? 'In person' : 'Online' }}</div>
                 <div v-if="iv.location" class="mt-1 flex items-center gap-1.5 text-gray-700">
                   <FeatherIcon name="map-pin" class="h-4 w-4 text-gray-400" />{{ iv.location }}
                 </div>
@@ -137,7 +137,7 @@
                   <span class="font-semibold text-gray-900">{{ iv.round_type === 'HR Interaction' ? 'Round 1 · HR interaction' : 'Final interview' }}</span>
                   <span class="rounded-full px-2 py-0.5 text-xs font-medium" :class="ivTone(iv)">{{ ivLabel(iv) }}</span>
                 </div>
-                <div class="mt-1 text-gray-700">{{ dayjs(iv.scheduled_datetime).format('dddd, DD MMM YYYY · h:mm A') }} · {{ iv.mode === 'In-Person' ? 'In person' : 'Online' }}</div>
+                <div class="mt-1 text-gray-700">{{ dayjs(iv.scheduled_datetime).format('dddd, DD MMM YYYY · h:mm A [IST]') }} · {{ iv.mode === 'In-Person' ? 'In person' : 'Online' }}</div>
                 <div v-if="iv.location" class="mt-1 flex items-center gap-1 text-gray-700">
                   <FeatherIcon name="map-pin" class="h-3.5 w-3.5 text-gray-400" />{{ iv.location }}
                 </div>
@@ -196,7 +196,7 @@
         <div v-if="rsvpAsk.iv" class="text-sm text-gray-700">
           <p>
             {{ rsvpAsk.iv.round_type === 'HR Interaction' ? 'Round 1 (HR interaction)' : 'Final interview' }} on
-            <b>{{ dayjs(rsvpAsk.iv.scheduled_datetime).format('dddd, DD MMMM YYYY [at] h:mm A') }}</b> (IST).
+            <b>{{ dayjs(rsvpAsk.iv.scheduled_datetime).format('dddd, DD MMMM YYYY [at] h:mm A [IST]') }}</b>.
           </p>
           <p class="mt-2 text-gray-600">
             {{ rsvpAsk.response === 'Declined'
