@@ -54,6 +54,13 @@ const routes = [
     meta: { requiresStaff: true },
   },
   {
+    path: '/selection-green-sheets/:id',
+    name: 'PostGreenSheetDetail',
+    component: () => import('@/pages/PostGreenSheetDetail.vue'),
+    props: true,
+    meta: { requiresStaff: true },
+  },
+  {
     path: '/interviews',
     name: 'Interviews',
     component: () => import('@/pages/Interviews.vue'),
@@ -69,6 +76,12 @@ const routes = [
     path: '/panel/documents',
     name: 'SharedDocuments',
     component: () => import('@/pages/SharedDocuments.vue'),
+    meta: { requiresStaff: true },
+  },
+  {
+    path: '/honorarium',
+    name: 'Honorarium',
+    component: () => import('@/pages/Honorarium.vue'),
     meta: { requiresStaff: true },
   },
   {
@@ -92,9 +105,35 @@ const routes = [
     meta: { requiresStaff: true },
   },
   {
+    path: '/offers/:id',
+    name: 'OfferDetail',
+    component: () => import('@/pages/OfferDetail.vue'),
+    props: true,
+    meta: { requiresStaff: true },
+  },
+  {
     path: '/documents',
     name: 'Documents',
     component: () => import('@/pages/Documents.vue'),
+    meta: { requiresStaff: true },
+  },
+  {
+    path: '/joinings',
+    name: 'Joinings',
+    component: () => import('@/pages/Joinings.vue'),
+    meta: { requiresStaff: true },
+  },
+  {
+    path: '/joinings/:id',
+    name: 'JoiningDetail',
+    component: () => import('@/pages/JoiningDetail.vue'),
+    props: true,
+    meta: { requiresStaff: true },
+  },
+  {
+    path: '/it-requests',
+    name: 'ITRequests',
+    component: () => import('@/pages/ITRequests.vue'),
     meta: { requiresStaff: true },
   },
   {
@@ -116,6 +155,12 @@ const routes = [
     name: 'MasterForm',
     component: () => import('@/pages/MasterForm.vue'),
     props: (route) => ({ slug: route.params.slug, mode: route.params.mode, name: route.params.name || '' }),
+    meta: { requiresStaff: true },
+  },
+  {
+    path: '/communications',
+    name: 'CommunicationLog',
+    component: () => import('@/pages/CommunicationLog.vue'),
     meta: { requiresStaff: true },
   },
   {
@@ -183,6 +228,12 @@ const routes = [
     name: 'ChangePassword',
     component: () => import('@/pages/candidate-portal/ChangePassword.vue'),
     meta: { requiresCandidate: true },
+  },
+  {
+    // Public: the referee is not a user; the token is checked server-side.
+    path: '/referee/:token',
+    name: 'RefereeForm',
+    component: () => import('@/pages/RefereeForm.vue'),
   },
   {
     path: '/login',

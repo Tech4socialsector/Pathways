@@ -7,6 +7,9 @@ export const jobNoticeService = {
   saveNotice(jobOpening, data) {
     return callMethod('pathways.api.job_notice.save_job_notice', { job_opening: jobOpening, data })
   },
+  savePublishing(jobOpening, data) {
+    return callMethod('pathways.api.job_notice.save_publishing', { job_opening: jobOpening, data })
+  },
   issueCorrigendum(jobOpening, data) {
     return callMethod('pathways.api.job_notice.issue_corrigendum', { job_opening: jobOpening, ...data })
   },

@@ -9,19 +9,68 @@
   "naming_series",
   "job_opening",
   "track",
+  "employment_type",
   "column_break_1",
   "approval_chain_template",
   "current_approval_level",
   "status",
+  "note_section",
+  "subject",
+  "file_reference",
+  "selection_note",
+  "process_section",
+  "advertisement_published_on",
+  "advertisement_closed_on",
+  "applications_received",
+  "candidates_shortlisted",
+  "column_break_process",
+  "interview_date",
+  "candidates_interviewed",
+  "selection_committee",
   "recommendation_section",
   "recommended_application",
+  "recommended_candidate_name",
+  "verbal_acceptance",
+  "column_break_rec",
   "waitlist_application",
+  "waitlist_candidate_name",
+  "reference_check_status",
+  "appointment_section",
+  "date_of_appointment",
+  "duration_of_appointment",
+  "reports_to",
+  "column_break_appt",
+  "probation_period",
+  "deliverables",
+  "pay_section",
+  "advertised_pay_level",
+  "fixed_pay_level",
+  "basic_pay",
+  "column_break_pay",
+  "current_basic_salary",
+  "current_gross_salary",
+  "ctc",
+  "gross_salary",
+  "pay_fixation_note",
+  "funding_section",
+  "project_name",
+  "column_break_fund",
+  "funding_source",
   "compensation_section",
-  "compensation_narrative",
   "compensation_table",
+  "compensation_narrative",
+  "annexures_section",
+  "panel_recommendation_attachment",
+  "score_sheet_attachment",
+  "reference_check_attachment",
+  "column_break_annex",
+  "salary_proof_attachment",
+  "other_annexure_attachment",
+  "signed_copy_attachment",
   "approval_section",
   "approval_steps",
-  "approval_log"
+  "approval_log",
+  "amended_from"
  ],
  "fields": [
   {
@@ -46,6 +95,13 @@
    "in_list_view": 1,
    "label": "Recruitment Track",
    "options": "Recruitment Track",
+   "read_only": 1
+  },
+  {
+   "fieldname": "employment_type",
+   "fieldtype": "Data",
+   "label": "Employment Type",
+   "fetch_from": "job_opening.employment_type",
    "read_only": 1
   },
   {
@@ -79,6 +135,76 @@
    "read_only": 1
   },
   {
+   "fieldname": "note_section",
+   "fieldtype": "Section Break",
+   "label": "Selection Note"
+  },
+  {
+   "fieldname": "subject",
+   "fieldtype": "Data",
+   "label": "Subject",
+   "description": "Heading of the sheet, e.g. \"Appointment of Graphic Designer (1 Vacancy)\"."
+  },
+  {
+   "fieldname": "file_reference",
+   "fieldtype": "Data",
+   "label": "File Reference",
+   "description": "Office file number, e.g. NLSIU-22022/13/2022-ADMN."
+  },
+  {
+   "fieldname": "selection_note",
+   "fieldtype": "Text",
+   "label": "Selection Note",
+   "description": "Narrative of the process (advertisement, shortlisting, interviews, recommendation). Drafted from the job's records when the sheet is raised; edit as needed."
+  },
+  {
+   "fieldname": "process_section",
+   "fieldtype": "Section Break",
+   "label": "Recruitment Process",
+   "collapsible": 1
+  },
+  {
+   "fieldname": "advertisement_published_on",
+   "fieldtype": "Date",
+   "label": "Advertisement Published On"
+  },
+  {
+   "fieldname": "advertisement_closed_on",
+   "fieldtype": "Date",
+   "label": "Advertisement Closed On"
+  },
+  {
+   "fieldname": "applications_received",
+   "fieldtype": "Int",
+   "label": "Applications Received"
+  },
+  {
+   "fieldname": "candidates_shortlisted",
+   "fieldtype": "Int",
+   "label": "Candidates Shortlisted"
+  },
+  {
+   "fieldname": "column_break_process",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "interview_date",
+   "fieldtype": "Date",
+   "label": "Final Interview Date"
+  },
+  {
+   "fieldname": "candidates_interviewed",
+   "fieldtype": "Int",
+   "label": "Candidates Interviewed"
+  },
+  {
+   "fieldname": "selection_committee",
+   "fieldtype": "Link",
+   "label": "Selection Committee",
+   "options": "Selection Committee",
+   "read_only": 1
+  },
+  {
    "fieldname": "recommendation_section",
    "fieldtype": "Section Break",
    "label": "Recommendation"
@@ -91,10 +217,151 @@
    "reqd": 1
   },
   {
+   "fieldname": "recommended_candidate_name",
+   "fieldtype": "Data",
+   "label": "Recommended Candidate",
+   "read_only": 1
+  },
+  {
+   "fieldname": "verbal_acceptance",
+   "fieldtype": "Check",
+   "label": "Candidate has verbally accepted",
+   "default": "0"
+  },
+  {
+   "fieldname": "column_break_rec",
+   "fieldtype": "Column Break"
+  },
+  {
    "fieldname": "waitlist_application",
    "fieldtype": "Link",
    "label": "Waitlist Application",
    "options": "Application"
+  },
+  {
+   "fieldname": "waitlist_candidate_name",
+   "fieldtype": "Data",
+   "label": "Waitlisted Candidate",
+   "read_only": 1
+  },
+  {
+   "fieldname": "reference_check_status",
+   "fieldtype": "Select",
+   "label": "Reference Checks",
+   "options": "\nSatisfactory\nInitiated\nPending",
+   "description": "As stated on the sheet: e.g. \"Reference checks for the selected candidates have been made and are satisfactory.\""
+  },
+  {
+   "fieldname": "appointment_section",
+   "fieldtype": "Section Break",
+   "label": "Appointment Details"
+  },
+  {
+   "fieldname": "date_of_appointment",
+   "fieldtype": "Data",
+   "label": "Date of Appointment",
+   "description": "e.g. \"Tentatively in May\" or \"To be discussed with the candidate\"."
+  },
+  {
+   "fieldname": "duration_of_appointment",
+   "fieldtype": "Small Text",
+   "label": "Duration / Contract Period",
+   "description": "e.g. \"One year from the date of joining, extendable\"."
+  },
+  {
+   "fieldname": "reports_to",
+   "fieldtype": "Data",
+   "label": "Reports To"
+  },
+  {
+   "fieldname": "column_break_appt",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "probation_period",
+   "fieldtype": "Data",
+   "label": "Probation Period",
+   "depends_on": "eval:doc.employment_type=='Permanent'"
+  },
+  {
+   "fieldname": "deliverables",
+   "fieldtype": "Small Text",
+   "label": "Deliverables / Scope of Work",
+   "depends_on": "eval:doc.employment_type && doc.employment_type!='Permanent'"
+  },
+  {
+   "fieldname": "pay_section",
+   "fieldtype": "Section Break",
+   "label": "Pay Fixation",
+   "depends_on": "eval:doc.employment_type=='Permanent'"
+  },
+  {
+   "fieldname": "advertised_pay_level",
+   "fieldtype": "Data",
+   "label": "Pay Level(s) in Notification",
+   "description": "e.g. 5/6/7/8"
+  },
+  {
+   "fieldname": "fixed_pay_level",
+   "fieldtype": "Data",
+   "label": "Pay Level Fixed",
+   "description": "e.g. Entry level 7 plus seven increments"
+  },
+  {
+   "fieldname": "basic_pay",
+   "fieldtype": "Currency",
+   "label": "Basic Pay Fixed (per month)"
+  },
+  {
+   "fieldname": "column_break_pay",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "current_basic_salary",
+   "fieldtype": "Currency",
+   "label": "Current Basic Salary (per month)"
+  },
+  {
+   "fieldname": "current_gross_salary",
+   "fieldtype": "Currency",
+   "label": "Current Gross Salary (per month)"
+  },
+  {
+   "fieldname": "ctc",
+   "fieldtype": "Currency",
+   "label": "CTC (per month)"
+  },
+  {
+   "fieldname": "gross_salary",
+   "fieldtype": "Currency",
+   "label": "Gross Salary (per month)"
+  },
+  {
+   "fieldname": "pay_fixation_note",
+   "fieldtype": "Small Text",
+   "label": "Pay Fixation Rationale",
+   "description": "How the pay was fixed (pay parity, increment protection, additional increments)."
+  },
+  {
+   "fieldname": "funding_section",
+   "fieldtype": "Section Break",
+   "label": "Funding",
+   "depends_on": "eval:doc.track=='Research' || doc.employment_type=='Grant-funded'"
+  },
+  {
+   "fieldname": "project_name",
+   "fieldtype": "Data",
+   "label": "Project / Initiative"
+  },
+  {
+   "fieldname": "column_break_fund",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "funding_source",
+   "fieldtype": "Data",
+   "label": "Fund Availability",
+   "description": "e.g. NVF Grant"
   },
   {
    "fieldname": "compensation_section",
@@ -102,16 +369,58 @@
    "label": "Compensation"
   },
   {
-   "fieldname": "compensation_narrative",
-   "fieldtype": "Text Editor",
-   "label": "Compensation Narrative"
-  },
-  {
-   "description": "Used for Consultant / Research fee-table variant",
+   "description": "One row per selected candidate (name, experience, qualification, recommended salary or fee per month, position, medical insurance, leave).",
    "fieldname": "compensation_table",
    "fieldtype": "Table",
-   "label": "Compensation Table",
+   "label": "Selected Candidates and Fees",
    "options": "Compensation Table Row"
+  },
+  {
+   "fieldname": "compensation_narrative",
+   "fieldtype": "Text Editor",
+   "label": "Additional Remarks"
+  },
+  {
+   "fieldname": "annexures_section",
+   "fieldtype": "Section Break",
+   "label": "Annexures"
+  },
+  {
+   "fieldname": "panel_recommendation_attachment",
+   "fieldtype": "Attach",
+   "label": "Panel Recommendation (signed by VC)",
+   "description": "Workflow step 20: print the \"Panel Recommendation\" format, have it signed, and attach the scan."
+  },
+  {
+   "fieldname": "score_sheet_attachment",
+   "fieldtype": "Attach",
+   "label": "Consolidated Score Sheet"
+  },
+  {
+   "fieldname": "reference_check_attachment",
+   "fieldtype": "Attach",
+   "label": "Reference Check Forms"
+  },
+  {
+   "fieldname": "column_break_annex",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "salary_proof_attachment",
+   "fieldtype": "Attach",
+   "label": "Latest Payslip / Salary Proof"
+  },
+  {
+   "fieldname": "other_annexure_attachment",
+   "fieldtype": "Attach",
+   "label": "Other Annexure"
+  },
+  {
+   "fieldname": "signed_copy_attachment",
+   "fieldtype": "Attach",
+   "label": "Signed Green Sheet (scanned)",
+   "allow_on_submit": 1,
+   "description": "Upload the physically signed copy once approved."
   },
   {
    "fieldname": "approval_section",
@@ -133,12 +442,22 @@
    "label": "Approval Log",
    "options": "Green Sheet Approval Log",
    "read_only": 1
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Post-Interview Green Sheet",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-10-06 15:42:11.892849",
+ "modified": "2026-10-23 10:00:00.000000",
  "modified_by": "Administrator",
  "module": "Pathways",
  "name": "Post-Interview Green Sheet",
@@ -185,41 +504,57 @@
   {
    "read": 1,
    "role": "Pathways PNCO",
-   "write": 1
+   "write": 1,
+   "create": 1,
+   "submit": 1,
+   "cancel": 1,
+   "print": 1,
+   "email": 1,
+   "export": 1,
+   "report": 1
   },
   {
    "read": 1,
    "role": "Pathways CFO",
-   "write": 1
+   "write": 1,
+   "print": 1
   },
   {
    "read": 1,
    "role": "Pathways Dean Academics",
-   "write": 1
+   "write": 1,
+   "print": 1
   },
   {
    "read": 1,
    "role": "Pathways Dean Research",
-   "write": 1
+   "write": 1,
+   "print": 1
   },
   {
    "read": 1,
    "role": "Pathways Senior Manager Research",
-   "write": 1
+   "write": 1,
+   "print": 1
   },
   {
    "read": 1,
    "role": "Pathways Registrar",
-   "write": 1
+   "write": 1,
+   "print": 1
   },
   {
    "read": 1,
    "role": "Pathways Vice Chancellor",
-   "write": 1
+   "write": 1,
+   "print": 1
   }
  ],
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],
- "track_changes": 1
+ "track_changes": 1,
+ "title_field": "subject",
+ "show_title_field_in_link": 0,
+ "default_print_format": "Post-Interview Green Sheet"
 }

@@ -17,6 +17,13 @@
         <FeatherIcon name="calendar" class="h-4 w-4 text-gray-400" />
         {{ dayjs(committee.scheduled_date).format('ddd, DD MMM YYYY') }}<template v-if="committee.scheduled_time"> · {{ timeLabel(committee.scheduled_time) }}</template>
       </div>
+      <p v-if="committee.calendar_event" class="flex items-start gap-2 rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-600">
+        <FeatherIcon name="lock" class="mt-0.5 h-3.5 w-3.5 shrink-0 text-gray-400" />
+        <span>
+          Calendar blocked for {{ committee.calendar_block.length }} {{ committee.calendar_block.length === 1 ? 'person' : 'people' }}:
+          {{ committee.calendar_block.map((p) => p.full_name).join(', ') }}. Moving the date or time moves the block.
+        </span>
+      </p>
       <ul class="divide-y rounded-lg border">
         <li v-for="m in committee.members" :key="m.member" class="flex items-center gap-3 px-3 py-2">
           <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-50 text-xs font-bold text-brand-700">

@@ -11,6 +11,7 @@
   "column_break_1",
   "scheduled_date",
   "scheduled_time",
+  "calendar_event",
   "members_section",
   "members"
  ],
@@ -46,6 +47,14 @@
    "label": "Scheduled Time"
   },
   {
+   "fieldname": "calendar_event",
+   "fieldtype": "Link",
+   "options": "Event",
+   "label": "Calendar Block",
+   "read_only": 1,
+   "description": "The committee sitting blocked in the calendars of the panel and the roles in Pathways Settings > Calendar block roles."
+  },
+  {
    "fieldname": "members_section",
    "fieldtype": "Section Break",
    "label": "Committee Members"
@@ -60,7 +69,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-09-21 00:00:00.000000",
+ "modified": "2026-10-23 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "Pathways",
  "name": "Selection Committee",

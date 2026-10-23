@@ -62,7 +62,12 @@ def list_job_openings(filters=None, limit_start=0, limit_page_length=20):
 		filters = frappe.parse_json(filters)
 	filters = filters or {}
 
-	jobs = frappe.get_all(
+	# get_list, not get_all: a tagged colleague sees only the jobs shared
+	# with them (pathways.permissions). Without read on Job Opening (e.g. a
+	# committee member searching from the top bar) the list is just empty.
+	if not frappe.has_permission("Job Opening", "read"):
+		return []
+	jobs = frappe.get_list(
 		"Job Opening",
 		filters=filters,
 		fields=[
@@ -171,3 +176,84 @@ def bulk_delete_job_openings(names):
 	from pathways.utils.bulk import run_bulk
 
 	return run_bulk(names, lambda name: frappe.delete_doc("Job Opening", name))
+
+
+# ----------------------------------------------- folder and "Shared with"
+# Workflow step 7: the job's department folder, and colleagues tagged on the
+# job (they get read access to its applications and documents).
+
+
+@frappe.whitelist()
+def get_job_sharing(job_opening):
+	doc = frappe.get_doc("Job Opening", job_opening)
+	doc.check_permission("read")
+	can_edit = bool(doc.has_permission("write"))
+	return {
+		"files_folder": doc.files_folder,
+		"folder_link": f"/app/file/view/{doc.files_folder}" if doc.files_folder else None,
+		"shared_with": [
+			{
+				"user": row.user,
+				"full_name": row.full_name or frappe.utils.get_fullname(row.user),
+				"access_note": row.access_note,
+				"tagged_by": frappe.utils.get_fullname(row.tagged_by) if row.tagged_by else None,
+				"tagged_on": row.tagged_on,
+			}
+			for row in doc.shared_with
+		],
+		"can_edit": can_edit,
+		"users": frappe.get_all(
+			"User",
+			filters={"enabled": 1, "user_type": "System User", "name": ["not in", ["Guest", "Administrator"]]},
+			fields=["name", "full_name"],
+			order_by="full_name asc",
+		)
+		if can_edit
+		else [],
+	}
+
+
+@frappe.whitelist(methods=["POST"])
+def set_job_colleagues(job_opening, colleagues):
+	"""Replace the job's "Shared with" list: [{user, access_note}]. save()
+	enforces write permission; JobOpening.sync_shared_with grants access and
+	emails the newly tagged."""
+	if isinstance(colleagues, str):
+		colleagues = frappe.parse_json(colleagues)
+	doc = frappe.get_doc("Job Opening", job_opening)
+	existing = {row.user: row for row in doc.shared_with}
+	rows = []
+	for c in colleagues or []:
+		user = (c.get("user") or "").strip()
+		if not user:
+			continue
+		# Any colleague with a login, but never a candidate: the Tagged
+		# Colleague role gives desk access, which would make them staff.
+		from pathways.permissions import CANDIDATE_ROLE
+
+		if not frappe.db.exists("User", {"name": user, "enabled": 1}) or CANDIDATE_ROLE in frappe.get_roles(user):
+			frappe.throw(frappe._("{0} is not a staff user.").format(user))
+		old = existing.get(user)
+		rows.append(
+			{
+				"user": user,
+				"access_note": (c.get("access_note") or "").strip() or None,
+				"tagged_by": old.tagged_by if old else None,
+				"tagged_on": old.tagged_on if old else None,
+			}
+		)
+	doc.set("shared_with", rows)
+	doc.save()
+	return get_job_sharing(job_opening)
+
+
+@frappe.whitelist(methods=["POST"])
+def ensure_job_folder(job_opening):
+	"""Create (or find) the job's folder now, e.g. for jobs created before
+	folders existed."""
+	doc = frappe.get_doc("Job Opening", job_opening)
+	doc.check_permission("write")
+	from pathways.utils.folders import ensure_job_folder as _ensure
+
+	_ensure(doc)
+	return get_job_sharing(job_opening)

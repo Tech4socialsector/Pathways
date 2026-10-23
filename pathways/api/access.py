@@ -54,6 +54,10 @@ MENU_ITEMS = (
 	{"key": "interviews", "label": "Interviews", "doctype": "Interview"},
 	{"key": "offers", "label": "Offers", "doctype": "Offer Appointment Order"},
 	{"key": "documents", "label": "Documents", "doctype": "Document Collection"},
+	{"key": "joinings", "label": "Joinings", "doctype": "Joining"},
+	{"key": "it_requests", "label": "IT Requests", "doctype": "IT Facilities Provisioning Request"},
+	{"key": "honorarium", "label": "Panel Honorarium", "doctype": "Panel Honorarium"},
+	{"key": "communications", "label": "Communications", "doctype": "Communication Log"},
 )
 
 
@@ -89,12 +93,15 @@ def get_my_access():
 			doctypes[item["doctype"]] = perms
 			if perms["read"]:
 				menu.append(item["key"])
-		for doctype in ("Pre-Recruitment Green Sheet", "Pathways Settings"):
+		for doctype in ("Pre-Recruitment Green Sheet", "Post-Interview Green Sheet", "Pathways Settings"):
 			doctypes[doctype] = _doctype_perms(doctype)
 		if is_approver(user):
 			menu.append("approvals")
 		# Interview Panel: Selection Committee members score final interviews.
-		if frappe.db.exists("Selection Committee", [["Committee Member Row", "member", "=", user]]) or (
+		# HR assessors of Round 1 interviews fill their sheet there too.
+		if frappe.db.exists("Selection Committee", [["Committee Member Row", "member", "=", user]]) or frappe.db.exists(
+			"Interview HR Assessor", {"assessor": user, "parenttype": "Interview"}
+		) or (
 			"interviews" in menu and doctypes.get("Interview", {}).get("create")
 		):
 			menu.append("panel")

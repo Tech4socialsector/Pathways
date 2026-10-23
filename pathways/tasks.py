@@ -12,7 +12,10 @@ def hourly():
 def close_expired_job_openings():
 	"""Advertised jobs whose Application Deadline has passed move to Closed.
 	(Submissions are already refused at the deadline itself; this keeps the
-	status honest for staff.)"""
+	status honest for staff.) Workflow step 6: the job's notification is
+	closed too, and Communications and the recruiters are asked to take the
+	ad down. db.set_value skips JobOpening.on_update, so that side effect is
+	done here, exactly once: the job is no longer Advertised next hour."""
 	expired = frappe.get_all(
 		"Job Opening",
 		# "is set" matters: Frappe compares IFNULL(field, '0001-01-01'), so a
@@ -24,11 +27,17 @@ def close_expired_job_openings():
 		],
 		pluck="name",
 	)
+	from pathways.api.job_notice import close_advertisement
+
 	for name in expired:
 		# The public posting only serves Advertised jobs, so drop its link too
 		# (JobOpening.set_advertisement_url does this on a normal save).
 		frappe.db.set_value("Job Opening", name, {"status": "Closed", "advertisement_url": None})
-	if expired:
+		try:
+			close_advertisement(name)
+		except Exception:
+			frappe.log_error(title=f"Pathways: closing the advertisement for {name} failed")
+		# One job at a time, so a later failure cannot undo an earlier close.
 		frappe.db.commit()
 
 
@@ -37,6 +46,15 @@ def daily():
 	expire_overdue_offers()
 	send_interview_reminders()
 	delete_stale_application_drafts()
+	send_reference_check_reminders()
+
+
+def send_reference_check_reminders():
+	"""Referees who have not answered get one reminder (Pathways Settings >
+	Reference Checks)."""
+	from pathways.api.reference_checks import send_reminders
+
+	send_reminders()
 
 
 def flag_ads_closing_soon():
@@ -74,22 +92,14 @@ def flag_ads_closing_soon():
 
 
 def expire_overdue_offers():
-	overdue = frappe.get_all(
-		"Offer Appointment Order",
-		filters=[
-			["status", "=", "Sent"],
-			["acceptance_deadline", "is", "set"],
-			["acceptance_deadline", "<", today()],
-		],
-		pluck="name",
+	"""Sent offers past their acceptance deadline become Expired (and the
+	application Not Selected). Each offer is saved normally so its history
+	and doc_events hooks see the change."""
+	from pathways.pathways.doctype.offer_appointment_order.offer_appointment_order import (
+		expire_overdue_offers as _expire,
 	)
-	for offer_name in overdue:
-		frappe.db.set_value("Offer Appointment Order", offer_name, "status", "Expired")
-		application = frappe.db.get_value("Offer Appointment Order", offer_name, "application")
-		if application:
-			frappe.db.set_value("Application", application, "status", "Not Selected")
-	if overdue:
-		frappe.db.commit()
+
+	return _expire()
 
 
 def send_interview_reminders():

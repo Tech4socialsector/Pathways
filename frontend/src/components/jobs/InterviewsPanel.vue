@@ -11,6 +11,12 @@
       <div v-if="data.can_manage" class="mb-3 flex flex-wrap items-center gap-2 rounded-lg bg-gray-50 px-3 py-2 text-sm">
         <span class="text-gray-600">{{ selected.length ? `${selected.length} selected` : 'Tick candidates to schedule them' }}</span>
         <div class="ml-auto flex flex-wrap gap-2">
+          <Dropdown v-if="data.can_shortlist" :options="shortlistMenu">
+            <Button size="sm" variant="outline" icon-left="star" icon-right="chevron-down">Final shortlist</Button>
+          </Dropdown>
+          <Dropdown :options="filesMenu">
+            <Button size="sm" variant="outline" icon-left="folder" icon-right="chevron-down">Panel files</Button>
+          </Dropdown>
           <Button v-if="hasFinal" size="sm" variant="outline" icon-left="grid" @click="$router.push(`/panel/sheet/${jobOpening}`)">Score sheet</Button>
           <Button size="sm" variant="outline" icon-left="phone" :disabled="!selected.length" @click="openSchedule('HR Interaction')">Schedule Round 1 (HR)</Button>
           <Button
@@ -56,6 +62,13 @@
               <td class="px-3 py-3">
                 <router-link :to="`/applications/${c.name}`" class="font-medium text-gray-900 hover:text-brand-700 hover:underline">{{ c.candidate_name }}</router-link>
                 <div class="font-mono text-xs text-gray-500">{{ c.application_id }}</div>
+                <span
+                  v-if="c.final_shortlisted"
+                  class="mt-1 inline-flex items-center gap-1 rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-medium text-brand-800"
+                  :title="c.final_shortlist_remarks || 'On the final shortlist'"
+                >
+                  <FeatherIcon name="star" class="h-3 w-3" />Final shortlist
+                </span>
               </td>
               <td v-for="round in ROUNDS" :key="round" class="px-3 py-3">
                 <template v-if="c.rounds[round]">
@@ -84,6 +97,12 @@
                                       >
                     <FeatherIcon name="clipboard" class="h-3 w-3" />Scores {{ c.rounds[round].scores.scored }}/{{ c.rounds[round].scores.panel_size }}<template v-if="c.rounds[round].scores.scored"> · avg {{ c.rounds[round].scores.average }}/{{ c.rounds[round].scores.max_score }}</template>
                   </router-link>
+                  <div v-if="round === 'HR Interaction' && c.rounds[round].hr_assessors?.length" class="mt-1 flex items-center gap-1 text-xs text-gray-600">
+                    <FeatherIcon name="user-check" class="h-3 w-3" />{{ c.rounds[round].hr_assessors.map((a) => a.assessor_name).join(', ') }}
+                  </div>
+                  <div v-for="(o, i) in round === 'HR Interaction' ? c.rounds[round].hr_outcomes || [] : []" :key="i" class="mt-0.5 text-xs" :class="HR_TONE[o.hr_outcome] || 'text-gray-600'">
+                    {{ o.hr_outcome || 'Scored' }} · {{ o.assessor_name }}
+                  </div>
                   <div v-if="c.rounds[round].location" class="mt-1 flex items-center gap-1 text-xs text-gray-600">
                     <FeatherIcon name="map-pin" class="h-3 w-3" />{{ c.rounds[round].location }}
                   </div>
@@ -99,9 +118,11 @@
     </template>
 
     <ConfirmActionDialog v-model:open="confirmBox.open" v-bind="confirmBox" />
-    <EditInterviewDialog v-model:open="editDialog.open" :interview="editDialog.interview" @saved="emit('changed')" />
+    <EditInterviewDialog v-model:open="editDialog.open" :interview="editDialog.interview" :assessor-limit="data?.hr_assessor_limit || 2" @saved="emit('changed')" />
     <CancelInterviewDialog v-model:open="cancelDialog.open" :interview="cancelDialog.interview" @saved="emit('changed')" />
-    <ScheduleInterviewDialog v-model:open="scheduleOpen" :candidates="scheduleCandidates" :round="scheduleRound" @scheduled="onScheduled" />
+    <ScheduleInterviewDialog v-model:open="scheduleOpen" :candidates="scheduleCandidates" :round="scheduleRound" :assessor-limit="data?.hr_assessor_limit || 2" @scheduled="onScheduled" />
+    <ShortlistingNoteDialog v-model:open="noteOpen" :job-opening="jobOpening" :job-title="jobTitle" @saved="emit('changed')" />
+    <SharePanelDialog v-model:open="shareOpen" :job-opening="jobOpening" />
   </SectionCard>
 </template>
 
@@ -112,10 +133,13 @@ import ConfirmActionDialog from '@/components/common/ConfirmActionDialog.vue'
 import CancelInterviewDialog from '@/components/jobs/CancelInterviewDialog.vue'
 import EditInterviewDialog from '@/components/jobs/EditInterviewDialog.vue'
 import ScheduleInterviewDialog from '@/components/jobs/ScheduleInterviewDialog.vue'
+import ShortlistingNoteDialog from '@/components/jobs/ShortlistingNoteDialog.vue'
+import SharePanelDialog from '@/components/documents/SharePanelDialog.vue'
 import dayjs from 'dayjs'
 import SectionCard from '@/components/common/SectionCard.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
 import { interviewService } from '@/services/interviews'
+import { panelService } from '@/services/panel'
 import { BTN_BRAND } from '@/utils/buttonStyles'
 import { toast } from '@/utils/notify'
 
@@ -133,6 +157,11 @@ const STATUS_TONE = {
   Rescheduled: 'bg-blue-50 text-blue-700',
   Completed: 'bg-green-50 text-green-700',
   Cancelled: 'bg-gray-100 text-gray-500',
+}
+const HR_TONE = {
+  'Recommend for final': 'text-green-700',
+  Hold: 'text-amber-700',
+  'Not recommended': 'text-red-700',
 }
 const RSVP_TONE = {
   Pending: 'bg-orange-50 text-orange-700',
@@ -201,13 +230,52 @@ function roundMenu(iv, c) {
   return [{ group: 'Interview', hideLabel: true, items: items.length ? items : [{ label: `No actions (${iv.status})`, disabled: true }] }]
 }
 
-async function act(fn, message) {
+async function act(fn, message, refresh = true) {
   try {
     await fn()
     toast({ title: message, icon: 'check', iconClasses: 'text-green-500' })
-    emit('changed')
+    if (refresh) emit('changed')
   } catch (e) {
     toast({ title: e?.messages?.[0] || 'That did not work.', icon: 'alert-triangle', iconClasses: 'text-red-500' })
   }
+}
+
+// ----- final shortlist (workflow step 14) and panel files (step 16)
+const noteOpen = ref(false)
+const shareOpen = ref(false)
+const shortlistMenu = computed(() => [
+  {
+    group: 'Final shortlist',
+    hideLabel: true,
+    items: [
+      { label: 'Add ticked to final shortlist', icon: 'star', disabled: !selected.value.length, onClick: () => setShortlist(true) },
+      { label: 'Remove ticked from final shortlist', icon: 'x', disabled: !selected.value.length, onClick: () => setShortlist(false) },
+      { label: 'Shortlisting Note…', icon: 'file-text', onClick: () => (noteOpen.value = true) },
+    ],
+  },
+])
+const filesMenu = computed(() => {
+  const items = []
+  if (props.data?.can_manage) items.push({ label: 'Share files with the panel…', icon: 'share-2', onClick: () => (shareOpen.value = true) })
+  const rounds = ROUNDS.filter((r) => (props.data?.candidates || []).some((c) => c.rounds[r] && c.rounds[r].status !== 'Cancelled'))
+  for (const r of rounds) {
+    const label = r === 'Final' ? 'Final' : 'Round 1'
+    items.push({ label: `${label} schedule (Excel)`, icon: 'download', onClick: () => exportSchedule(r, 'xlsx') })
+    items.push({ label: `${label} schedule (PDF)`, icon: 'printer', onClick: () => exportSchedule(r, 'pdf') })
+  }
+  if (props.data?.committee) items.push({ label: 'Blank assessment sheets (PDF)', icon: 'clipboard', onClick: () => blankForms() })
+  if (!items.length) items.push({ label: 'Nothing to share or print yet', disabled: true })
+  return [{ group: 'Panel files', hideLabel: true, items }]
+})
+
+function setShortlist(on) {
+  const names = [...selected.value]
+  act(() => interviewService.setFinalShortlist(props.jobOpening, names, on), on ? 'Added to the final shortlist.' : 'Removed from the final shortlist.')
+}
+function exportSchedule(roundType, format) {
+  act(() => interviewService.exportSchedule(props.jobOpening, props.jobTitle, { roundType, format }), 'Schedule downloaded.', false)
+}
+function blankForms() {
+  act(() => panelService.downloadForms(props.jobOpening, props.jobTitle, null, '', true), 'Assessment sheets downloaded.', false)
 }
 </script>

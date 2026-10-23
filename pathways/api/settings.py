@@ -30,6 +30,10 @@ EDITABLE_FIELDS = (
 )
 
 
+# Who reviews and who signs appointment orders (pathways.api.offer).
+OFFER_ROLE_TABLES = ("offer_reviewer_roles", "offer_signatory_roles")
+
+
 @frappe.whitelist()
 def get_settings():
 	"""Pathways Settings values for the in-app settings panel.
@@ -42,6 +46,8 @@ def get_settings():
 	out = {field: doc.get(field) for field in EDITABLE_FIELDS}
 	out["document_verifier_roles"] = [row.role for row in doc.document_verifier_roles]
 	out["corrigendum_signer_roles"] = [row.role for row in doc.corrigendum_signer_roles]
+	for table in OFFER_ROLE_TABLES:
+		out[table] = [row.role for row in doc.get(table) or []]
 	# Overrides and duties are staff powers, so candidate and committee-member
 	# roles are not offered. Roles already chosen stay listed so they show.
 	chosen = {
@@ -49,6 +55,7 @@ def get_settings():
 		doc.status_override_role,
 		*out["document_verifier_roles"],
 		*out["corrigendum_signer_roles"],
+		*(role for table in OFFER_ROLE_TABLES for role in out[table]),
 	}
 	out["role_options"] = sorted(((get_pathways_roles() - SCOPED_ROLES) | {"System Manager"} | chosen) - {None, ""})
 	out["max_upload_mb"] = get_max_file_size() / (1024 * 1024)
@@ -63,7 +70,7 @@ def update_settings(data):
 
 	doc = frappe.get_single("Pathways Settings")
 	doc.update({field: data[field] for field in EDITABLE_FIELDS if field in data})
-	for table in ("document_verifier_roles", "corrigendum_signer_roles"):
+	for table in ("document_verifier_roles", "corrigendum_signer_roles", *OFFER_ROLE_TABLES):
 		if table in data:
 			doc.set(table, [{"role": role} for role in data[table] or [] if role])
 	doc.save()

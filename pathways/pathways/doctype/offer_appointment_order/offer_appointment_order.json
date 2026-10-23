@@ -8,17 +8,73 @@
  "field_order": [
   "naming_series",
   "application",
+  "candidate",
+  "candidate_name",
+  "job_opening",
   "post_interview_green_sheet",
   "column_break_1",
-  "appointment_order_template",
   "status",
+  "appointment_order_template",
+  "reference_number",
+  "track",
+  "appointment_section",
+  "designation",
+  "department",
+  "employment_type",
+  "place_of_posting",
+  "reporting_to",
+  "column_break_appt",
+  "proposed_doj",
+  "probation_period",
+  "contract_period",
+  "contract_end_date",
+  "compensation_section",
+  "pay_level",
+  "pay_scale",
+  "consolidated_fee",
+  "column_break_comp",
+  "gross_monthly_salary",
+  "allowances",
+  "compensation_remarks",
+  "verbal_offer_section",
+  "verbal_offer_date",
+  "verbal_offer_by",
+  "column_break_verbal",
+  "verbal_offer_compensation",
+  "verbal_offer_notes",
+  "terms_section",
+  "terms",
+  "review_section",
+  "submitted_for_review_by",
+  "submitted_for_review_on",
+  "column_break_review",
+  "reviewed_by",
+  "reviewed_on",
+  "review_remarks",
+  "signature_section",
+  "signature_source",
+  "registrar_signature",
+  "column_break_sign",
+  "signed_by",
+  "signed_by_name",
+  "signatory_title",
+  "signed_on",
   "dates_section",
   "offer_date",
   "acceptance_deadline",
+  "letter_pdf",
   "column_break_2",
+  "sent_by",
+  "sent_on",
   "candidate_confirmed_doj",
   "response_section",
-  "signed_copy_attachment"
+  "responded_on",
+  "decline_reason",
+  "column_break_resp",
+  "signed_copy_attachment",
+  "registrar_signed_scan",
+  "history_section",
+  "status_log"
  ],
  "fields": [
   {
@@ -30,50 +86,315 @@
   {
    "fieldname": "application",
    "fieldtype": "Link",
-   "in_list_view": 1,
-   "in_standard_filter": 1,
    "label": "Application",
    "options": "Application",
    "reqd": 1,
-   "unique": 1
+   "unique": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "candidate",
+   "fieldtype": "Link",
+   "label": "Candidate",
+   "options": "Candidate",
+   "fetch_from": "application.candidate",
+   "read_only": 1
+  },
+  {
+   "fieldname": "candidate_name",
+   "fieldtype": "Data",
+   "label": "Candidate Name",
+   "fetch_from": "candidate.full_name",
+   "read_only": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "job_opening",
+   "fieldtype": "Link",
+   "label": "Job Opening",
+   "options": "Job Opening",
+   "fetch_from": "application.job_opening",
+   "read_only": 1
   },
   {
    "fieldname": "post_interview_green_sheet",
    "fieldtype": "Link",
    "label": "Post-Interview Green Sheet",
-   "options": "Post-Interview Green Sheet",
-   "reqd": 1
+   "options": "Post-Interview Green Sheet"
   },
   {
    "fieldname": "column_break_1",
    "fieldtype": "Column Break"
   },
   {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Draft\nUnder Review\nApproved for Signature\nSigned by Registrar\nSent\nAccepted\nDeclined\nExpired\nVerbal Offer\nDrafted",
+   "default": "Draft",
+   "read_only": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
    "fieldname": "appointment_order_template",
    "fieldtype": "Link",
    "label": "Appointment Order Template",
-   "options": "Print Format"
+   "options": "Appointment Order Template"
   },
   {
-   "default": "Verbal Offer",
-   "fieldname": "status",
+   "fieldname": "reference_number",
+   "fieldtype": "Data",
+   "label": "Letter Reference No."
+  },
+  {
+   "fieldname": "track",
+   "fieldtype": "Link",
+   "label": "Track",
+   "options": "Recruitment Track",
+   "fetch_from": "job_opening.track",
+   "read_only": 1
+  },
+  {
+   "fieldname": "appointment_section",
+   "fieldtype": "Section Break",
+   "label": "Appointment Details"
+  },
+  {
+   "fieldname": "designation",
+   "fieldtype": "Link",
+   "label": "Designation",
+   "options": "Designation"
+  },
+  {
+   "fieldname": "department",
+   "fieldtype": "Link",
+   "label": "Department",
+   "options": "Pathways Department"
+  },
+  {
+   "fieldname": "employment_type",
    "fieldtype": "Select",
-   "in_list_view": 1,
-   "in_standard_filter": 1,
-   "label": "Status",
-   "options": "Verbal Offer\nDrafted\nSigned by Registrar\nSent\nAccepted\nDeclined\nExpired",
+   "label": "Employment Type",
+   "options": "\nPermanent\nConsultant\nGrant-funded\nContract"
+  },
+  {
+   "fieldname": "place_of_posting",
+   "fieldtype": "Data",
+   "label": "Place of Posting"
+  },
+  {
+   "fieldname": "reporting_to",
+   "fieldtype": "Data",
+   "label": "Reporting To"
+  },
+  {
+   "fieldname": "column_break_appt",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "proposed_doj",
+   "fieldtype": "Date",
+   "label": "Proposed Date of Joining"
+  },
+  {
+   "fieldname": "probation_period",
+   "fieldtype": "Data",
+   "label": "Probation Period",
+   "description": "e.g. One year"
+  },
+  {
+   "fieldname": "contract_period",
+   "fieldtype": "Data",
+   "label": "Contract Period",
+   "description": "For contract, consultant and project posts, e.g. 11 months"
+  },
+  {
+   "fieldname": "contract_end_date",
+   "fieldtype": "Date",
+   "label": "Contract End Date"
+  },
+  {
+   "fieldname": "compensation_section",
+   "fieldtype": "Section Break",
+   "label": "Compensation"
+  },
+  {
+   "fieldname": "pay_level",
+   "fieldtype": "Data",
+   "label": "Pay Level",
+   "description": "e.g. Level 10, VII CPC"
+  },
+  {
+   "fieldname": "pay_scale",
+   "fieldtype": "Data",
+   "label": "Pay Scale"
+  },
+  {
+   "fieldname": "consolidated_fee",
+   "fieldtype": "Currency",
+   "label": "Consolidated Fee (per month)"
+  },
+  {
+   "fieldname": "column_break_comp",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "gross_monthly_salary",
+   "fieldtype": "Currency",
+   "label": "Gross Monthly Salary"
+  },
+  {
+   "fieldname": "allowances",
+   "fieldtype": "Small Text",
+   "label": "Allowances"
+  },
+  {
+   "fieldname": "compensation_remarks",
+   "fieldtype": "Small Text",
+   "label": "Compensation Remarks",
+   "description": "Workflow step 22: how the compensation was finalised against the advertisement and pay scales."
+  },
+  {
+   "fieldname": "verbal_offer_section",
+   "fieldtype": "Section Break",
+   "label": "Verbal Offer",
+   "description": "Workflow step 23: the call informing the selected candidate."
+  },
+  {
+   "fieldname": "verbal_offer_date",
+   "fieldtype": "Date",
+   "label": "Verbal Offer Date"
+  },
+  {
+   "fieldname": "verbal_offer_by",
+   "fieldtype": "Link",
+   "label": "Discussed By",
+   "options": "User"
+  },
+  {
+   "fieldname": "column_break_verbal",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "verbal_offer_compensation",
+   "fieldtype": "Data",
+   "label": "Compensation Discussed"
+  },
+  {
+   "fieldname": "verbal_offer_notes",
+   "fieldtype": "Small Text",
+   "label": "Notes (salary, joining date)"
+  },
+  {
+   "fieldname": "terms_section",
+   "fieldtype": "Section Break",
+   "label": "Terms"
+  },
+  {
+   "fieldname": "terms",
+   "fieldtype": "Text Editor",
+   "label": "Terms and Conditions"
+  },
+  {
+   "fieldname": "review_section",
+   "fieldtype": "Section Break",
+   "label": "Review"
+  },
+  {
+   "fieldname": "submitted_for_review_by",
+   "fieldtype": "Link",
+   "label": "Submitted for Review By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "submitted_for_review_on",
+   "fieldtype": "Datetime",
+   "label": "Submitted for Review On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_review",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "reviewed_by",
+   "fieldtype": "Link",
+   "label": "Reviewed By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "reviewed_on",
+   "fieldtype": "Datetime",
+   "label": "Reviewed On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "review_remarks",
+   "fieldtype": "Small Text",
+   "label": "Last Review Remarks",
+   "read_only": 1
+  },
+  {
+   "fieldname": "signature_section",
+   "fieldtype": "Section Break",
+   "label": "Registrar Signature"
+  },
+  {
+   "fieldname": "signature_source",
+   "fieldtype": "Select",
+   "label": "Signature Source",
+   "options": "\nDrawn\nSaved Signature",
+   "read_only": 1
+  },
+  {
+   "fieldname": "registrar_signature",
+   "fieldtype": "Signature",
+   "label": "Signature",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_sign",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "signed_by",
+   "fieldtype": "Link",
+   "label": "Signed By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "signed_by_name",
+   "fieldtype": "Data",
+   "label": "Signatory Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "signatory_title",
+   "fieldtype": "Data",
+   "label": "Signatory Title",
+   "read_only": 1
+  },
+  {
+   "fieldname": "signed_on",
+   "fieldtype": "Datetime",
+   "label": "Signed On",
    "read_only": 1
   },
   {
    "fieldname": "dates_section",
    "fieldtype": "Section Break",
-   "label": "Dates"
+   "label": "Letter & Dates"
   },
   {
-   "default": "Today",
    "fieldname": "offer_date",
    "fieldtype": "Date",
-   "label": "Offer Date"
+   "label": "Offer Date",
+   "default": "Today"
   },
   {
    "fieldname": "acceptance_deadline",
@@ -81,8 +402,27 @@
    "label": "Acceptance Deadline"
   },
   {
+   "fieldname": "letter_pdf",
+   "fieldtype": "Attach",
+   "label": "Appointment Order (PDF)",
+   "read_only": 1
+  },
+  {
    "fieldname": "column_break_2",
    "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "sent_by",
+   "fieldtype": "Link",
+   "label": "Sent By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "sent_on",
+   "fieldtype": "Datetime",
+   "label": "Sent On",
+   "read_only": 1
   },
   {
    "fieldname": "candidate_confirmed_doj",
@@ -95,14 +435,48 @@
    "label": "Candidate Response"
   },
   {
+   "fieldname": "responded_on",
+   "fieldtype": "Datetime",
+   "label": "Responded On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "decline_reason",
+   "fieldtype": "Small Text",
+   "label": "Decline Reason"
+  },
+  {
+   "fieldname": "column_break_resp",
+   "fieldtype": "Column Break"
+  },
+  {
    "fieldname": "signed_copy_attachment",
    "fieldtype": "Attach",
-   "label": "Signed Copy"
+   "label": "Candidate's Signed Acceptance Copy"
+  },
+  {
+   "fieldname": "registrar_signed_scan",
+   "fieldtype": "Attach",
+   "label": "Scanned Registrar-Signed Order",
+   "description": "Workflow step 29: the scanned copy of the signed appointment order, for the post's file."
+  },
+  {
+   "fieldname": "history_section",
+   "fieldtype": "Section Break",
+   "label": "History",
+   "collapsible": 1
+  },
+  {
+   "fieldname": "status_log",
+   "fieldtype": "Table",
+   "label": "Status History",
+   "options": "Offer Status Log",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-09-21 00:00:00.000000",
+ "modified": "2026-10-23 10:00:00.000000",
  "modified_by": "Administrator",
  "module": "Pathways",
  "name": "Offer Appointment Order",
@@ -147,12 +521,18 @@
   {
    "read": 1,
    "role": "Pathways PNCO",
-   "write": 1
+   "write": 1,
+   "create": 1,
+   "print": 1,
+   "report": 1,
+   "export": 1
   },
   {
    "read": 1,
    "role": "Pathways Registrar",
-   "write": 1
+   "write": 1,
+   "print": 1,
+   "report": 1
   },
   {
    "read": 1,
@@ -162,5 +542,7 @@
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],
- "track_changes": 1
+ "track_changes": 1,
+ "title_field": "candidate_name",
+ "show_title_field_in_link": 0
 }

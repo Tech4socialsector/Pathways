@@ -48,7 +48,19 @@
   "max_publications",
   "links_section",
   "pre_recruitment_green_sheet",
-  "advertisement_url"
+  "advertisement_url",
+  "publishing_section",
+  "website_url",
+  "website_published_on",
+  "published_by",
+  "publishing_column_break",
+  "linkedin_url",
+  "linkedin_published_on",
+  "indeed_url",
+  "indeed_published_on",
+  "sharing_section",
+  "files_folder",
+  "shared_with"
  ],
  "fields": [
   {
@@ -325,11 +337,82 @@
    "no_copy": 1,
    "options": "URL",
    "read_only": 1
+  },
+  {
+   "fieldname": "publishing_section",
+   "fieldtype": "Section Break",
+   "label": "Publishing",
+   "collapsible": 1
+  },
+  {
+   "fieldname": "website_url",
+   "fieldtype": "Data",
+   "options": "URL",
+   "label": "NLSIU Website URL"
+  },
+  {
+   "fieldname": "website_published_on",
+   "fieldtype": "Date",
+   "label": "Website Published On"
+  },
+  {
+   "fieldname": "published_by",
+   "fieldtype": "Link",
+   "options": "User",
+   "label": "Published By"
+  },
+  {
+   "fieldname": "publishing_column_break",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "linkedin_url",
+   "fieldtype": "Data",
+   "options": "URL",
+   "label": "LinkedIn Post URL"
+  },
+  {
+   "fieldname": "linkedin_published_on",
+   "fieldtype": "Date",
+   "label": "LinkedIn Published On"
+  },
+  {
+   "fieldname": "indeed_url",
+   "fieldtype": "Data",
+   "options": "URL",
+   "label": "Indeed Listing URL"
+  },
+  {
+   "fieldname": "indeed_published_on",
+   "fieldtype": "Date",
+   "label": "Indeed Published On"
+  },
+  {
+   "fieldname": "sharing_section",
+   "fieldtype": "Section Break",
+   "label": "Department Folder & Sharing",
+   "collapsible": 1
+  },
+  {
+   "fieldname": "files_folder",
+   "fieldtype": "Data",
+   "label": "Files Folder",
+   "read_only": 1,
+   "no_copy": 1,
+   "description": "Frappe File folder for this job: Home/Pathways/<Department>/<Job title - ID>."
+  },
+  {
+   "fieldname": "shared_with",
+   "fieldtype": "Table",
+   "options": "Job Opening Colleague",
+   "label": "Shared With",
+   "no_copy": 1,
+   "description": "Colleagues who may read this job's applications and documents."
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-10-19 10:30:00.000000",
+ "modified": "2026-10-23 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "Pathways",
  "name": "Job Opening",
@@ -386,6 +469,11 @@
   {
    "read": 1,
    "role": "Pathways Communications"
+  },
+  {
+   "read": 1,
+   "print": 1,
+   "role": "Pathways Tagged Colleague"
   }
  ],
  "sort_field": "modified",

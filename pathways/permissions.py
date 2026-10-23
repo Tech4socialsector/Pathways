@@ -11,6 +11,11 @@ row-level rules Role Permissions cannot express:
 
 	Candidate                      only their own records
 	Shortlisting/Selection member  only Job Openings whose committee they sit on
+	HR assessor (Round 1)          only the interviews they take and those
+	                               candidates' applications, read-only (they
+	                               hold the Selection Committee role)
+	Tagged colleague               only Job Openings they are tagged on ("Shared
+	                               with" on the job, workflow step 7), read-only
 
 Those three roles are behavioural: the code must know which role *means*
 "candidate" or "committee member", so they are constants. Every other
@@ -24,7 +29,10 @@ import frappe
 CANDIDATE_ROLE = "Pathways Candidate"
 SHORTLISTING_ROLE = "Pathways Shortlisting Committee Member"
 SELECTION_ROLE = "Pathways Selection Committee Member"
-SCOPED_ROLES = frozenset({CANDIDATE_ROLE, SHORTLISTING_ROLE, SELECTION_ROLE})
+# Given to (and taken from) colleagues as they are tagged on a job's
+# "Shared with" table; grants read only on the jobs they are tagged on.
+TAGGED_ROLE = "Pathways Tagged Colleague"
+SCOPED_ROLES = frozenset({CANDIDATE_ROLE, SHORTLISTING_ROLE, SELECTION_ROLE, TAGGED_ROLE})
 
 # Seeded into Pathways Settings > Pathways Roles on install; after that the
 # list is maintained from the Roles & Permissions screen.
@@ -43,6 +51,7 @@ DEFAULT_PATHWAYS_ROLES = (
 	SELECTION_ROLE,
 	"Pathways Communications",
 	"Pathways IT Facilities",
+	TAGGED_ROLE,
 	CANDIDATE_ROLE,
 )
 
@@ -132,6 +141,19 @@ def _committee_job_openings(user, roles):
 	return job_openings
 
 
+def _tagged_job_openings(user):
+	"""Jobs whose "Shared with" table names this user."""
+	return set(
+		frappe.get_all("Job Opening Colleague", filters={"user": user, "parenttype": "Job Opening"}, pluck="parent")
+	)
+
+
+def _is_tagged(job_opening, user):
+	return bool(job_opening) and bool(
+		frappe.db.exists("Job Opening Colleague", {"user": user, "parenttype": "Job Opening", "parent": job_opening})
+	)
+
+
 def _owns_application(application_name, user):
 	if not application_name:
 		return False
@@ -159,6 +181,15 @@ def get_application_permission_query_conditions(user):
 	if roles & {SHORTLISTING_ROLE, SELECTION_ROLE}:
 		job_openings = _committee_job_openings(user, roles)
 		conditions.append(f"`tabApplication`.job_opening in ({_sql_in(job_openings)})" if job_openings else "1=0")
+
+	if TAGGED_ROLE in roles:
+		tagged = _tagged_job_openings(user)
+		conditions.append(f"`tabApplication`.job_opening in ({_sql_in(tagged)})" if tagged else "1=0")
+
+	if SELECTION_ROLE in roles:
+		assessed = _hr_assessed_applications(user)
+		if assessed:
+			conditions.append(f"`tabApplication`.name in ({_sql_in(assessed)})")
 
 	if CANDIDATE_ROLE in roles:
 		candidate = _candidate_for(user)
@@ -189,11 +220,56 @@ def has_application_permission(doc, user=None, permission_type=None):
 		[["Committee Member Row", "member", "=", user], ["job_opening", "=", doc.job_opening]],
 	):
 		return True
+	if TAGGED_ROLE in roles and _is_tagged(doc.job_opening, user):
+		return True
+	if SELECTION_ROLE in roles and doc.name in _hr_assessed_applications(user):
+		return True
 
 	return False
 
 
+# ------------------------------------------------------------- Job Opening
+
+
+def get_job_opening_permission_query_conditions(user):
+	user = user or frappe.session.user
+	if has_full_access("Job Opening", user):
+		return ""
+	roles = _roles(user)
+	jobs = set()
+	if TAGGED_ROLE in roles:
+		jobs |= _tagged_job_openings(user)
+	if roles & {SHORTLISTING_ROLE, SELECTION_ROLE}:
+		jobs |= _committee_job_openings(user, roles)
+	jobs.discard(None)
+	return f"`tabJob Opening`.name in ({_sql_in(jobs)})" if jobs else "1=0"
+
+
+def has_job_opening_permission(doc, user=None, permission_type=None):
+	user = user or frappe.session.user
+	if has_full_access("Job Opening", user):
+		return True
+	if permission_type not in (None, "read", "print"):
+		return False
+	roles = _roles(user)
+	if TAGGED_ROLE in roles and _is_tagged(doc.name, user):
+		return True
+	return bool(roles & {SHORTLISTING_ROLE, SELECTION_ROLE}) and doc.name in _committee_job_openings(user, roles)
+
+
 # --------------------------------------------------------------- Interview
+
+
+def _hr_assessed_interviews(user):
+	"""Round 1 (HR interaction) interviews this user is an HR assessor of."""
+	return frappe.get_all("Interview HR Assessor", filters={"assessor": user, "parenttype": "Interview"}, pluck="parent")
+
+
+def _hr_assessed_applications(user):
+	interviews = _hr_assessed_interviews(user)
+	if not interviews:
+		return []
+	return list(set(frappe.get_all("Interview", filters={"name": ["in", interviews]}, pluck="application")))
 
 
 def get_interview_permission_query_conditions(user):
@@ -208,6 +284,9 @@ def get_interview_permission_query_conditions(user):
 	if SELECTION_ROLE in roles:
 		committees = _committee_names("Selection Committee", user)
 		conditions.append(f"`tabInterview`.selection_committee in ({_sql_in(committees)})" if committees else "1=0")
+		assessed = _hr_assessed_interviews(user)
+		if assessed:
+			conditions.append(f"`tabInterview`.name in ({_sql_in(assessed)})")
 
 	return " or ".join(f"({c})" for c in conditions) if conditions else "1=0"
 
@@ -219,6 +298,8 @@ def has_interview_permission(doc, user=None, permission_type=None):
 	roles = _roles(user)
 
 	if CANDIDATE_ROLE in roles and _owns_application(doc.application, user):
+		return True
+	if SELECTION_ROLE in roles and doc.name and doc.name in _hr_assessed_interviews(user):
 		return True
 	if SELECTION_ROLE in roles and doc.selection_committee:
 		return bool(
@@ -275,6 +356,20 @@ def has_joining_permission(doc, user=None, permission_type=None):
 	return _candidate_scoped_has_permission("Joining", doc, user)
 
 
+# IT & Facilities requests: staff whose role is granted read (by default
+# Pathways IT Facilities, Admin, Recruiter) see them all; a candidate never
+# sees one, even if a role grant is added by mistake.
+
+
+def get_it_request_permission_query_conditions(user):
+	user = user or frappe.session.user
+	return "" if has_full_access("IT Facilities Provisioning Request", user) else "1=0"
+
+
+def has_it_request_permission(doc, user=None, permission_type=None):
+	return has_full_access("IT Facilities Provisioning Request", user or frappe.session.user)
+
+
 # ------------------------------------------------------ committee scoring
 
 
@@ -309,10 +404,10 @@ def get_interview_assessment_permission_query_conditions(user):
 		return ""
 	if SELECTION_ROLE in _roles(user):
 		committees = _committee_names("Selection Committee", user)
-		if committees:
-			interviews = frappe.get_all("Interview", filters={"selection_committee": ["in", committees]}, pluck="name")
-			if interviews:
-				return f"`tabInterview Assessment`.interview in ({_sql_in(interviews)})"
+		interviews = frappe.get_all("Interview", filters={"selection_committee": ["in", committees]}, pluck="name") if committees else []
+		interviews += _hr_assessed_interviews(user)
+		if interviews:
+			return f"`tabInterview Assessment`.interview in ({_sql_in(interviews)})"
 	return "1=0"
 
 
@@ -321,6 +416,8 @@ def has_interview_assessment_permission(doc, user=None, permission_type=None):
 	if has_full_access("Interview Assessment", user):
 		return True
 	if SELECTION_ROLE in _roles(user):
+		if doc.interview in _hr_assessed_interviews(user):
+			return True
 		selection_committee = frappe.db.get_value("Interview", doc.interview, "selection_committee")
 		if not selection_committee:
 			return False

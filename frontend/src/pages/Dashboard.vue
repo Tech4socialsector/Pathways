@@ -92,6 +92,15 @@
             </button>
           </div>
 
+          <!-- Hiring outcomes: offers, joinings, time to hire (detail on Reports) -->
+          <div v-if="hiringTiles.length" class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div v-for="t in hiringTiles" :key="t.label" class="rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
+              <div class="text-xs font-medium uppercase tracking-wide text-gray-500">{{ t.label }}</div>
+              <div class="mt-1 text-xl font-bold text-gray-900">{{ t.value }}</div>
+              <div class="truncate text-xs text-gray-500" :title="t.hint">{{ t.hint }}</div>
+            </div>
+          </div>
+
           <div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
             <!-- Needs attention -->
             <SectionCard title="Needs Attention" icon="alert-circle">
@@ -470,6 +479,23 @@ const cards = computed(() => {
     { key: 'documents_pending', icon: 'file', label: 'Documents Pending', value: s.documents_pending },
     { key: 'joined', icon: 'user-check', label: 'Joined', value: s.joined },
     { key: 'rejected', icon: 'x-circle', label: 'Not Selected', value: s.rejected },
+  ]
+})
+
+const hiringTiles = computed(() => {
+  const h = data.value?.hiring
+  if (!h) return []
+  const tth = h.time_to_hire?.overall || {}
+  const days = (v) => (v === null || v === undefined ? '—' : `${v} days`)
+  return [
+    {
+      label: 'Offer acceptance',
+      value: h.acceptance_rate === null || h.acceptance_rate === undefined ? '—' : `${Math.round(h.acceptance_rate * 100)}%`,
+      hint: `${h.offers.accepted} accepted · ${h.offers.declined} declined · ${h.offers.expired} expired of ${h.offers.made} made`,
+    },
+    { label: 'Joinings', value: h.joinings.joined, hint: `${h.joinings.no_show} no-show · ${h.joinings.expected} expected` },
+    { label: 'Time to acceptance', value: days(tth.accept_median), hint: `Median from advertisement · average ${days(tth.accept_avg)}` },
+    { label: 'Time to joining', value: days(tth.join_median), hint: `Median from advertisement · average ${days(tth.join_avg)}` },
   ]
 })
 

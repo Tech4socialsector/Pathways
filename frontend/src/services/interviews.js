@@ -1,4 +1,4 @@
-import { callMethod } from './api'
+import { callMethod, downloadMethod } from './api'
 
 // Interview stage (workflow steps 13-16): Selection Committee, scheduling,
 // invites and the candidate's RSVP.
@@ -47,5 +47,40 @@ export const interviewService = {
   },
   listInterviews() {
     return callMethod('pathways.api.interviews.list_interviews')
+  },
+  // Workflow step 14: final shortlist and the job's Shortlisting Note
+  setFinalShortlist(jobOpening, applications, shortlisted = true, remarks = null) {
+    return callMethod('pathways.api.interviews.set_final_shortlist', {
+      job_opening: jobOpening,
+      applications: JSON.stringify(applications),
+      shortlisted: shortlisted ? 1 : 0,
+      remarks,
+    })
+  },
+  getShortlistingNote(jobOpening) {
+    return callMethod('pathways.api.interviews.get_shortlisting_note', { job_opening: jobOpening })
+  },
+  // attachments: [{ label, attachment }]; remarks: { application: text }
+  saveShortlistingNote(jobOpening, { note, attachments, remarks } = {}) {
+    return callMethod('pathways.api.interviews.save_shortlisting_note', {
+      job_opening: jobOpening,
+      note: note ?? null,
+      attachments: attachments ? JSON.stringify(attachments) : null,
+      remarks: remarks ? JSON.stringify(remarks) : null,
+    })
+  },
+  downloadShortlistingNote(jobOpening, jobTitle) {
+    return downloadMethod('pathways.api.interviews.download_shortlisting_note', { job_opening: jobOpening }, `Shortlisting Note - ${jobTitle}.pdf`)
+  },
+  getHrInteraction(application) {
+    return callMethod('pathways.api.interviews.get_hr_interaction', { application })
+  },
+  // Workflow step 16: the day's running order, Excel or PDF
+  exportSchedule(jobOpening, jobTitle, { roundType = 'Final', interviewDate = '', format = 'xlsx' } = {}) {
+    return downloadMethod(
+      'pathways.api.interviews.export_interview_schedule',
+      { job_opening: jobOpening, round_type: roundType, interview_date: interviewDate || null, file_format: format },
+      `Interview Schedule - ${jobTitle}.${format}`,
+    )
   },
 }

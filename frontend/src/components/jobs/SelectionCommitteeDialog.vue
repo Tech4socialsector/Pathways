@@ -14,6 +14,7 @@
           <p class="text-p-sm text-gray-600">
             <template v-if="jobTitle"><b class="font-semibold text-gray-900">{{ jobTitle }}</b> · </template>
             Panellists see only this job's interview candidates. New panellists get an invitation email.
+            Saving a date blocks the sitting in the calendars of the panel and the roles set in Settings (Calendar block roles).
           </p>
 
           <!-- When, and how many -->

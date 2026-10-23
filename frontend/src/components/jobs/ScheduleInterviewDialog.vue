@@ -42,6 +42,7 @@
           </div>
           <FormControl label="Reply by" type="datetime-local" v-model="form.rsvp" />
         </div>
+        <HrAssessorPicker v-if="form.round === 'HR Interaction'" v-model="form.assessors" :limit="assessorLimit" />
         <FormControl v-if="inPerson" label="Location" v-model="form.location" placeholder="e.g. Training Centre, Ground Floor, Room 004, NLSIU Bengaluru" />
         <template v-else>
           <label v-if="form.platform === 'Google Meet' && meet.ready" class="flex items-start gap-2.5 rounded-lg border border-brand-200 bg-brand-50 px-3 py-2.5">
@@ -49,7 +50,7 @@
             <span>
               <span class="font-medium text-gray-900">Create a Google Meet link for each interview</span>
               <span class="block text-xs text-gray-600">
-                Adds the interview to Google Calendar and invites the candidate{{ form.round === 'Final' ? ' and the panel' : '' }}. The link goes into the invite email.
+                Adds the interview to Google Calendar and invites the candidate{{ form.round === 'Final' ? ' and the panel' : ' and the HR assessors' }}. The link goes into the invite email.
               </span>
             </span>
           </label>
@@ -116,6 +117,7 @@ import { computed, reactive, ref, watch } from 'vue'
 import { Button, Dialog, FeatherIcon, FormControl } from 'frappe-ui'
 import dayjs from 'dayjs'
 import EmailRecipients from '@/components/jobs/EmailRecipients.vue'
+import HrAssessorPicker from '@/components/jobs/HrAssessorPicker.vue'
 import SelectionCommitteeDialog from '@/components/jobs/SelectionCommitteeDialog.vue'
 import { interviewService } from '@/services/interviews'
 import { BTN_BRAND } from '@/utils/buttonStyles'
@@ -126,6 +128,8 @@ const props = defineProps({
   // [{ name, candidate_name, job_opening, job_title, has_committee, committee_date?, committee_time? }]
   candidates: { type: Array, default: () => [] },
   round: { type: String, default: 'HR Interaction' },
+  // Most HR assessors per Round 1 interview (Pathways Settings)
+  assessorLimit: { type: Number, default: 2 },
 })
 const emit = defineEmits(['update:open', 'scheduled'])
 
@@ -134,7 +138,7 @@ const ROUND_OPTIONS = [
   { value: 'Final', label: 'Final interview' },
 ]
 const today = dayjs().format('YYYY-MM-DD')
-const form = reactive({ round: 'HR Interaction', date: '', time: '10:00', slot: 20, mode: 'Video Conference', platform: 'Microsoft Teams', otherPlatform: '', link: '', createMeet: true, location: '', rsvp: '', send: true, cc: [], saving: false, error: '' })
+const form = reactive({ round: 'HR Interaction', date: '', time: '10:00', slot: 20, mode: 'Video Conference', platform: 'Microsoft Teams', otherPlatform: '', link: '', createMeet: true, location: '', rsvp: '', send: true, cc: [], assessors: [], saving: false, error: '' })
 const inPerson = computed(() => form.mode === 'In-Person')
 // Google Meet through the Google Calendar integration (Settings > Google Meet).
 const meet = reactive({ ready: false, checked: false })
@@ -196,6 +200,7 @@ watch(
       error: '',
       send: true,
       cc: [],
+      assessors: [],
       slot: props.round === 'Final' ? 30 : 20,
       // Default to tomorrow, so the form is never left without a date.
       date: props.round === 'Final' && first?.committee_date ? first.committee_date : form.date || dayjs().add(1, 'day').format('YYYY-MM-DD'),
@@ -262,6 +267,7 @@ async function schedule() {
         rsvp_deadline: form.rsvp ? form.rsvp.replace('T', ' ') + ':00' : null,
         send_invite: form.send ? 1 : 0,
         cc: JSON.stringify(form.send ? form.cc : []),
+        hr_assessors: form.round === 'HR Interaction' ? JSON.stringify(form.assessors) : null,
       })
       done += r.scheduled
     } catch (e) {

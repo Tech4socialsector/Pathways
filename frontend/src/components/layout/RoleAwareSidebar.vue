@@ -72,6 +72,10 @@ const ALL_ITEMS = [
   { key: 'approvals', to: '/approvals', label: 'My Approvals', icon: 'check-square' },
   { key: 'offers', to: '/offers', label: 'Offers', icon: 'award' },
   { key: 'documents', to: '/documents', label: 'Documents', icon: 'folder' },
+  { key: 'joinings', to: '/joinings', label: 'Joinings', icon: 'user-check' },
+  { key: 'it_requests', to: '/it-requests', label: 'IT Requests', icon: 'monitor' },
+  { key: 'honorarium', to: '/honorarium', label: 'Panel Honorarium', icon: 'gift' },
+  { key: 'communications', to: '/communications', label: 'Communications', icon: 'mail' },
   { key: 'reports', to: '/reports', label: 'Reports', icon: 'bar-chart-2' },
 ]
 

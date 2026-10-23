@@ -68,6 +68,7 @@
         <div class="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_24rem]">
           <div class="flex min-w-0 flex-col gap-6">
             <ApplicationSubmissionPanel :app="detail" :loading="detailLoading" :error="detailError" />
+            <ReferenceChecksPanel :application-id="props.id" />
 
             <SectionCard
               title="Activity"
@@ -102,6 +103,7 @@
                 </li>
               </ol>
             </SectionCard>
+            <CommunicationList :application="props.id" />
           </div>
 
           <!-- Right rail: score, then the application at a glance -->
@@ -114,6 +116,7 @@
               @scored="onScored"
               @committee-created="loadReviewIfAllowed(props.id)"
             />
+            <HrInteractionCard :application="props.id" />
             <SectionCard title="At a Glance" icon="activity">
               <dl class="flex flex-col divide-y divide-gray-100 text-sm">
                 <div class="py-3 first:pt-0">
@@ -138,6 +141,7 @@
                     <span v-if="status.acceptance_deadline" class="text-xs text-gray-500">Respond by {{ formatDate(status.acceptance_deadline) }}</span>
                   </dd>
                   <dd v-else class="text-gray-500">No offer yet</dd>
+                  <ApplicationOfferAction :application="id" />
                 </div>
                 <div class="py-3 last:pb-0">
                   <dt class="mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-gray-500">
@@ -240,10 +244,14 @@ import PageHeader from '@/components/layout/PageHeader.vue'
 import DocumentViewer from '@/components/common/DocumentViewer.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
 import SectionCard from '@/components/common/SectionCard.vue'
+import ApplicationOfferAction from '@/components/offers/ApplicationOfferAction.vue'
 import { BTN_BRAND, BTN_DARK } from '@/utils/buttonStyles'
 import ProgressStepper from '@/components/common/ProgressStepper.vue'
 import ShortlistingReviewPanel from '@/components/common/ShortlistingReviewPanel.vue'
 import ApplicationSubmissionPanel from '@/components/common/ApplicationSubmissionPanel.vue'
+import HrInteractionCard from '@/components/jobs/HrInteractionCard.vue'
+import ReferenceChecksPanel from '@/components/references/ReferenceChecksPanel.vue'
+import CommunicationList from '@/components/common/CommunicationList.vue'
 import { useApplicationStatus } from '@/composables/useApplications'
 import { useApplicationReview } from '@/composables/useScoring'
 import { useSessionStore } from '@/stores/session'

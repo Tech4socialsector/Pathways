@@ -218,76 +218,6 @@ def apply_shortlisting_decision(score):
 	return app.status
 
 
-@frappe.whitelist()
-def submit_interview_assessment(interview, criteria, recommendation=None):
-	"""panelist is always the calling user, never a client-supplied value
-	— otherwise one panelist could submit an assessment attributed to
-	another.
-	"""
-	if isinstance(criteria, str):
-		criteria = frappe.parse_json(criteria)
-
-	panelist = frappe.session.user
-	existing = frappe.db.exists("Interview Assessment", {"interview": interview, "panelist": panelist})
-	assessment = (
-		frappe.get_doc("Interview Assessment", existing) if existing else frappe.new_doc("Interview Assessment")
-	)
-
-	assessment.interview = interview
-	assessment.panelist = panelist
-	assessment.recommendation = recommendation
-	assessment.panelist_signature_confirmed = 1
-
-	assessment.criteria = []
-	for row in criteria:
-		assessment.append(
-			"criteria",
-			{
-				"criterion_label": row.get("criterion_label"),
-				"max_score": row.get("max_score"),
-				"score_given": row.get("score_given"),
-			},
-		)
-
-	# See submit_shortlisting_score — check_permission restricts this to a
-	# member of the interview's own Selection Committee, not just anyone
-	# holding the committee role.
-	assessment.check_permission("write" if existing else "create")
-
-	if existing:
-		assessment.save(ignore_permissions=True)
-	else:
-		assessment.insert(ignore_permissions=True)
-
-	frappe.db.commit()
-	return assessment.name
-
-
-@frappe.whitelist()
-def consolidate_scores(interview):
-	"""Replaces the manual 'Consolidated Score Sheet' Excel step —
-	aggregates every panelist's Interview Assessment for a given
-	Interview into one summary, parameterized for any rubric size.
-	"""
-	assessments = frappe.get_all(
-		"Interview Assessment",
-		filters={"interview": interview},
-		fields=["name", "panelist", "total_score"],
-	)
-	if not assessments:
-		return {"panelists": [], "average": 0, "total_of_all": 0}
-
-	total = sum(a.total_score or 0 for a in assessments)
-	average = total / len(assessments)
-
-	return {
-		"panelists": assessments,
-		"total_of_all": total,
-		"average": round(average, 2),
-		"panelist_count": len(assessments),
-	}
-
-
 def _committee_size():
 	settings = frappe.get_cached_doc("Pathways Settings")
 	return settings.min_shortlisting_committee_size or 2, settings.max_shortlisting_committee_size or 3
@@ -310,9 +240,12 @@ def get_committee_options():
 
 
 @frappe.whitelist(methods=["POST"])
-def create_shortlisting_committee(job_opening, members, office_order_reference=None):
-	"""Create the job's Shortlisting Committee. insert() enforces create
-	permission and the committee-size rule."""
+def create_shortlisting_committee(
+	job_opening, members, office_order_reference=None, shortlisting_deadline=None, office_order_attachment=None
+):
+	"""Create the job's Shortlisting Committee (workflow step 8: office order
+	and deadline). insert() enforces create permission and the committee-size
+	rule; after_insert emails every member (committee_assigned)."""
 	if isinstance(members, str):
 		members = frappe.parse_json(members)
 	existing = frappe.db.get_value("Shortlisting Committee", {"job_opening": job_opening}, "name")
@@ -323,10 +256,89 @@ def create_shortlisting_committee(job_opening, members, office_order_reference=N
 			"doctype": "Shortlisting Committee",
 			"job_opening": job_opening,
 			"office_order_reference": office_order_reference,
+			"office_order_attachment": office_order_attachment or None,
+			"shortlisting_deadline": shortlisting_deadline or None,
 			"members": [{"member": user} for user in dict.fromkeys(members or [])],
 		}
 	).insert()
 	return doc.name
+
+
+@frappe.whitelist()
+def get_shortlisting_committee(job_opening):
+	"""The job's committee, for editing it in the committee dialog."""
+	name = frappe.db.get_value("Shortlisting Committee", {"job_opening": job_opening}, "name")
+	if not name:
+		return None
+	doc = frappe.get_doc("Shortlisting Committee", name)
+	doc.check_permission("read")
+	return {
+		"name": doc.name,
+		"members": [row.member for row in doc.members],
+		"office_order_reference": doc.office_order_reference,
+		"office_order_attachment": doc.office_order_attachment,
+		"shortlisting_deadline": doc.shortlisting_deadline,
+		"can_edit": bool(doc.has_permission("write")),
+	}
+
+
+@frappe.whitelist(methods=["POST"])
+def update_shortlisting_committee(
+	job_opening, members=None, office_order_reference=None, shortlisting_deadline=None, office_order_attachment=None
+):
+	"""Change the committee's members, office order or deadline. save()
+	enforces write permission and the size rule; only members who were not
+	on the committee before get the committee_assigned invitation."""
+	from pathways.utils.communication import job_email_context, send_event
+
+	name = frappe.db.get_value("Shortlisting Committee", {"job_opening": job_opening}, "name")
+	if not name:
+		frappe.throw(_("Job Opening {0} has no Shortlisting Committee yet.").format(job_opening))
+	doc = frappe.get_doc("Shortlisting Committee", name)
+	previous = [row.member for row in doc.members]
+	if members is not None:
+		if isinstance(members, str):
+			members = frappe.parse_json(members)
+		members = list(dict.fromkeys(members or []))
+		kept = {row.member: row for row in doc.members if row.member in members}
+		doc.set("members", [])
+		for user in members:
+			old = kept.get(user)
+			doc.append(
+				"members",
+				{
+					"member": user,
+					"designation_label": old.designation_label if old else None,
+					"is_external_expert": old.is_external_expert if old else 0,
+				},
+			)
+	doc.office_order_reference = office_order_reference or None
+	doc.office_order_attachment = office_order_attachment or None
+	doc.shortlisting_deadline = shortlisting_deadline or None
+	doc.save()
+
+	added = [m.member for m in doc.members if m.member not in previous]
+	if added:
+		job = frappe.get_doc("Job Opening", doc.job_opening)
+		context = job_email_context(job)
+		context.update(
+			{
+				"application_count": frappe.db.count("Application", {"job_opening": job.name, "status": ["!=", "Withdrawn"]}),
+				"ratio": shortlisting_ratio(job),
+				"deadline": frappe.utils.formatdate(doc.shortlisting_deadline) if doc.shortlisting_deadline else "",
+			}
+		)
+		people = frappe.get_all("User", filters={"name": ["in", added], "enabled": 1}, fields=["email", "full_name"])
+		# No job_opening: the rule's "the job's committee" would re-invite
+		# everyone; only the new members are sent to.
+		send_event(
+			"committee_assigned",
+			"Shortlisting Committee",
+			doc.name,
+			context,
+			recipients=[{"email": p.email, "name": p.full_name} for p in people if p.email],
+		)
+	return {"name": doc.name, "added": added}
 
 
 # ------------------------------------------------------------ eligibility
@@ -488,7 +500,12 @@ def shortlisting_summary(job):
 		"Shortlisted", "Interview Scheduled", "Interview Completed", "Selected", "Offer Extended",
 		"Offer Accepted", "Offer Declined", "Documents Pending", "Documents Verified", "Joined",
 	}
-	committee = frappe.db.get_value("Shortlisting Committee", {"job_opening": job.name}, ["name", "shortlisting_deadline", "office_order_reference"], as_dict=True)
+	committee = frappe.db.get_value(
+		"Shortlisting Committee",
+		{"job_opening": job.name},
+		["name", "shortlisting_deadline", "office_order_reference", "office_order_attachment"],
+		as_dict=True,
+	)
 	members = []
 	if committee:
 		members = [
@@ -507,6 +524,7 @@ def shortlisting_summary(job):
 		"scored": frappe.db.count("Shortlisting Score", {"application": ["in", [r.name for r in rows]]}) if rows else 0,
 		"committee": {**committee, "members": members} if committee else None,
 		"can_create_committee": not committee and bool(frappe.has_permission("Shortlisting Committee", "create")),
+		"can_edit_committee": bool(committee) and bool(frappe.has_permission("Shortlisting Committee", "write", doc=committee.name)),
 		"can_shortlist": can_shortlist(job.name),
 		"regret": regret_pending(job.name),
 	}

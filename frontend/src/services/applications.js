@@ -2,18 +2,24 @@ import { callMethod, downloadMethod, serverMessages } from './api'
 
 export const applicationService = {
   // Applications page > Import (Excel / CSV)
-  downloadImportTemplate() {
-    return downloadMethod('pathways.api.application_import.download_template', {}, 'Applications Import Template.xlsx')
+  // historical: past cycles with any status; no emails, no portal logins.
+  downloadImportTemplate(historical = false) {
+    return downloadMethod(
+      'pathways.api.application_import.download_template',
+      { historical: historical ? 1 : 0 },
+      historical ? 'Historical Applications Import Template.xlsx' : 'Applications Import Template.xlsx',
+    )
   },
-  previewImport(filename, content) {
-    return callMethod('pathways.api.application_import.preview_import', { filename, content })
+  previewImport(filename, content, historical = false) {
+    return callMethod('pathways.api.application_import.preview_import', { filename, content, historical: historical ? 1 : 0 })
   },
-  runImport(filename, content, { sendLogin = false, sendAcknowledgement = false } = {}) {
+  runImport(filename, content, { sendLogin = false, sendAcknowledgement = false, historical = false } = {}) {
     return callMethod('pathways.api.application_import.run_import', {
       filename,
       content,
-      send_login: sendLogin ? 1 : 0,
-      send_acknowledgement: sendAcknowledgement ? 1 : 0,
+      send_login: sendLogin && !historical ? 1 : 0,
+      send_acknowledgement: sendAcknowledgement && !historical ? 1 : 0,
+      historical: historical ? 1 : 0,
     })
   },
   // Not via callMethod: frappe-ui's call() drops the response's

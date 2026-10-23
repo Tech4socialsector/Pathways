@@ -4,6 +4,24 @@
   <Dialog :model-value="open" :options="{ title: 'Import applications', size: '4xl' }" @update:model-value="close">
     <template #body-content>
       <div class="flex flex-col gap-4 text-sm">
+        <!-- Kind of import: current applications, or a past cycle's records -->
+        <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <label
+            v-for="opt in KINDS"
+            :key="opt.value"
+            class="flex cursor-pointer gap-3 rounded-lg border p-3"
+            :class="[form.historical === opt.value ? 'border-brand-700 bg-brand-50' : 'hover:bg-gray-50', (preview || state.checking) && 'pointer-events-none opacity-60']"
+          >
+            <input v-model="form.historical" type="radio" :value="opt.value" class="mt-0.5 text-brand-700 focus:ring-brand-700" />
+            <span><span class="block font-medium text-gray-900">{{ opt.label }}</span><span class="text-xs text-gray-500">{{ opt.hint }}</span></span>
+          </label>
+        </div>
+        <p v-if="form.historical" class="rounded-md bg-orange-50 px-3 py-2 text-xs text-orange-800">
+          Historical import: each row needs a Status (any application status, e.g. Not Selected, Interview Completed, Selected, Joined).
+          Closed and filled jobs are accepted. Nobody is emailed and no portal logins are created.
+          <template v-if="preview">Choose another file to switch the kind of import.</template>
+        </p>
+
         <!-- 1. Template -->
         <div class="flex flex-wrap items-center gap-3 rounded-lg border bg-gray-50 px-4 py-3">
           <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white text-xs font-semibold text-gray-700 ring-1 ring-gray-300">1</span>
@@ -73,7 +91,7 @@
             </table>
           </div>
 
-          <div class="flex flex-col gap-2 rounded-lg border px-4 py-3">
+          <div v-if="!preview.historical" class="flex flex-col gap-2 rounded-lg border px-4 py-3">
             <div class="text-xs font-semibold uppercase tracking-wide text-gray-500">Emails to candidates</div>
             <label class="flex items-start gap-2.5">
               <input v-model="form.sendAcknowledgement" type="checkbox" class="mt-0.5 rounded border-gray-300 text-brand-700 focus:ring-brand-700" />
@@ -149,7 +167,11 @@ const emit = defineEmits(['update:open', 'imported'])
 const input = ref(null)
 const file = reactive({ name: '', content: '' })
 const state = reactive({ downloading: false, checking: false, importing: false, error: '' })
-const form = reactive({ sendAcknowledgement: false, sendLogin: false })
+const form = reactive({ sendAcknowledgement: false, sendLogin: false, historical: false })
+const KINDS = [
+  { value: false, label: 'New applications', hint: 'Received outside the portal; they start at Submitted, Under Review or Shortlisted.' },
+  { value: true, label: 'Historical import', hint: 'Past recruitment cycles with their final status, for records and reports.' },
+]
 const preview = ref(null)
 const result = ref(null)
 const onlyProblems = ref(false)
@@ -160,7 +182,7 @@ watch(
     if (!open) return
     Object.assign(file, { name: '', content: '' })
     Object.assign(state, { downloading: false, checking: false, importing: false, error: '' })
-    Object.assign(form, { sendAcknowledgement: false, sendLogin: false })
+    Object.assign(form, { sendAcknowledgement: false, sendLogin: false, historical: false })
     preview.value = null
     result.value = null
     onlyProblems.value = false
@@ -179,7 +201,7 @@ function close(value = false) {
 async function downloadTemplate() {
   state.downloading = true
   try {
-    await applicationService.downloadImportTemplate()
+    await applicationService.downloadImportTemplate(form.historical)
   } catch (e) {
     toast({ title: e?.messages?.[0] || 'Could not download the template.', icon: 'alert-triangle', iconClasses: 'text-red-500' })
   } finally {
@@ -215,7 +237,7 @@ async function pick(event) {
   try {
     const content = await readFile(f)
     Object.assign(file, { name: f.name, content })
-    preview.value = await applicationService.previewImport(f.name, content)
+    preview.value = await applicationService.previewImport(f.name, content, form.historical)
     onlyProblems.value = false
     if (!preview.value.total) state.error = 'No applications found in the file. Fill in rows below the header (the grey help row is ignored).'
   } catch (e) {
@@ -230,7 +252,7 @@ async function runImport() {
   state.importing = true
   state.error = ''
   try {
-    result.value = await applicationService.runImport(file.name, file.content, form)
+    result.value = await applicationService.runImport(file.name, file.content, { ...form, historical: !!preview.value?.historical })
     if (result.value.done.length) {
       toast({ title: `${result.value.done.length} application${result.value.done.length === 1 ? '' : 's'} imported.`, icon: 'check', iconClasses: 'text-green-500' })
       emit('imported')

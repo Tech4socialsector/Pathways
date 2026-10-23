@@ -3,8 +3,8 @@
     <PageHeader
       title="Interview Panel"
       :subtitle="data?.can_manage && !data?.is_panellist
-        ? 'Final interviews and how far each panel has got with scoring.'
-        : 'Your final interviews. Score each candidate on the Interview Assessment Form.'"
+        ? 'Round 1 (HR) and final interviews, and how far each panel has got with scoring.'
+        : 'Your interviews. Score each candidate on the Interview Assessment Form (final) or the HR assessment sheet (Round 1).'"
     >
       <template #actions>
         <Button variant="outline" icon-left="folder" @click="router.push('/panel/documents')">Shared documents</Button>
@@ -53,7 +53,7 @@
         <div v-if="!groups.length" class="rounded-xl border border-dashed bg-white px-6 py-12 text-center text-sm text-gray-500">
           <FeatherIcon name="clipboard" class="mx-auto mb-2 h-6 w-6 text-gray-300" />
           <template v-if="!data.interviews.length">
-            No final interviews yet. They appear here once the recruitment team schedules them for a committee you sit on.
+            No interviews yet. They appear here once the recruitment team schedules a final interview for a committee you sit on, or a Round 1 (HR) interview you assess.
           </template>
           <template v-else>Nothing matches.</template>
         </div>
@@ -82,8 +82,8 @@
             <div class="flex shrink-0 items-center gap-2">
               <span v-if="g.toScore" class="rounded-full bg-orange-50 px-2.5 py-0.5 text-xs font-medium text-orange-700">{{ g.toScore }} to score</span>
               <span v-else-if="g.anyMine" class="rounded-full bg-green-50 px-2.5 py-0.5 text-xs font-medium text-green-700">All scored</span>
-              <Button v-if="g.anyMine" size="sm" variant="outline" icon-left="printer" @click="printMine(g)">My form (PDF)</Button>
-              <Button size="sm" variant="outline" icon-left="grid" @click="router.push(`/panel/sheet/${g.job_opening}`)">Score sheet</Button>
+              <Button v-if="g.anyMineFinal" size="sm" variant="outline" icon-left="printer" @click="printMine(g)">My form (PDF)</Button>
+              <Button v-if="g.hasFinal && (g.anyMineFinal || data.can_manage)" size="sm" variant="outline" icon-left="grid" @click="router.push(`/panel/sheet/${g.job_opening}`)">Score sheet</Button>
             </div>
           </header>
 
@@ -109,6 +109,13 @@
                   <td class="whitespace-nowrap px-4 py-3">
                     <div class="font-medium text-gray-900">{{ dayjs(iv.scheduled_datetime).format('ddd, DD MMM') }}</div>
                     <div class="text-xs text-gray-500">{{ dayjs(iv.scheduled_datetime).format('h:mm A [IST]') }}</div>
+                    <span
+                      class="mt-1 inline-block rounded-full px-2 py-0.5 text-[11px] font-medium"
+                      :class="iv.round_type === 'HR Interaction' ? 'bg-blue-50 text-blue-700' : 'bg-brand-50 text-brand-800'"
+                      :title="iv.hr_assessor_names?.length ? `HR assessors: ${iv.hr_assessor_names.join(', ')}` : ''"
+                    >
+                      {{ iv.round_type === 'HR Interaction' ? 'Round 1 (HR)' : 'Final' }}
+                    </span>
                   </td>
                   <td class="px-4 py-3">
                     <div class="font-medium text-gray-900">{{ iv.candidate_name }}</div>
@@ -136,7 +143,7 @@
                       class="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-green-50 px-2.5 py-0.5 text-xs font-medium text-green-700"
                     >
                       <FeatherIcon name="check" class="h-3 w-3" />
-                      {{ fmt(iv.my_score.total_score) }} / {{ fmt(iv.my_score.max_score) }}<template v-if="iv.my_score.verdict"> · {{ iv.my_score.verdict }}</template>
+                      {{ fmt(iv.my_score.total_score) }} / {{ fmt(iv.my_score.max_score) }}<template v-if="iv.my_score.verdict || iv.my_score.hr_outcome"> · {{ iv.my_score.verdict || iv.my_score.hr_outcome }}</template>
                     </span>
                     <span v-else-if="iv.is_panellist" class="whitespace-nowrap rounded-full bg-orange-50 px-2.5 py-0.5 text-xs font-medium text-orange-700">Not scored yet</span>
                     <span v-else class="text-gray-400">—</span>
@@ -199,7 +206,7 @@ const tiles = computed(() => {
   const list = rows.value
   const mine = list.filter((iv) => iv.is_panellist)
   const out = [
-    { label: 'Final interviews', value: list.length },
+    { label: 'Interviews', value: list.length },
     { label: 'Today', value: list.filter((iv) => dayjs(iv.scheduled_datetime).isSame(dayjs(), 'day')).length },
   ]
   if (mine.length) {
@@ -227,6 +234,8 @@ const groups = computed(() => {
     ...g,
     toScore: g.rows.filter(toScore).length,
     anyMine: g.rows.some((iv) => iv.is_panellist),
+    anyMineFinal: g.rows.some((iv) => iv.is_panellist && iv.round_type !== 'HR Interaction'),
+    hasFinal: g.rows.some((iv) => iv.round_type !== 'HR Interaction'),
     panelTotal: g.rows.some((iv) => iv.scores?.panel_size),
     fullyScored: g.rows.filter((iv) => iv.scores?.panel_size && iv.scores.scored >= iv.scores.panel_size).length,
   }))

@@ -475,6 +475,188 @@ def _charts(filters, job_filters, from_date=None, to_date=None):
 	return {"total": len(apps), "charts": charts}
 
 
+# ------------------------------------------------------- hiring outcomes
+# Offers, joinings and time to hire (workflow steps 27-34). Offer and Joining
+# fields are read defensively: a field another stage has not added yet is
+# simply skipped.
+
+OFFER_MADE = ("Sent", "Accepted", "Declined", "Expired")
+OFFER_DECIDED = ("Accepted", "Declined", "Expired")
+# Application statuses that mean the offer was accepted (for past cycles
+# imported without Offer records).
+ACCEPTED_APP_STATUSES = ("Offer Accepted", "Documents Pending", "Documents Verified", "Joined")
+
+
+def _fields(doctype, wanted):
+	meta = frappe.get_meta(doctype)
+	return [f for f in wanted if f in ("name", "creation", "modified") or meta.has_field(f)]
+
+
+def _stats(days):
+	"""(count, average, median) of a list of day counts, rounded to a day's tenth."""
+	import statistics
+
+	if not days:
+		return 0, None, None
+	return len(days), round(sum(days) / len(days), 1), round(statistics.median(days), 1)
+
+
+def _advertised_on(job_names):
+	"""When each job went out: the earliest of its website date, its
+	notification date and its application start; its creation otherwise."""
+	if not job_names:
+		return {}
+	out = {}
+	fields = _fields("Job Opening", ["name", "creation", "application_start", "website_published_on", "track"])
+	for job in frappe.get_all("Job Opening", filters={"name": ["in", list(job_names)]}, fields=fields):
+		dates = [getdate(job.get(f)) for f in ("website_published_on", "application_start") if job.get(f)]
+		out[job.name] = frappe._dict(track=job.get("track"), dates=dates, creation=getdate(job.creation))
+	for n in frappe.get_all(
+		"Recruitment Notification",
+		filters={"job_opening": ["in", list(job_names)], "publish_date": ["is", "set"]},
+		fields=["job_opening", "publish_date"],
+	):
+		if n.job_opening in out:
+			out[n.job_opening].dates.append(getdate(n.publish_date))
+	return {name: frappe._dict(track=j.track, on=min(j.dates) if j.dates else j.creation) for name, j in out.items()}
+
+
+def hiring_outcomes(app_filters):
+	"""Offers made/accepted/declined/expired, joinings (joined/no-show),
+	acceptance rate and time to hire per track, for the applications that
+	match the filters."""
+	apps = {
+		a.name: a
+		for a in frappe.get_all("Application", filters=app_filters, fields=["name", "status", "job_opening", "modified"], limit_page_length=0)
+	}
+	names = list(apps) or [""]
+	offer_fields = _fields("Offer Appointment Order", ["name", "application", "job_opening", "status", "responded_on", "sent_on", "offer_date", "modified"])
+	offers = frappe.get_all(
+		"Offer Appointment Order", filters={"application": ["in", names]}, fields=offer_fields, order_by="creation asc", limit_page_length=0
+	)
+	# One offer per application: the latest (a re-issued offer replaces the first).
+	latest = {}
+	for o in offers:
+		latest[o.application] = o
+	offer_counts = {status: 0 for status in OFFER_MADE}
+	in_preparation = 0
+	for o in latest.values():
+		if o.status in offer_counts:
+			offer_counts[o.status] += 1
+		else:
+			in_preparation += 1
+
+	joining_fields = _fields("Joining", ["name", "application", "status", "actual_joining_date", "confirmed_doj", "modified"])
+	joinings = {
+		j.application: j
+		for j in frappe.get_all("Joining", filters={"application": ["in", names]}, fields=joining_fields, order_by="creation asc", limit_page_length=0)
+	}
+	joined = {a for a, j in joinings.items() if j.status == "Joined"}
+	# Past cycles imported without Joining records still count as joined.
+	joined |= {name for name, a in apps.items() if a.status == "Joined" and name not in joinings}
+	no_show = {a for a, j in joinings.items() if j.status == "No-show"}
+
+	advertised = _advertised_on({a.job_opening for a in apps.values() if a.job_opening})
+	to_accept, to_join = {}, {}
+	for name, a in apps.items():
+		job = advertised.get(a.job_opening)
+		if not job:
+			continue
+		track = job.track or _("Not specified")
+		offer = latest.get(name)
+		accepted_on = None
+		if offer and offer.status == "Accepted":
+			accepted_on = offer.get("responded_on") or offer.get("modified")
+		elif not offer and a.status in ACCEPTED_APP_STATUSES:
+			accepted_on = a.modified
+		if accepted_on:
+			to_accept.setdefault(track, []).append(max(date_diff(getdate(accepted_on), job.on), 0))
+		if name in joined:
+			j = joinings.get(name) or {}
+			joined_on = j.get("actual_joining_date") or j.get("confirmed_doj") or j.get("modified") or a.modified
+			to_join.setdefault(track, []).append(max(date_diff(getdate(joined_on), job.on), 0))
+
+	per_track = []
+	for track in sorted(set(to_accept) | set(to_join)):
+		n_acc, avg_acc, med_acc = _stats(to_accept.get(track, []))
+		n_join, avg_join, med_join = _stats(to_join.get(track, []))
+		per_track.append(
+			{"track": track, "accepted": n_acc, "accept_avg": avg_acc, "accept_median": med_acc,
+				"joined": n_join, "join_avg": avg_join, "join_median": med_join}
+		)
+	n_acc, avg_acc, med_acc = _stats([d for v in to_accept.values() for d in v])
+	n_join, avg_join, med_join = _stats([d for v in to_join.values() for d in v])
+	decided = sum(offer_counts[s] for s in OFFER_DECIDED)
+	return {
+		"offers": {
+			"made": sum(offer_counts.values()),
+			"accepted": offer_counts["Accepted"],
+			"declined": offer_counts["Declined"],
+			"expired": offer_counts["Expired"],
+			"awaiting_response": offer_counts["Sent"],
+			"in_preparation": in_preparation,
+		},
+		"acceptance_rate": round(offer_counts["Accepted"] / decided, 3) if decided else None,
+		"joinings": {"joined": len(joined), "no_show": len(no_show), "expected": sum(1 for j in joinings.values() if j.status not in ("Joined", "No-show"))},
+		"time_to_hire": {
+			"overall": {"accepted": n_acc, "accept_avg": avg_acc, "accept_median": med_acc, "joined": n_join, "join_avg": avg_join, "join_median": med_join},
+			"per_track": per_track,
+		},
+	}
+
+
+def _hiring_charts(hiring):
+	"""The hiring outcomes as Reports charts (page and Excel)."""
+	o, j = hiring["offers"], hiring["joinings"]
+	charts = [
+		_slice_chart(
+			"offers", "donut", _("Offers"),
+			_("Offers sent to candidates and their outcome. Acceptance rate: {0}.").format(
+				f"{hiring['acceptance_rate']:.0%}" if hiring["acceptance_rate"] is not None else _("no decided offers yet")
+			),
+			[
+				{"label": _("Accepted"), "value": o["accepted"], "color": STATUS_GOOD},
+				{"label": _("Declined"), "value": o["declined"], "color": STATUS_CRITICAL},
+				{"label": _("Expired"), "value": o["expired"], "color": NEUTRAL},
+				{"label": _("Awaiting response"), "value": o["awaiting_response"], "color": STATUS_WARNING},
+			],
+			_("Offer outcome"),
+		),
+		_slice_chart(
+			"joinings", "donut", _("Joinings"), _("Selected candidates who joined, did not turn up, or are still expected."),
+			[
+				{"label": _("Joined"), "value": j["joined"], "color": STATUS_GOOD},
+				{"label": _("No-show"), "value": j["no_show"], "color": STATUS_CRITICAL},
+				{"label": _("Expected"), "value": j["expected"], "color": STATUS_WARNING},
+			],
+			_("Joining"),
+		),
+	]
+	rows = hiring["time_to_hire"]["per_track"]
+	primary = _theme().primary
+	tth = {
+		"key": "time_to_hire",
+		"kind": "column",
+		"title": _("Time to Hire"),
+		"subtitle": _("Median days from advertisement to offer accepted, per track (average and joining in the table)."),
+		"slices": [{"label": r["track"], "value": r["accept_median"] or 0, "color": primary} for r in rows],
+		"total": sum(r["accepted"] for r in rows),
+		"value_label": _("days"),
+		"table": {
+			"header": [
+				_("Track"), _("Median days to acceptance"), _("Average days to acceptance"), _("Offers accepted"),
+				_("Median days to joining"), _("Average days to joining"), _("Joined"),
+			],
+			"rows": [
+				[r["track"], r["accept_median"], r["accept_avg"], r["accepted"], r["join_median"], r["join_avg"], r["joined"]] for r in rows
+			],
+			"percent": [],
+		},
+	}
+	charts.append(tth)
+	return charts
+
+
 LIST_FILTERS = (
 	("positions", "Position"),
 	("tracks", "Track"),
@@ -547,6 +729,8 @@ def get_report_charts(filters=None, track=None, job_opening=None, from_date=None
 	require_pipeline_access()
 	app_filters, job_filters, start, end, _rows = _resolve(filters, track, job_opening, from_date, to_date)
 	data = _charts(app_filters, job_filters, start, end)
+	data["hiring"] = hiring_outcomes(app_filters)
+	data["charts"] += _hiring_charts(data["hiring"])
 	data["options"] = _options()
 	return data
 
@@ -580,6 +764,7 @@ def export_report(filters=None, scope="all", positions=None, layout="single", in
 	jobs = set(frappe.get_all("Job Opening", filters=job_filters, pluck="name")) if job_filters else None
 	if frappe.utils.cint(include_charts):
 		data = _charts(app_filters, job_filters, start, end)
+		data["charts"] += _hiring_charts(hiring_outcomes(app_filters))
 		wb = _workbook(data, {"rows": rows, "jobs": jobs})
 	else:
 		from openpyxl import Workbook

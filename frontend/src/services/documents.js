@@ -21,4 +21,11 @@ export const documentService = {
       rejection_reason: rejectionReason,
     })
   },
+  // Staff: Documents > Onboarding Verification
+  listOnboardingCollections() {
+    return callMethod('pathways.api.documents.list_onboarding_collections')
+  },
+  getCollection(name) {
+    return callMethod('pathways.api.documents.get_collection', { name })
+  },
 }

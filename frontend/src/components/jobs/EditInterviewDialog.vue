@@ -22,6 +22,7 @@
           </div>
           <FormControl label="Reply by" type="datetime-local" v-model="form.rsvp" />
         </div>
+        <HrAssessorPicker v-if="interview.round_type === 'HR Interaction'" v-model="form.assessors" :limit="assessorLimit" :known="interview.hr_assessors || []" />
         <FormControl v-if="inPerson" label="Location" v-model="form.location" placeholder="e.g. Training Centre, Ground Floor, Room 004, NLSIU Bengaluru" />
         <template v-else>
           <p v-if="interview.calendar_event && form.platform === 'Google Meet'" class="rounded-lg border border-brand-200 bg-brand-50 px-3 py-2 text-xs text-gray-700">
@@ -69,6 +70,7 @@ import { computed, reactive, watch } from 'vue'
 import { Button, Dialog, FeatherIcon, FormControl } from 'frappe-ui'
 import dayjs from 'dayjs'
 import EmailRecipients from '@/components/jobs/EmailRecipients.vue'
+import HrAssessorPicker from '@/components/jobs/HrAssessorPicker.vue'
 import { interviewService } from '@/services/interviews'
 import { BTN_BRAND } from '@/utils/buttonStyles'
 import { toast } from '@/utils/notify'
@@ -77,12 +79,13 @@ const props = defineProps({
   open: { type: Boolean, default: false },
   // { name, candidate_name, job_title, round_type, scheduled_datetime, mode, meeting_platform, meeting_link, location, calendar_event }
   interview: { type: Object, default: null },
+  assessorLimit: { type: Number, default: 2 },
 })
 const emit = defineEmits(['update:open', 'saved'])
 
 const PLATFORMS = ['Microsoft Teams', 'Zoom', 'Google Meet', 'Other']
 const today = dayjs().format('YYYY-MM-DD')
-const form = reactive({ date: '', time: '', minutes: 30, mode: 'Video Conference', platform: 'Microsoft Teams', otherPlatform: '', link: '', location: '', createMeet: false, rsvp: '', note: '', send: true, cc: [], saving: false, error: '' })
+const form = reactive({ date: '', time: '', minutes: 30, mode: 'Video Conference', platform: 'Microsoft Teams', otherPlatform: '', link: '', location: '', createMeet: false, rsvp: '', note: '', send: true, cc: [], assessors: [], saving: false, error: '' })
 const meet = reactive({ ready: false, checked: false })
 const inPerson = computed(() => form.mode === 'In-Person')
 const usesMeetEvent = computed(() => form.platform === 'Google Meet' && (!!props.interview?.calendar_event || (meet.ready && form.createMeet)))
@@ -108,6 +111,7 @@ watch(
       note: '',
       send: true,
       cc: [],
+      assessors: (iv.hr_assessors || []).map((a) => a.assessor),
       error: '',
     })
     if (!meet.checked) {
@@ -149,6 +153,7 @@ async function save() {
       send_invite: form.send ? 1 : 0,
       cc: JSON.stringify(form.send ? form.cc : []),
       note: form.note.trim(),
+      hr_assessors: props.interview.round_type === 'HR Interaction' ? JSON.stringify(form.assessors) : null,
     })
     toast({ title: timeChanged.value ? 'Interview rescheduled.' : 'Interview updated.', icon: 'check', iconClasses: 'text-green-500' })
     emit('update:open', false)

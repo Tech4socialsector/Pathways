@@ -67,6 +67,21 @@ def after_install():
 	ensure_email_events()
 	seed_application_masters()
 	seed_master_data()
+	from pathways.patches.v1_0.hr_round_setup import seed_interview_round_settings
+
+	seed_interview_round_settings()
+	from pathways.patches.v1_0.seed_reference_check_templates import seed_reference_check_templates
+
+	seed_reference_check_templates()
+	from pathways.patches.v1_0.post_interview_green_sheet_setup import seed_post_interview_chains
+
+	seed_post_interview_chains()
+	from pathways.patches.v1_0.post_interview_comms import seed_honorarium_settings
+
+	seed_honorarium_settings()
+	from pathways.patches.v1_0.offer_appointment_orders import execute as seed_offer_defaults
+
+	seed_offer_defaults()
 
 
 def create_roles():

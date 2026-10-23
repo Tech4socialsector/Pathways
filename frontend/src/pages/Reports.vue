@@ -54,6 +54,50 @@
         />
       </div>
 
+      <!-- Hiring outcomes: offers, joinings and time to hire, per track -->
+      <div v-if="hiring" class="min-w-0 rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-5">
+        <h2 class="text-base font-semibold text-gray-900">Hiring Outcomes</h2>
+        <p class="mt-0.5 text-sm text-gray-500">
+          Offers and joinings for the applications above. Time to hire counts days from the advertisement (website, notification or
+          application start date) to the offer being accepted, and to joining.
+        </p>
+        <div class="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+          <div v-for="t in hiringTiles" :key="t.label" class="rounded-lg px-3 py-2" :class="t.tone">
+            <div class="text-xs">{{ t.label }}</div>
+            <div class="text-lg font-bold">{{ t.value }}</div>
+          </div>
+        </div>
+        <div class="mt-4 overflow-x-auto">
+          <table class="w-full min-w-[640px] text-sm">
+            <thead>
+              <tr class="border-b text-left text-xs uppercase tracking-wide text-gray-500">
+                <th class="py-2 pr-3 font-medium">Track</th>
+                <th class="py-2 pr-3 text-right font-medium">Offers accepted</th>
+                <th class="py-2 pr-3 text-right font-medium">Median days to acceptance</th>
+                <th class="py-2 pr-3 text-right font-medium">Average</th>
+                <th class="py-2 pr-3 text-right font-medium">Joined</th>
+                <th class="py-2 pr-3 text-right font-medium">Median days to joining</th>
+                <th class="py-2 text-right font-medium">Average</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="r in hiringRows" :key="r.track" class="border-b last:border-0" :class="r.overall && 'font-semibold'">
+                <td class="py-2 pr-3 text-gray-900">{{ r.track }}</td>
+                <td class="py-2 pr-3 text-right tabular-nums">{{ r.accepted }}</td>
+                <td class="py-2 pr-3 text-right tabular-nums">{{ dash(r.accept_median) }}</td>
+                <td class="py-2 pr-3 text-right tabular-nums">{{ dash(r.accept_avg) }}</td>
+                <td class="py-2 pr-3 text-right tabular-nums">{{ r.joined }}</td>
+                <td class="py-2 pr-3 text-right tabular-nums">{{ dash(r.join_median) }}</td>
+                <td class="py-2 text-right tabular-nums">{{ dash(r.join_avg) }}</td>
+              </tr>
+              <tr v-if="hiringRows.length === 1">
+                <td colspan="7" class="py-3 text-center text-xs text-gray-500">No accepted offers or joinings for these filters yet.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       <!-- Shortlisting sheets (workflow folder "4. Shortlisting") for every job -->
       <div class="min-w-0 rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-5">
         <div class="mb-3 flex flex-wrap items-start justify-between gap-3">
@@ -203,6 +247,31 @@ import { toast } from '@/utils/notify'
 
 // Charts that need the whole row: time on a wide axis, long job titles.
 const FULL_WIDTH = new Set(['timeline', 'position'])
+
+// ----- hiring outcomes (offers, joinings, time to hire)
+const hiring = computed(() => charts.data?.hiring || null)
+const dash = (v) => (v === null || v === undefined ? '—' : v)
+const hiringTiles = computed(() => {
+  const h = hiring.value
+  if (!h) return []
+  return [
+    { label: 'Offers made', value: h.offers.made, tone: 'bg-gray-50 text-gray-900' },
+    { label: 'Accepted', value: h.offers.accepted, tone: 'bg-green-50 text-green-900' },
+    { label: 'Declined', value: h.offers.declined, tone: 'bg-red-50 text-red-900' },
+    { label: 'Expired', value: h.offers.expired, tone: 'bg-orange-50 text-orange-900' },
+    {
+      label: 'Acceptance rate',
+      value: h.acceptance_rate === null || h.acceptance_rate === undefined ? '—' : `${Math.round(h.acceptance_rate * 100)}%`,
+      tone: 'bg-brand-50 text-brand-900',
+    },
+    { label: 'Joined / no-show', value: `${h.joinings.joined} / ${h.joinings.no_show}`, tone: 'bg-gray-50 text-gray-900' },
+  ]
+})
+const hiringRows = computed(() => {
+  const t = hiring.value?.time_to_hire
+  if (!t) return []
+  return [...t.per_track, { ...t.overall, track: 'All tracks', overall: true }]
+})
 
 const LIST_KEYS = ['positions', 'tracks', 'departments', 'employment_types', 'job_openings', 'statuses', 'eligibility']
 const emptyFilters = () => ({ ...Object.fromEntries(LIST_KEYS.map((k) => [k, []])), from_date: '', to_date: '' })

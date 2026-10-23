@@ -797,6 +797,12 @@ SUITABILITY_FACULTY = (
 	"in their academic field?"
 )
 
+HR_INTERACTION_CRITERIA = [
+	("Communication", 10, "Clarity and structure of answers; listening, and expressing ideas confidently and concisely."),
+	("Motivation and Fit", 10, "Why NLSIU and why this role? Does the candidate share the University's values and suit the team's way of working?"),
+	("Relevance of Experience", 10, "How closely do the candidate's experience and skills match the job description and the work of the position?"),
+]
+
 # (criterion_label, max_score, guidance_text). A candidate needs 50% of the
 # total interview score to be eligible for an offer.
 SCORING_RUBRICS = [
@@ -863,6 +869,19 @@ SCORING_RUBRICS = [
 			("Overall Suitability", 10, SUITABILITY_STAFF),
 		],
 	},
+	# Round 1 / HR interaction sheet (workflow step 13). The workflow folder
+	# "5. Round 1 Interview" has no sheet, so these are the HR team's usual
+	# points; salary expectation and notice period are noted, not scored.
+	*[
+		{
+			"rubric_name": f"{track} - HR Interaction",
+			"track": track,
+			"stage": "HR Interaction",
+			"scoring_mode": "Weighted Score",
+			"criteria": HR_INTERACTION_CRITERIA,
+		}
+		for track in ("Admin", "Faculty", "Research")
+	],
 ]
 
 

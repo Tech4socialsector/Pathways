@@ -82,6 +82,8 @@
 
         <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
           <div class="flex min-w-0 flex-col gap-6 lg:col-span-2">
+            <!-- Selection (Post-Interview Green Sheet) appears once outcomes are recorded. -->
+            <SelectionPanel :job="job" />
             <!-- The interview stage comes first once there are shortlisted candidates. -->
             <InterviewsPanel
               v-if="interviews && interviews.candidates.length"
@@ -105,6 +107,7 @@
             </SectionCard>
             <ApplicationFormPanel :job="job" :can-write="!!permissions.can_write" @saved="fetchJob(props.id)" />
             <NoticePanel :job="job" @changed="fetchJob(props.id)" />
+            <PublishingPanel :job="job" />
             <GreenSheetPanel
               ref="greenSheetPanel"
               :job="job"
@@ -117,6 +120,7 @@
           <div class="flex flex-col gap-6 self-start">
             <ShortlistingPanel :job="job" :can-edit="!!permissions.can_write" @changed="fetchJob(props.id)" />
             <SelectionCommitteePanel v-if="interviews" :job-opening="props.id" :data="interviews" @changed="loadInterviews" />
+            <SharedWithPanel :job="job" />
             <SectionCard title="Position" icon="briefcase">
               <dl class="flex flex-col divide-y divide-gray-100 text-sm">
                 <div v-for="row in positionRows" :key="row.label" class="flex justify-between gap-4 py-2 first:pt-0 last:pb-0">
@@ -211,9 +215,12 @@ import PageHeader from '@/components/layout/PageHeader.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
 import SectionCard from '@/components/common/SectionCard.vue'
 import GreenSheetPanel from '@/components/jobs/GreenSheetPanel.vue'
+import SelectionPanel from '@/components/selection/SelectionPanel.vue'
 import JobOpeningForm, { emptyJobForm } from '@/components/jobs/JobOpeningForm.vue'
 import ApplicationFormPanel from '@/components/jobs/ApplicationFormPanel.vue'
 import NoticePanel from '@/components/jobs/NoticePanel.vue'
+import PublishingPanel from '@/components/jobs/PublishingPanel.vue'
+import SharedWithPanel from '@/components/jobs/SharedWithPanel.vue'
 import ShortlistingPanel from '@/components/jobs/ShortlistingPanel.vue'
 import InterviewsPanel from '@/components/jobs/InterviewsPanel.vue'
 import SelectionCommitteePanel from '@/components/jobs/SelectionCommitteePanel.vue'

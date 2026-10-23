@@ -1,0 +1,40 @@
+{
+ "actions": [],
+ "creation": "2026-10-23 12:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "assessor",
+  "assessor_name"
+ ],
+ "fields": [
+  {
+   "fieldname": "assessor",
+   "fieldtype": "Link",
+   "options": "User",
+   "label": "HR Assessor",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "assessor_name",
+   "fieldtype": "Data",
+   "label": "Name",
+   "read_only": 1,
+   "in_list_view": 1
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "links": [],
+ "modified": "2026-10-23 12:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Pathways",
+ "name": "Interview HR Assessor",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": [],
+ "istable": 1,
+ "editable_grid": 1
+}

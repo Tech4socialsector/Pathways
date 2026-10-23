@@ -1,23 +1,52 @@
 {
  "actions": [],
  "allow_rename": 0,
- "autoname": "hash",
+ "autoname": "naming_series:",
  "creation": "2026-09-21 00:00:00.000000",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
+  "naming_series",
   "application",
-  "confirmed_doj",
+  "candidate_name",
+  "job_opening",
+  "designation",
+  "department",
+  "offer",
   "column_break_1",
+  "status",
+  "confirmed_doj",
   "reporting_location",
   "reporting_time",
+  "reporting_manager",
+  "reschedule_section",
+  "previous_doj",
+  "reschedule_count",
+  "column_break_resched",
+  "reschedule_reason",
   "onboarding_section",
   "bio_writeup_attachment",
   "directory_photo_attachment",
+  "column_break_onb",
+  "remarks",
+  "outcome_section",
+  "confirmed_by",
+  "confirmed_on",
+  "column_break_out",
+  "actual_joining_date",
+  "employee",
   "provisioning_section",
   "it_facilities_request"
  ],
  "fields": [
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Series",
+   "options": "PWY-JOIN-.YYYY.-",
+   "default": "PWY-JOIN-.YYYY.-",
+   "hidden": 1
+  },
   {
    "fieldname": "application",
    "fieldtype": "Link",
@@ -29,15 +58,60 @@
    "unique": 1
   },
   {
-   "fieldname": "confirmed_doj",
-   "fieldtype": "Date",
+   "fieldname": "candidate_name",
+   "fieldtype": "Data",
    "in_list_view": 1,
-   "label": "Confirmed Date of Joining",
-   "reqd": 1
+   "label": "Candidate Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "job_opening",
+   "fieldtype": "Link",
+   "label": "Job Opening",
+   "options": "Job Opening",
+   "read_only": 1
+  },
+  {
+   "fieldname": "designation",
+   "fieldtype": "Link",
+   "label": "Designation",
+   "options": "Designation",
+   "read_only": 1
+  },
+  {
+   "fieldname": "department",
+   "fieldtype": "Link",
+   "label": "Department",
+   "options": "Pathways Department",
+   "read_only": 1
+  },
+  {
+   "fieldname": "offer",
+   "fieldtype": "Link",
+   "label": "Offer",
+   "options": "Offer Appointment Order",
+   "read_only": 1
   },
   {
    "fieldname": "column_break_1",
    "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Draft\nConfirmed\nJoined\nNo-show",
+   "default": "Draft",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "confirmed_doj",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Date of Joining",
+   "description": "Required to confirm the joining."
   },
   {
    "fieldname": "reporting_location",
@@ -48,6 +122,39 @@
    "fieldname": "reporting_time",
    "fieldtype": "Time",
    "label": "Reporting Time"
+  },
+  {
+   "fieldname": "reporting_manager",
+   "fieldtype": "Data",
+   "label": "Reporting Manager"
+  },
+  {
+   "fieldname": "reschedule_section",
+   "fieldtype": "Section Break",
+   "label": "Rescheduling",
+   "collapsible": 1
+  },
+  {
+   "fieldname": "previous_doj",
+   "fieldtype": "Date",
+   "label": "Previous Date of Joining",
+   "read_only": 1
+  },
+  {
+   "fieldname": "reschedule_count",
+   "fieldtype": "Int",
+   "label": "Times Rescheduled",
+   "read_only": 1,
+   "default": "0"
+  },
+  {
+   "fieldname": "column_break_resched",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "reschedule_reason",
+   "fieldtype": "Small Text",
+   "label": "Reason for Last Reschedule"
   },
   {
    "fieldname": "onboarding_section",
@@ -65,6 +172,50 @@
    "label": "Directory Photo"
   },
   {
+   "fieldname": "column_break_onb",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Small Text",
+   "label": "Remarks"
+  },
+  {
+   "fieldname": "outcome_section",
+   "fieldtype": "Section Break",
+   "label": "Outcome"
+  },
+  {
+   "fieldname": "confirmed_by",
+   "fieldtype": "Link",
+   "label": "Confirmed By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "confirmed_on",
+   "fieldtype": "Datetime",
+   "label": "Confirmed On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_out",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "actual_joining_date",
+   "fieldtype": "Date",
+   "label": "Actual Joining Date",
+   "read_only": 1
+  },
+  {
+   "fieldname": "employee",
+   "fieldtype": "Link",
+   "label": "Employee",
+   "options": "Employee",
+   "read_only": 1
+  },
+  {
    "fieldname": "provisioning_section",
    "fieldtype": "Section Break",
    "label": "IT / Facilities"
@@ -79,11 +230,11 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-09-21 00:00:00.000000",
+ "modified": "2026-10-23 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "Pathways",
  "name": "Joining",
- "naming_rule": "Random",
+ "naming_rule": "By \"Naming Series\" field",
  "owner": "Administrator",
  "permissions": [
   {
@@ -123,7 +274,13 @@
   },
   {
    "read": 1,
-   "role": "Pathways PNCO"
+   "role": "Pathways PNCO",
+   "write": 1,
+   "create": 1,
+   "export": 1,
+   "print": 1,
+   "report": 1,
+   "email": 1
   },
   {
    "read": 1,
@@ -133,5 +290,7 @@
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],
- "track_changes": 1
+ "track_changes": 1,
+ "title_field": "candidate_name",
+ "show_title_field_in_link": 0
 }

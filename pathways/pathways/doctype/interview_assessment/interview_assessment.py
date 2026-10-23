@@ -29,9 +29,12 @@ class InterviewAssessment(Document):
 
 	def set_interview_details(self):
 		"""Who and which job, so the list in Desk reads without opening the Interview."""
-		iv = frappe.db.get_value("Interview", self.interview, ["application", "candidate_name", "job_title"], as_dict=True)
+		iv = frappe.db.get_value("Interview", self.interview, ["application", "candidate_name", "job_title", "round_type"], as_dict=True)
 		if iv:
 			self.application, self.candidate_name, self.job_title = iv.application, iv.candidate_name, iv.job_title
+			self.round_type = iv.round_type
+		if self.round_type != "HR Interaction":
+			self.hr_outcome = None
 
 	def populate_rubric_criteria(self):
 		if not self.interview or self.criteria:
@@ -54,12 +57,19 @@ class InterviewAssessment(Document):
 		self.score_percent = round(self.total_score * 100 / self.max_score, 2) if self.max_score else 0
 
 
+# Interview round -> the Scoring Rubric Template stage it is scored on.
+ROUND_STAGE = {"HR Interaction": "HR Interaction", "Final": "Final Interview"}
+
+
 def interview_rubric(interview):
-	"""The active Final Interview rubric of the interview's job track."""
-	application = frappe.db.get_value("Interview", interview, "application")
+	"""The active rubric of the interview's job track for its round: the
+	HR assessment sheet for Round 1, the Interview Assessment Form for the
+	final interview."""
+	application, round_type = frappe.db.get_value("Interview", interview, ["application", "round_type"]) or (None, None)
 	job_opening = frappe.db.get_value("Application", application, "job_opening") if application else None
 	track = frappe.db.get_value("Job Opening", job_opening, "track") if job_opening else None
 	if not track:
 		return None
-	name = frappe.db.get_value("Scoring Rubric Template", {"track": track, "stage": "Final Interview", "is_active": 1}, "name")
+	stage = ROUND_STAGE.get(round_type, "Final Interview")
+	name = frappe.db.get_value("Scoring Rubric Template", {"track": track, "stage": stage, "is_active": 1}, "name")
 	return frappe.get_doc("Scoring Rubric Template", name) if name else None

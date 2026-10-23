@@ -101,6 +101,22 @@ MASTER_SETUP = [
 				"icon": "clipboard",
 				"keywords": ["interview", "shortlisting", "selection", "stage", "round", "criteria", "score"],
 			},
+			{
+				"doctype": "Reference Check Template",
+				"label": "Reference Check Templates",
+				"singular": "Reference Check Template",
+				"description": "Manage the questions referees answer, per track.",
+				"icon": "phone-call",
+				"keywords": ["reference", "referee", "background", "questions", "verification"],
+			},
+			{
+				"doctype": "Appointment Order Template",
+				"label": "Appointment Order Templates",
+				"singular": "Appointment Order Template",
+				"description": "Manage appointment order letters by track and employment type.",
+				"icon": "file-text",
+				"keywords": ["offer", "appointment", "letter", "order", "template", "joining"],
+			},
 		],
 	},
 	{
@@ -158,6 +174,9 @@ INACTIVE_LINK_GUARDS = {
 	"Document Type Master": ["track"],
 	"Scoring Rubric Template": ["track"],
 	"Approval Chain Template": ["track"],
+	"Appointment Order Template": ["track"],
+	"Offer Appointment Order": ["appointment_order_template"],
+	"Reference Check Template": ["track"],
 }
 
 

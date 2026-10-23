@@ -19,12 +19,28 @@ export const panelService = {
   exportConsolidated(jobOpening, jobTitle, interviewDate = '') {
     return downloadMethod('pathways.api.panel.export_consolidated', { job_opening: jobOpening, interview_date: interviewDate || null }, `Consolidated Score Sheet - ${jobTitle}.xlsx`)
   },
-  downloadForms(jobOpening, jobTitle, panelist = null, interviewDate = '') {
+  downloadForms(jobOpening, jobTitle, panelist = null, interviewDate = '', blank = false) {
     return downloadMethod(
       'pathways.api.panel.download_assessment_forms',
-      { job_opening: jobOpening, panelist, interview_date: interviewDate || null },
+      { job_opening: jobOpening, panelist, interview_date: interviewDate || null, blank: blank ? 1 : 0 },
       `Interview Assessment Form - ${jobTitle}.pdf`,
     )
+  },
+  // Job-level files for the panel (workflow step 16)
+  getJobShareOptions(jobOpening) {
+    return callMethod('pathways.api.panel_documents.get_job_share_options', { job_opening: jobOpening })
+  },
+  // changes: { panelist: { fileLabel: true | false } }
+  shareJobFiles(jobOpening, changes, note = '', notify = true) {
+    return callMethod('pathways.api.panel_documents.share_job_files', {
+      job_opening: jobOpening,
+      changes: JSON.stringify(changes),
+      note,
+      notify: notify ? 1 : 0,
+    })
+  },
+  downloadJobFile(jobOpening, label) {
+    return downloadMethod('pathways.api.panel_documents.download_job_file', { job_opening: jobOpening, label }, `${label}.pdf`)
   },
   // Documents page > Share with panel
   getShareOptions(applications) {
@@ -42,7 +58,8 @@ export const panelService = {
   getSharedDocuments(jobOpening = '') {
     return callMethod('pathways.api.panel_documents.get_shared_documents', { job_opening: jobOpening || null })
   },
-  submitAssessment({ interview, panelist, scores, verdict, additionalComments, areaOfSpecialization }) {
+  // Round 1 (HR): hrOutcome, expectedSalary, noticePeriod; signature: data URL
+  submitAssessment({ interview, panelist, scores, verdict, additionalComments, areaOfSpecialization, hrOutcome, expectedSalary, noticePeriod, signature }) {
     return callMethod('pathways.api.panel.submit_assessment', {
       interview,
       panelist: panelist || null,
@@ -50,6 +67,10 @@ export const panelService = {
       verdict: verdict || null,
       additional_comments: additionalComments || '',
       area_of_specialization: areaOfSpecialization || '',
+      hr_outcome: hrOutcome || null,
+      expected_salary: expectedSalary || '',
+      notice_period: noticePeriod || '',
+      signature: signature || null,
     })
   },
 }

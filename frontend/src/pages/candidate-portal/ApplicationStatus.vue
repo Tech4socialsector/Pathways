@@ -152,26 +152,12 @@
               </div>
             </div>
 
-            <div v-if="offer.offer.value" class="rounded-xl border bg-white p-5 shadow-sm">
-              <div class="mb-3 text-xs font-bold uppercase tracking-wide text-brand-700">Offer</div>
-              <StatusBadge :status="offer.offer.value.status" />
-              <p v-if="offer.offer.value.acceptance_deadline" class="mt-1 text-xs text-gray-500">
-                Please respond by {{ offer.offer.value.acceptance_deadline }}
-              </p>
-              <div v-if="offer.offer.value.status === 'Sent'" class="mt-4 flex flex-col gap-3">
-                <FormControl label="Confirmed Date of Joining" type="date" v-model="confirmedDoj" />
-                <div class="flex gap-2">
-                  <Button variant="solid" theme="green" @click="respondAccept">Accept Offer</Button>
-                  <Button variant="outline" theme="red" @click="respondDecline">Decline</Button>
-                </div>
-              </div>
-            </div>
+            <CandidateOfferCard :application="id" @changed="fetchStatus(id)" />
 
-            <div v-if="status.document_status" class="rounded-xl border bg-white p-5 shadow-sm">
-              <div class="mb-3 text-xs font-bold uppercase tracking-wide text-brand-700">Joining documents</div>
-              <StatusBadge :status="status.document_status" />
-            </div>
         </div>
+
+        <!-- Joining documents: checklist, upload and verification status -->
+        <OnboardingDocumentsPanel v-if="status.document_status" :application="id" :can-edit="session.isCandidate" />
 
         <!-- What they submitted, read-only, full width -->
         <section v-if="session.isCandidate">
@@ -238,16 +224,15 @@ import { applicationService } from '@/services/applications'
 import { toast } from '@/utils/notify'
 import CandidatePortalLayout from '@/layouts/CandidatePortalLayout.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
+import OnboardingDocumentsPanel from '@/components/candidate/OnboardingDocumentsPanel.vue'
 import ProgressStepper from '@/components/common/ProgressStepper.vue'
 import { useApplicationStatus } from '@/composables/useApplications'
-import { useMyOffer } from '@/composables/useOffers'
+import CandidateOfferCard from '@/components/offers/CandidateOfferCard.vue'
 
 const session = useSessionStore()
 const props = defineProps({ id: { type: String, required: true } })
 
 const { status, loading, error, fetchStatus } = useApplicationStatus()
-const offer = useMyOffer()
-const confirmedDoj = ref('')
 
 // The same six stages as the My Applications list.
 const STAGES = [
@@ -423,40 +408,12 @@ function formatDate(value) {
   return new Date(value).toLocaleString()
 }
 
-async function respondAccept() {
-  if (!confirmedDoj.value) {
-    toast({ title: 'Please select your confirmed date of joining before accepting.', icon: 'alert-triangle', iconClasses: 'text-orange-500' })
-    return
-  }
-  try {
-    await offer.respond(offer.offer.value.name, 'Accepted', confirmedDoj.value)
-    toast({ title: 'Offer accepted. Congratulations!', icon: 'check', iconClasses: 'text-green-500' })
-    await offer.fetchOffer(props.id)
-    await fetchStatus(props.id)
-  } catch (e) {
-    toast({ title: e?.messages?.[0] || 'Could not accept the offer.', icon: 'alert-triangle', iconClasses: 'text-red-500' })
-  }
-}
-
-async function respondDecline() {
-  try {
-    await offer.respond(offer.offer.value.name, 'Declined')
-    toast({ title: 'Offer declined.', icon: 'info', iconClasses: 'text-gray-500' })
-    await offer.fetchOffer(props.id)
-    await fetchStatus(props.id)
-  } catch (e) {
-    toast({ title: e?.messages?.[0] || 'Could not decline the offer.', icon: 'alert-triangle', iconClasses: 'text-red-500' })
-  }
-}
-
 onMounted(() => {
   fetchStatus(props.id)
-  offer.fetchOffer(props.id)
   if (session.isCandidate) fetchSubmission(props.id)
 })
 watch(() => props.id, (id) => {
   fetchStatus(id)
-  offer.fetchOffer(id)
   if (session.isCandidate) fetchSubmission(id)
 })
 </script>

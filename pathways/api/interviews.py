@@ -1,15 +1,17 @@
 # Copyright (c) 2026, NLSIU and contributors
 # For license information, please see license.txt
 
-"""Interview stage (workflow steps 13-16): the job's Selection Committee,
-scheduling Round 1 (HR interaction) and Final interviews with the invite
-emails, and the candidate's RSVP."""
+"""Interview stage (workflow steps 13-16): the job's Selection Committee
+(and its calendar block), scheduling Round 1 (HR interaction) with its HR
+assessors and Final interviews with the invite emails, the candidate's
+RSVP, the final shortlist with the job's Shortlisting Note, and the
+interview schedule for the panel."""
 
 import frappe
 from frappe import _
-from frappe.utils import add_to_date, cint, get_datetime, get_url
+from frappe.utils import add_to_date, cint, flt, get_datetime, get_url
 
-from pathways.permissions import CANDIDATE_ROLE, has_full_access
+from pathways.permissions import CANDIDATE_ROLE, SELECTION_ROLE, has_full_access
 
 ROUNDS = ("HR Interaction", "Final")
 # Applications that can be invited: shortlisted, or already in the interview stage.
@@ -35,6 +37,8 @@ def _committee(job_opening):
 		"name": doc.name,
 		"scheduled_date": doc.scheduled_date,
 		"scheduled_time": str(doc.scheduled_time) if doc.scheduled_time else None,
+		"calendar_event": doc.get("calendar_event"),
+		"calendar_block": _block_participants(doc) if doc.scheduled_date else [],
 		"members": [
 			{
 				"member": m.member,
@@ -77,19 +81,26 @@ def get_job_interviews(job_opening):
 		fields=["name", "application", "round_type", "status", "scheduled_datetime", "mode", "meeting_platform", "meeting_link", "location", "rsvp_status", "calendar_event"],
 		order_by="scheduled_datetime asc",
 	)
-	from pathways.api.panel import score_summary
+	from pathways.api.panel import hr_outcome_summary, score_summary
 
-	scores = score_summary([iv.name for iv in interviews if iv.round_type == "Final"])
+	scores = score_summary([iv.name for iv in interviews])
+	assessors = _assessors_by_interview([iv.name for iv in interviews if iv.round_type == "HR Interaction"])
+	hr = hr_outcome_summary([iv.name for iv in interviews if iv.round_type == "HR Interaction"])
 	by_app = {}
 	for iv in interviews:
 		iv.scores = scores.get(iv.name)
+		if iv.round_type == "HR Interaction":
+			iv.hr_assessors = assessors.get(iv.name, [])
+			iv.hr_outcomes = hr.get(iv.name, [])
 		by_app.setdefault(iv.application, {})[iv.round_type] = iv
+	final_list = _final_shortlist(job_opening)
 	rows = []
 	for a in apps:
 		rounds = by_app.get(a.name, {})
 		if a.status == "Not Selected" and not rounds:
 			continue
-		rows.append({**a, "rounds": {r: rounds.get(r) for r in ROUNDS}})
+		row = final_list.get(a.name)
+		rows.append({**a, "rounds": {r: rounds.get(r) for r in ROUNDS}, "final_shortlisted": 1 if row else 0, "final_shortlist_remarks": (row or {}).get("remarks") or ""})
 
 	settings = frappe.get_cached_doc("Pathways Settings")
 	return {
@@ -100,7 +111,88 @@ def get_job_interviews(job_opening):
 			"max": cint(settings.get("max_selection_committee_size")) or 5,
 		},
 		"can_manage": manage,
+		"can_shortlist": 1 if _can_shortlist() else 0,
+		"hr_assessor_limit": cint(settings.get("hr_assessors_per_interview")) or 2,
+		"shortlisting_note": frappe.db.get_value("Shortlisting Note", {"job_opening": job_opening}, "name"),
 	}
+
+
+# ----------------------------------------------------------- HR assessors (step 13)
+
+
+def _assessors_by_interview(interviews):
+	"""{interview: [{assessor, assessor_name}]}"""
+	if not interviews:
+		return {}
+	out = {}
+	for r in frappe.get_all(
+		"Interview HR Assessor",
+		filters={"parenttype": "Interview", "parent": ["in", list(interviews)]},
+		fields=["parent", "assessor", "assessor_name"],
+		order_by="idx asc",
+	):
+		out.setdefault(r.parent, []).append({"assessor": r.assessor, "assessor_name": r.assessor_name or frappe.utils.get_fullname(r.assessor)})
+	return out
+
+
+def _parse_users(value):
+	if value is None:
+		return None
+	if isinstance(value, str):
+		value = frappe.parse_json(value) if value.strip() else []
+	users = []
+	for u in value or []:
+		u = (u.get("assessor") if isinstance(u, dict) else u) or ""
+		u = u.strip()
+		if u and u not in users:
+			if not frappe.db.exists("User", {"name": u, "enabled": 1}):
+				frappe.throw(_("User {0} does not exist or is disabled.").format(u))
+			users.append(u)
+	return users
+
+
+def _set_hr_assessors(iv, users):
+	"""Replace the interview's HR assessors (not saved). Returns the people
+	who are new to it. Assessors get the Selection Committee role, which
+	(see pathways.permissions) only opens the interviews they take and those
+	candidates' applications."""
+	before = set(iv.hr_assessor_list())
+	iv.set("hr_assessors", [{"assessor": u} for u in users])
+	return [u for u in users if u not in before]
+
+
+def _grant_panel_role(users):
+	for user in users:
+		if user in ("Administrator", "Guest"):
+			continue
+		doc = frappe.get_doc("User", user)
+		if SELECTION_ROLE not in [r.role for r in doc.roles]:
+			doc.append("roles", {"role": SELECTION_ROLE})
+			doc.save(ignore_permissions=True)
+
+
+def _notify_hr_assessors(iv, app, users, updated=False):
+	if not users:
+		return
+	from pathways.utils.communication import candidate_email_context, send_event
+
+	context, _candidate = candidate_email_context(app)
+	context.update(
+		{
+			"interview_date_time": frappe.utils.format_datetime(iv.scheduled_datetime, "EEEE, MMMM d, yyyy 'at' h:mm a 'IST'"),
+			"meeting_platform": iv.get("meeting_platform") or "",
+			"meeting_link": iv.get("meeting_link") or "",
+			"interview_location": iv.get("location") or "",
+			"assessment_link": get_url(f"/pathways/panel/{iv.name}"),
+			"updated": 1 if updated else 0,
+		}
+	)
+	# The rule's "approvers" are the assessors; the candidate is never emailed this.
+	send_event("hr_assessor_assigned", "Interview", iv.name, context, approvers=list(users))
+
+
+def is_hr_assessor(interview, user=None):
+	return bool(frappe.db.exists("Interview HR Assessor", {"parenttype": "Interview", "parent": interview, "assessor": user or frappe.session.user}))
 
 
 # ----------------------------------------------------------- committee
@@ -162,6 +254,7 @@ def save_selection_committee(job_opening, members, scheduled_date=None, schedule
 			}
 		)
 		send_event("selection_committee_assigned", "Selection Committee", doc.name, context, approvers=new_members)
+	sync_committee_block(doc)
 	return _committee(job_opening)
 
 
@@ -177,14 +270,18 @@ def _time_label(value):
 @frappe.whitelist(methods=["POST"])
 def schedule_interviews(
 	job_opening, applications, round_type, start, slot_minutes=0, mode="Video Conference", meeting_link=None,
-	meeting_platform=None, rsvp_deadline=None, send_invite=1, location=None, create_meet=0, cc=None,
+	meeting_platform=None, rsvp_deadline=None, send_invite=1, location=None, create_meet=0, cc=None, hr_assessors=None,
 ):
 	"""Schedule (or reschedule) one round for several candidates. Each
 	candidate gets the next slot: start, start + slot, ... The invite (Round
-	1) or call letter (Final) goes to each candidate."""
+	1) or call letter (Final) goes to each candidate. For Round 1,
+	hr_assessors (user IDs) take every one of these interviews: they are
+	added to the Meet event and emailed; None keeps a rescheduled
+	interview's assessors."""
 	_require_manage()
 	if round_type not in ROUNDS:
 		frappe.throw(_("Unknown interview round."))
+	assessors = _parse_users(hr_assessors) if round_type == "HR Interaction" else None
 	if isinstance(applications, str):
 		applications = frappe.parse_json(applications)
 	applications = list(dict.fromkeys(applications or []))
@@ -232,12 +329,19 @@ def schedule_interviews(
 				"rsvp_status": "Pending",
 			}
 		)
+		new_assessors = _set_hr_assessors(iv, assessors) if assessors is not None else []
 		iv.save(ignore_permissions=True)
+		_grant_panel_role(new_assessors)
 		# A new Meet link, or move the event a Meet link was made with before.
 		if create_meet or (iv.get("calendar_event") and not in_person and _meet_calendar()):
 			_sync_meet_event(iv, app, slot_minutes or 30, committee)
 		elif in_person:
 			_cancel_meet_event(iv)
+		if round_type == "HR Interaction":
+			# New assessors get the assignment; on a reschedule, everyone gets the new time.
+			kept = [u for u in iv.hr_assessor_list() if u not in new_assessors] if existing else []
+			_notify_hr_assessors(iv, app, new_assessors)
+			_notify_hr_assessors(iv, app, kept, updated=True)
 
 		if app.status == "Shortlisted":
 			app.status = "Interview Scheduled"
@@ -325,6 +429,8 @@ def _sync_meet_event(iv, app, minutes, committee=None):
 	emails = [candidate.get("email")]
 	if iv.round_type == "Final" and committee:
 		emails += frappe.get_all("Committee Member Row", filters={"parent": committee, "parenttype": "Selection Committee"}, pluck="member")
+	if iv.round_type == "HR Interaction":
+		emails += [frappe.db.get_value("User", u, "email") or u for u in iv.hr_assessor_list()]
 	participants = [
 		{"reference_doctype": "Interview", "reference_docname": iv.name, "email": e}
 		for e in dict.fromkeys(e for e in emails if e and e != "Administrator" and "@" in e)
@@ -521,11 +627,13 @@ def _record_change(iv, new_start, note=None):
 @frappe.whitelist(methods=["POST"])
 def update_interview(
 	interview, start=None, minutes=None, mode=None, meeting_platform=None, meeting_link=None, location=None,
-	rsvp_deadline=None, create_meet=0, send_invite=1, note=None, cc=None,
+	rsvp_deadline=None, create_meet=0, send_invite=1, note=None, cc=None, hr_assessors=None,
 ):
 	"""Reschedule or edit one open interview. A new time marks it Rescheduled
 	and asks the candidate to reply again; the updated invite says it
-	replaces the earlier one."""
+	replaces the earlier one. Round 1: hr_assessors replaces the assessors
+	(None keeps them); new ones are emailed, and on a new time the others
+	get the updated details."""
 	_require_manage()
 	iv = frappe.get_doc("Interview", interview)
 	if iv.status not in ("Scheduled", "Rescheduled"):
@@ -558,7 +666,10 @@ def update_interview(
 	if time_changed:
 		iv.status = "Rescheduled"
 		iv.rsvp_status = "Pending"
+	assessors = _parse_users(hr_assessors) if iv.round_type == "HR Interaction" else None
+	new_assessors = _set_hr_assessors(iv, assessors) if assessors is not None else []
 	iv.save(ignore_permissions=True)
+	_grant_panel_role(new_assessors)
 
 	committee = frappe.db.get_value("Selection Committee", {"job_opening": app.job_opening}, "name")
 	if in_person:
@@ -573,6 +684,10 @@ def update_interview(
 	app.add_comment("Info", comment)
 	if cint(send_invite):
 		_send_invite(iv, app, meeting_platform, rsvp_deadline, updated=True, note=note, cc=cc)
+	if iv.round_type == "HR Interaction":
+		_notify_hr_assessors(iv, app, new_assessors)
+		if time_changed:
+			_notify_hr_assessors(iv, app, [u for u in iv.hr_assessor_list() if u not in new_assessors], updated=True)
 	return {"status": iv.status, "scheduled_datetime": iv.scheduled_datetime}
 
 
@@ -651,12 +766,16 @@ def list_interviews():
 	}
 	from pathways.api.panel import score_summary
 
-	scores = score_summary([r.name for r in rows if r.round_type == "Final"])
+	scores = score_summary([r.name for r in rows])
+	assessors = _assessors_by_interview([r.name for r in rows if r.round_type == "HR Interaction"])
+	limit = cint(frappe.get_cached_doc("Pathways Settings").get("hr_assessors_per_interview")) or 2
 	for r in rows:
+		r.hr_assessor_limit = limit
 		a = apps.get(r.application) or {}
 		r.candidate_name = a.get("candidate_name")
 		r.job_title = a.get("job_title")
 		r.scores = scores.get(r.name)
+		r.hr_assessors = assessors.get(r.name, []) if r.round_type == "HR Interaction" else []
 		r.last_changed_by_name = frappe.utils.get_fullname(r.last_changed_by) if r.last_changed_by else ""
 	return rows
 
@@ -707,6 +826,9 @@ def list_to_schedule():
 			fields=["job_opening", "scheduled_date", "scheduled_time"],
 		)
 	}
+	final_listed = set(
+		frappe.get_all("Final Shortlist Row", filters={"parenttype": "Shortlisting Note", "application": ["in", [a.name for a in apps]]}, pluck="application")
+	)
 	jobs = {}
 	for a in apps:
 		if a.name in booked:
@@ -714,7 +836,8 @@ def list_to_schedule():
 		done = done_rounds.get(a.name, set())
 		if "Final" in done:
 			continue
-		if "HR Interaction" in done:
+		# On the final shortlist (step 14), with or without a Round 1.
+		if "HR Interaction" in done or a.name in final_listed:
 			next_round = "Final"
 		elif a.status == "Shortlisted":
 			next_round = "HR Interaction"
@@ -733,7 +856,436 @@ def list_to_schedule():
 			{
 				"name": a.name, "application_id": a.application_id, "candidate_name": a.candidate_name,
 				"status": a.status, "eligibility_status": a.eligibility_status, "interview_history": ", ".join(history.get(a.name, [])),
-				"next_round": next_round,
+				"next_round": next_round, "final_shortlisted": 1 if a.name in final_listed else 0,
 			}
 		)
 	return sorted(jobs.values(), key=lambda j: (-len(j["candidates"]), j["job_title"] or ""))
+
+
+# ----------------------------------------------------------- calendar block (step 15)
+# "Check the schedule of the VC and Registrar and block the calendar with
+# the VC Office": one Event per Selection Committee for its sitting, with
+# the panel and the users of Pathways Settings > Calendar block roles. It is
+# moved (never duplicated) when the date or time changes, and synced to
+# Google Calendar like the interview Meet events when Google is set up.
+
+
+def _block_users(committee):
+	"""The panel, then everyone holding a calendar block role."""
+	users = [m.member for m in committee.members]
+	settings = frappe.get_cached_doc("Pathways Settings")
+	roles = [r.role for r in settings.get("calendar_block_roles") or [] if r.role]
+	if roles:
+		holders = frappe.get_all("Has Role", filters={"role": ["in", roles], "parenttype": "User"}, pluck="parent", distinct=True)
+		enabled = set(
+			frappe.get_all("User", filters={"name": ["in", holders or [""]], "enabled": 1, "user_type": "System User"}, pluck="name")
+		)
+		users += sorted(u for u in enabled if u not in users)
+	return [u for u in dict.fromkeys(users) if u not in ("Administrator", "Guest")]
+
+
+def _block_participants(committee):
+	return [{"user": u, "full_name": frappe.utils.get_fullname(u)} for u in _block_users(committee)]
+
+
+def sync_committee_block(committee):
+	"""Create, move or cancel the committee sitting's calendar Event."""
+	event_name = committee.get("calendar_event") if frappe.db.exists("Event", committee.get("calendar_event") or "") else None
+	if not committee.scheduled_date:
+		if event_name:
+			frappe.db.set_value("Event", event_name, "status", "Cancelled")
+		return None
+	timed = bool(committee.scheduled_time)
+	start = get_datetime(f"{committee.scheduled_date} {committee.scheduled_time if timed else '00:00:00'}")
+	hours = flt(frappe.get_cached_doc("Pathways Settings").get("committee_block_hours")) or 3
+	users = _block_users(committee)
+	emails = [frappe.db.get_value("User", u, "email") or u for u in users]
+	job_title = frappe.db.get_value("Job Opening", committee.job_opening, "job_title")
+	panel = ", ".join(frappe.utils.get_fullname(m.member) for m in committee.members)
+	values = {
+		"subject": _("Selection Committee: {0}").format(job_title),
+		"event_category": "Meeting",
+		"event_type": "Private",
+		"starts_on": start,
+		"ends_on": add_to_date(start, hours=hours) if timed else None,
+		"all_day": 0 if timed else 1,
+		"status": "Open",
+		"description": _("NLSIU recruitment: Selection Committee interviews for {0}. Panel: {1}.").format(job_title, panel),
+		"reference_doctype": "Selection Committee",
+		"reference_docname": committee.name,
+	}
+	participants = [
+		{"reference_doctype": "Selection Committee", "reference_docname": committee.name, "email": e}
+		for e in dict.fromkeys(e for e in emails if e and "@" in e)
+	]
+	calendar = _meet_calendar()
+	ev = frappe.get_doc("Event", event_name) if event_name else frappe.new_doc("Event")
+	ev.update(values)
+	ev.set("event_participants", participants)
+	if calendar:
+		frappe.db.savepoint("committee_block")
+		try:
+			ev.update({"sync_with_google_calendar": 1, "google_calendar": calendar, "google_calendar_id": _google_calendar_id(calendar)})
+			ev.save(ignore_permissions=True)
+		except Exception:
+			# Google refused: keep the block in Pathways and say why in the Error Log.
+			frappe.db.rollback(save_point="committee_block")
+			frappe.log_error(title=_("Selection Committee calendar block: Google sync failed"), reference_doctype="Selection Committee", reference_name=committee.name)
+			ev = frappe.get_doc("Event", event_name) if event_name else frappe.new_doc("Event")
+			ev.update(values)
+			ev.set("event_participants", participants)
+			ev.update({"sync_with_google_calendar": 0})
+			ev.save(ignore_permissions=True)
+	else:
+		ev.save(ignore_permissions=True)
+	# Private Events show in a user's Desk calendar when shared with them.
+	for user in users:
+		if not frappe.db.exists("DocShare", {"share_doctype": "Event", "share_name": ev.name, "user": user}):
+			frappe.share.add_docshare("Event", ev.name, user, read=1, notify=0, flags={"ignore_share_permission": True})
+	if committee.get("calendar_event") != ev.name:
+		committee.db_set("calendar_event", ev.name, update_modified=False)
+	return ev.name
+
+
+# ----------------------------------------------------------- final shortlist (step 14)
+
+
+def _can_shortlist():
+	"""Recruiter / PNCO: whoever may edit the job's Shortlisting Note (Role
+	Permissions on Shortlisting Note)."""
+	return bool(frappe.has_permission("Shortlisting Note", "write")) and has_full_access("Shortlisting Note")
+
+
+def _require_shortlist():
+	if not _can_shortlist():
+		frappe.throw(_("Only the recruitment team can prepare the final shortlist."), frappe.PermissionError)
+
+
+def _final_shortlist(job_opening):
+	"""{application: {remarks, ...}} of the job's final shortlist."""
+	note = frappe.db.get_value("Shortlisting Note", {"job_opening": job_opening}, "name")
+	if not note:
+		return {}
+	return {
+		r.application: r
+		for r in frappe.get_all(
+			"Final Shortlist Row", filters={"parenttype": "Shortlisting Note", "parent": note}, fields=["application", "remarks", "hr_outcome"], order_by="idx asc"
+		)
+	}
+
+
+def _note_doc(job_opening, create=True):
+	name = frappe.db.get_value("Shortlisting Note", {"job_opening": job_opening}, "name")
+	if name:
+		return frappe.get_doc("Shortlisting Note", name)
+	if not create:
+		return None
+	doc = frappe.new_doc("Shortlisting Note")
+	doc.job_opening = job_opening
+	doc.prepared_by = frappe.session.user
+	return doc
+
+
+@frappe.whitelist(methods=["POST"])
+def set_final_shortlist(job_opening, applications, shortlisted=1, remarks=None):
+	"""Job page > Interviews: add candidates to (or take them off) the
+	final shortlist after Round 1. The application status is not changed:
+	the list lives on the job's Shortlisting Note, so every status filter
+	keeps working; Interviews > To schedule offers the final for them."""
+	_require_shortlist()
+	from pathways.api.panel import hr_outcome_label
+
+	names = frappe.parse_json(applications) if isinstance(applications, str) else applications
+	names = list(dict.fromkeys(names or []))
+	if not names:
+		frappe.throw(_("Choose at least one candidate."))
+	doc = _note_doc(job_opening)
+	current = {r.application: r for r in doc.final_shortlist}
+	changed = []
+	for name in names:
+		app = frappe.db.get_value("Application", name, ["name", "job_opening", "application_id", "status"], as_dict=True)
+		if not app or app.job_opening != job_opening:
+			frappe.throw(_("{0} is not an application for this job.").format(name))
+		if cint(shortlisted):
+			if app.status not in INTERVIEW_POOL:
+				frappe.throw(_("{0} is not in the interview stage ({1}).").format(app.application_id, app.status))
+			if name in current:
+				if remarks is not None:
+					current[name].remarks = (remarks or "").strip() or None
+				continue
+			doc.append(
+				"final_shortlist",
+				{
+					"application": name,
+					"hr_outcome": hr_outcome_label(name),
+					"remarks": (remarks or "").strip() or None,
+					"shortlisted_by": frappe.session.user,
+					"shortlisted_on": frappe.utils.now_datetime(),
+				},
+			)
+			changed.append(name)
+		elif name in current:
+			doc.remove(current[name])
+			changed.append(name)
+	doc.prepared_by = doc.prepared_by or frappe.session.user
+	doc.save(ignore_permissions=True)
+	for name in changed:
+		frappe.get_doc("Application", name).add_comment(
+			"Info",
+			(_("Added to the final shortlist by {0}.") if cint(shortlisted) else _("Taken off the final shortlist by {0}.")).format(
+				frappe.utils.get_fullname(frappe.session.user)
+			),
+		)
+	return {"changed": len(changed), "shortlisting_note": doc.name, "count": len(doc.final_shortlist)}
+
+
+@frappe.whitelist()
+def get_shortlisting_note(job_opening):
+	"""The job's Shortlisting Note for the editor (recruitment team) or to
+	read (the job's panel)."""
+	if not (_can_shortlist() or _can_manage() or _is_panel_member(job_opening)):
+		frappe.throw(_("Not permitted."), frappe.PermissionError)
+	doc = _note_doc(job_opening, create=False)
+	job = frappe.db.get_value("Job Opening", job_opening, ["name", "job_title", "position"], as_dict=True)
+	if not doc:
+		return {"name": None, "job": job, "note": "", "final_shortlist": [], "attachments": [], "can_edit": 1 if _can_shortlist() else 0}
+	return {
+		"name": doc.name,
+		"job": job,
+		"note": doc.note or "",
+		"prepared_by": doc.prepared_by,
+		"prepared_by_name": frappe.utils.get_fullname(doc.prepared_by) if doc.prepared_by else "",
+		"prepared_on": doc.prepared_on,
+		"final_shortlist": [
+			{"application": r.application, "application_id": r.application_id, "candidate_name": r.candidate_name, "hr_outcome": r.hr_outcome or "", "remarks": r.remarks or ""}
+			for r in doc.final_shortlist
+		],
+		"attachments": [{"name": r.name, "label": r.label, "attachment": r.attachment} for r in doc.attachments],
+		"can_edit": 1 if _can_shortlist() else 0,
+	}
+
+
+@frappe.whitelist(methods=["POST"])
+def save_shortlisting_note(job_opening, note=None, attachments=None, remarks=None, prepared_by=None):
+	"""Save the note text, its attachments [{label, attachment}] and the
+	remarks per shortlisted candidate {application: remarks}."""
+	_require_shortlist()
+	doc = _note_doc(job_opening)
+	if note is not None:
+		doc.note = note
+	if attachments is not None:
+		rows = frappe.parse_json(attachments) if isinstance(attachments, str) else attachments
+		doc.set(
+			"attachments",
+			[{"label": (r.get("label") or "").strip() or r.get("attachment", "").rsplit("/", 1)[-1], "attachment": r.get("attachment")} for r in rows or [] if r.get("attachment")],
+		)
+	if remarks is not None:
+		remarks = frappe.parse_json(remarks) if isinstance(remarks, str) else remarks
+		for row in doc.final_shortlist:
+			if row.application in remarks:
+				row.remarks = (remarks[row.application] or "").strip() or None
+	if prepared_by:
+		doc.prepared_by = prepared_by
+	doc.prepared_by = doc.prepared_by or frappe.session.user
+	doc.save(ignore_permissions=True)
+	return get_shortlisting_note(job_opening)
+
+
+def shortlisting_note_pdf(job_opening):
+	"""The Shortlisting Note print format as PDF bytes (no permission check)."""
+	doc = _note_doc(job_opening, create=False)
+	if not doc:
+		frappe.throw(_("This job has no Shortlisting Note yet."))
+	html = frappe.db.get_value("Print Format", "Shortlisting Note", "html")
+	from frappe.utils.pdf import get_pdf
+
+	return get_pdf(frappe.render_template(html, {"doc": doc, "frappe": frappe}), {"page-size": "A4"})
+
+
+@frappe.whitelist()
+def download_shortlisting_note(job_opening):
+	if not (_can_shortlist() or _can_manage()):
+		frappe.throw(_("Not permitted."), frappe.PermissionError)
+	job_title = frappe.db.get_value("Job Opening", job_opening, "job_title")
+	frappe.local.response.filename = f"Shortlisting Note - {job_title}.pdf"
+	frappe.local.response.filecontent = shortlisting_note_pdf(job_opening)
+	frappe.local.response.type = "download"
+
+
+# ----------------------------------------------------------- HR interaction on the application
+
+
+@frappe.whitelist()
+def get_hr_interaction(application):
+	"""Application page: the Round 1 (HR interaction) interviews, their
+	assessors and what each recorded."""
+	app = frappe.get_doc("Application", application)
+	app.check_permission("read")
+	from pathways.api.panel import hr_assessments
+
+	interviews = frappe.get_all(
+		"Interview",
+		filters={"application": application, "round_type": "HR Interaction"},
+		fields=["name", "status", "scheduled_datetime", "mode", "meeting_platform", "location"],
+		order_by="scheduled_datetime desc",
+	)
+	assessors = _assessors_by_interview([iv.name for iv in interviews])
+	for iv in interviews:
+		iv.hr_assessors = assessors.get(iv.name, [])
+		iv.assessments = hr_assessments(iv.name)
+	note = frappe.db.get_value("Shortlisting Note", {"job_opening": app.job_opening}, "name")
+	row = frappe.db.get_value("Final Shortlist Row", {"parenttype": "Shortlisting Note", "parent": note or "", "application": application}, ["remarks"], as_dict=True)
+	return {"interviews": interviews, "final_shortlisted": 1 if row else 0, "final_shortlist_remarks": (row or {}).get("remarks") or ""}
+
+
+# ----------------------------------------------------------- interview schedule (step 16)
+# Workflow folder "6. Final Interview / Interview Call Letter": candidates
+# join twenty minutes (Round 1: ten) before their slot; the panel gets the
+# day's running order.
+
+SCHEDULE_HTML = """
+<style>
+	body { font-family: Arial, sans-serif; font-size: 11px; color: #111; }
+	h1 { font-size: 15px; text-align: center; margin: 0 0 2px; }
+	h2 { font-size: 12px; text-align: center; margin: 0 0 10px; letter-spacing: .5px; }
+	table { width: 100%; border-collapse: collapse; }
+	td, th { border: 1px solid #555; padding: 5px 6px; vertical-align: top; }
+	th { background: #f2e6e8; text-align: center; }
+	.meta td { border: none; padding: 2px 0; }
+	.num { text-align: center; }
+	ol { margin: 6px 0 0 16px; padding: 0; }
+</style>
+<h1>NATIONAL LAW SCHOOL OF INDIA UNIVERSITY, BENGALURU</h1>
+<h2>INTERVIEW SCHEDULE | {{ round_label | upper }}</h2>
+<table class="meta" style="margin-bottom:8px">
+	<tr><td><b>Position:</b> {{ job_title }}</td><td><b>Date:</b> {{ date_label }}</td></tr>
+	<tr><td><b>Mode:</b> {{ mode_label }}</td><td>{% if panel %}<b>Panel:</b> {{ panel }}{% endif %}</td></tr>
+</table>
+<table>
+	<tr><th style="width:4%">Sl. No.</th><th>Candidate Name</th><th>Candidate ID</th><th>Day &amp; Date</th><th>Time (IST)</th><th>Login by</th><th>Meeting link / Venue</th><th>RSVP</th></tr>
+	{% for r in rows %}
+	<tr>
+		<td class="num">{{ loop.index }}</td><td>{{ r.candidate_name }}</td><td>{{ r.application_id }}</td><td>{{ r.day }}, {{ r.date }}</td>
+		<td class="num">{{ r.time }}</td><td class="num">{{ r.login_time }}</td><td style="word-break:break-all">{{ r.where }}</td><td class="num">{{ r.rsvp }}</td>
+	</tr>
+	{% endfor %}
+</table>
+<p style="margin-top:10px"><b>Please note:</b></p>
+<ol>
+	<li>Candidates are asked to log in {{ login_minutes }} minutes before their start time; they are admitted once the {{ 'committee' if is_final else 'panel' }} is ready.</li>
+	<li>The recruitment team joins 20 minutes before the first interview.</li>
+	<li>Please keep this schedule and the candidates' documents confidential.</li>
+</ol>
+"""
+
+
+def schedule_data(job_opening, round_type="Final", interview_date=None):
+	"""The rows of the interview schedule (no permission check)."""
+	if round_type not in ROUNDS:
+		frappe.throw(_("Unknown interview round."))
+	apps = frappe.get_all("Application", filters={"job_opening": job_opening}, pluck="name")
+	interviews = frappe.get_all(
+		"Interview",
+		filters={"application": ["in", apps or [""]], "round_type": round_type, "status": ["!=", "Cancelled"]},
+		fields=["name", "application", "candidate_name", "scheduled_datetime", "mode", "meeting_platform", "meeting_link", "location", "rsvp_status", "application.application_id as application_id"],
+		order_by="scheduled_datetime asc",
+	)
+	if interview_date:
+		day = frappe.utils.getdate(interview_date)
+		interviews = [iv for iv in interviews if iv.scheduled_datetime and iv.scheduled_datetime.date() == day]
+	login_minutes = 20 if round_type == "Final" else 10
+	rows = []
+	for iv in interviews:
+		when = get_datetime(iv.scheduled_datetime)
+		where = iv.location if iv.mode == "In-Person" else " ".join(x for x in ((iv.meeting_platform or ""), (iv.meeting_link or "")) if x)
+		rows.append(
+			{
+				"candidate_name": iv.candidate_name, "application_id": iv.application_id, "day": when.strftime("%A"), "date": when.strftime("%d %b %Y"),
+				"time": when.strftime("%I:%M %p").lstrip("0"), "login_time": add_to_date(when, minutes=-login_minutes).strftime("%I:%M %p").lstrip("0"),
+				"mode": "In person" if iv.mode == "In-Person" else "Online", "where": where or "", "rsvp": iv.rsvp_status or "Pending", "datetime": when,
+			}
+		)
+	job = frappe.db.get_value("Job Opening", job_opening, ["job_title", "track"], as_dict=True)
+	committee = frappe.db.get_value("Selection Committee", {"job_opening": job_opening}, "name")
+	if round_type == "Final" and committee:
+		panel = ", ".join(frappe.utils.get_fullname(m) for m in frappe.get_all("Committee Member Row", filters={"parent": committee, "parenttype": "Selection Committee"}, order_by="idx asc", pluck="member"))
+	else:
+		people = []
+		for r in frappe.get_all("Interview HR Assessor", filters={"parenttype": "Interview", "parent": ["in", [iv.name for iv in interviews] or [""]]}, pluck="assessor"):
+			if r not in people:
+				people.append(r)
+		panel = ", ".join(frappe.utils.get_fullname(u) for u in people)
+	days = sorted({r["datetime"].date() for r in rows})
+	modes = sorted({r["mode"] for r in rows})
+	platforms = sorted({iv.meeting_platform for iv in interviews if iv.meeting_platform and iv.mode != "In-Person"})
+	return {
+		"job_title": job.job_title,
+		"round_label": "Final interview" if round_type == "Final" else "Round 1 (HR interaction)",
+		"is_final": round_type == "Final",
+		"date_label": ", ".join(frappe.utils.formatdate(d, "dd MMM yyyy") for d in days),
+		"mode_label": ", ".join(modes) + (f" ({', '.join(platforms)})" if platforms else ""),
+		"panel": panel,
+		"rows": rows,
+		"login_minutes": login_minutes,
+	}
+
+
+def schedule_pdf(job_opening, round_type="Final", interview_date=None):
+	from frappe.utils.pdf import get_pdf
+
+	data = schedule_data(job_opening, round_type, interview_date)
+	return get_pdf(frappe.render_template(SCHEDULE_HTML, data), {"orientation": "Landscape", "page-size": "A4"})
+
+
+def schedule_xlsx(job_opening, round_type="Final", interview_date=None):
+	from io import BytesIO
+
+	from openpyxl import Workbook
+	from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+
+	data = schedule_data(job_opening, round_type, interview_date)
+	wb = Workbook()
+	ws = wb.active
+	ws.title = "Interview Schedule"
+	thin = Side(style="thin", color="999999")
+	border = Border(left=thin, right=thin, top=thin, bottom=thin)
+	head = ["Sl. No.", "Candidate Name", "Candidate ID", "Day", "Date", "Time (IST)", "Login by", "Mode", "Meeting link / Venue", "RSVP"]
+	ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=len(head))
+	ws.cell(1, 1, "National Law School of India University, Bengaluru").font = Font(bold=True, size=14)
+	ws.merge_cells(start_row=2, start_column=1, end_row=2, end_column=len(head))
+	ws.cell(2, 1, f"Interview Schedule: {data['round_label']} | Position: {data['job_title']}" + (f" | Date: {data['date_label']}" if data["date_label"] else "")).font = Font(bold=True)
+	ws.merge_cells(start_row=3, start_column=1, end_row=3, end_column=len(head))
+	ws.cell(3, 1, f"Panel: {data['panel']}" if data["panel"] else "")
+	for c, label in enumerate(head, start=1):
+		cell = ws.cell(5, c, label)
+		cell.font, cell.border, cell.fill = Font(bold=True), border, PatternFill("solid", fgColor="F2E6E8")
+		cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+	for i, r in enumerate(data["rows"], start=1):
+		values = [i, r["candidate_name"], r["application_id"], r["day"], r["date"], r["time"], r["login_time"], r["mode"], r["where"], r["rsvp"]]
+		for c, value in enumerate(values, start=1):
+			cell = ws.cell(5 + i, c, value)
+			cell.border = border
+			cell.alignment = Alignment(vertical="top", wrap_text=True)
+	for col, width in zip("ABCDEFGHIJ", (7, 28, 22, 12, 13, 11, 11, 10, 48, 11)):
+		ws.column_dimensions[col].width = width
+	buffer = BytesIO()
+	wb.save(buffer)
+	return buffer.getvalue()
+
+
+@frappe.whitelist()
+def export_interview_schedule(job_opening, round_type="Final", interview_date=None, file_format="xlsx"):
+	"""Job page > Interviews > Interview schedule: Excel or PDF, per job and
+	(optionally) interview day."""
+	if not (_can_manage() or _is_panel_member(job_opening)):
+		frappe.throw(_("Not permitted."), frappe.PermissionError)
+	job_title = frappe.db.get_value("Job Opening", job_opening, "job_title")
+	suffix = f" - {frappe.utils.formatdate(interview_date, 'dd.MM.yyyy')}" if interview_date else ""
+	label = "Final" if round_type == "Final" else "Round 1"
+	if file_format == "pdf":
+		content, ext = schedule_pdf(job_opening, round_type, interview_date), "pdf"
+	else:
+		content, ext = schedule_xlsx(job_opening, round_type, interview_date), "xlsx"
+	frappe.local.response.filename = f"Interview Schedule ({label}) - {job_title}{suffix}.{ext}"
+	frappe.local.response.filecontent = content
+	frappe.local.response.type = "download"

@@ -479,8 +479,13 @@ def get_dashboard(filters=None):
 		**{key: sum(counts.get(s, 0) for s in statuses) for key, statuses in CARD_STATUSES.items() if statuses},
 	}
 	positions = frappe.get_all("Position", filters={"is_active": 1}, fields=["name", "position_title"], order_by="name asc")
+	# Offers, joinings and time to hire (Reports page has the detail).
+	from pathways.api.reports import hiring_outcomes
+
+	hiring = hiring_outcomes(app_filters)
 	return {
 		"summary": summary,
+		"hiring": hiring,
 		"attention": attention,
 		"deadlines": deadlines[:12],
 		"jobs": glance,

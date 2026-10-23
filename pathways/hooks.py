@@ -83,6 +83,10 @@ website_route_rules = [
 	{"from_route": "/pathways/<path:app_path>", "to_route": "pathways"},
 ]
 
+# Public job feeds for Indeed and the NLSIU website: /jobs-feed.xml and
+# /jobs-feed.json (pathways.api.public_feed).
+page_renderer = ["pathways.api.public_feed.JobFeedPage"]
+
 # Home Pages
 # ----------
 #
@@ -176,8 +180,10 @@ permission_query_conditions = {
 	"Document Collection": "pathways.permissions.get_document_collection_permission_query_conditions",
 	"Offer Appointment Order": "pathways.permissions.get_offer_permission_query_conditions",
 	"Joining": "pathways.permissions.get_joining_permission_query_conditions",
+	"IT Facilities Provisioning Request": "pathways.permissions.get_it_request_permission_query_conditions",
 	"Shortlisting Score": "pathways.permissions.get_shortlisting_score_permission_query_conditions",
 	"Interview Assessment": "pathways.permissions.get_interview_assessment_permission_query_conditions",
+	"Job Opening": "pathways.permissions.get_job_opening_permission_query_conditions",
 }
 
 has_permission = {
@@ -186,8 +192,10 @@ has_permission = {
 	"Document Collection": "pathways.permissions.has_document_collection_permission",
 	"Offer Appointment Order": "pathways.permissions.has_offer_permission",
 	"Joining": "pathways.permissions.has_joining_permission",
+	"IT Facilities Provisioning Request": "pathways.permissions.has_it_request_permission",
 	"Shortlisting Score": "pathways.permissions.has_shortlisting_score_permission",
 	"Interview Assessment": "pathways.permissions.has_interview_assessment_permission",
+	"Job Opening": "pathways.permissions.has_job_opening_permission",
 }
 
 # Document Events
@@ -207,6 +215,11 @@ doc_events = {
 	},
 	"Application": {
 		"on_update": "pathways.utils.audit.log_application_status_change",
+	},
+	# Offer accepted -> onboarding (document checklist, draft Joining,
+	# onboarding email). Idempotent; see pathways.utils.onboarding.
+	"Offer Appointment Order": {
+		"on_update": "pathways.utils.onboarding.on_offer_update",
 	},
 }
 

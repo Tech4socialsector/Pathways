@@ -53,7 +53,7 @@ def send_templated_email(email_template, recipient, reference_doctype, reference
 # page (Recruitment Email Rule). Business code only says what happened.
 
 
-def send_event(event, reference_doctype, reference_name, context=None, candidate=None, job_opening=None, approvers=None, cc=None):
+def send_event(event, reference_doctype, reference_name, context=None, candidate=None, job_opening=None, approvers=None, cc=None, recipients=None):
 	"""Queue the emails for `event` after the current transaction commits, so
 	a failed or rolled-back action sends nothing and sending never slows or
 	breaks the action itself.
@@ -61,7 +61,9 @@ def send_event(event, reference_doctype, reference_name, context=None, candidate
 	candidate: {"email", "name"} when the rule may go to the candidate;
 	job_opening: for "the job's committee"; approvers: user IDs for "the
 	approvers of the current step"; cc: extra addresses copied on this
-	send, on top of the rule's own CC."""
+	send, on top of the rule's own CC; recipients: people who are neither
+	the candidate nor users (e.g. a referee), as emails or {"email", "name"},
+	sent to on top of the rule's own recipients."""
 	if not frappe.db.exists("Recruitment Email Rule", {"name": event, "enabled": 1}):
 		return
 	frappe.enqueue(
@@ -77,6 +79,9 @@ def send_event(event, reference_doctype, reference_name, context=None, candidate
 		job_opening=job_opening,
 		approvers=approvers,
 		extra_cc=parse_emails(cc),
+		extra_recipients=[
+			(r.get("email"), r.get("name") or "") if isinstance(r, dict) else (r, "") for r in recipients or [] if (r.get("email") if isinstance(r, dict) else r)
+		],
 	)
 
 
@@ -140,7 +145,7 @@ def event_attachments(rule, reference_doctype=None, reference_name=None):
 	return list(dict.fromkeys(files))
 
 
-def _send_event(rule_event=None, reference_doctype=None, reference_name=None, context=None, candidate=None, job_opening=None, approvers=None, extra_cc=None, event=None):
+def _send_event(rule_event=None, reference_doctype=None, reference_name=None, context=None, candidate=None, job_opening=None, approvers=None, extra_cc=None, event=None, extra_recipients=None):
 	event = rule_event or event
 	context = context or {}
 	rule = frappe.get_doc("Recruitment Email Rule", event)
@@ -151,6 +156,7 @@ def _send_event(rule_event=None, reference_doctype=None, reference_name=None, co
 	# Replies go to the recruitment team (Email Setup > Reply-to address).
 	reply_to = frappe.get_cached_doc("Pathways Settings").recruitment_contact_email or None
 	recipients = event_recipients(rule, candidate, job_opening, approvers)
+	recipients += [(e, n) for e, n in extra_recipients or [] if e.lower() not in {r[0].lower() for r in recipients}]
 	if not recipients:
 		# Nobody to send to (e.g. no user holds the rule's roles): leave a
 		# trace in the Error Log instead of failing silently.

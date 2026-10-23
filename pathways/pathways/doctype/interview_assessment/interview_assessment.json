@@ -17,12 +17,19 @@
   "max_score",
   "score_percent",
   "verdict",
+  "round_type",
+  "hr_outcome",
   "panelist_signature_confirmed",
   "recommendation_section",
   "area_of_specialization",
   "recommendation",
+  "expected_salary",
+  "notice_period",
   "criteria_section",
-  "criteria"
+  "criteria",
+  "signature_section",
+  "panelist_signature",
+  "signed_on"
  ],
  "fields": [
   {
@@ -106,6 +113,21 @@
    "in_standard_filter": 1
   },
   {
+   "fieldname": "round_type",
+   "fieldtype": "Data",
+   "label": "Round",
+   "read_only": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "hr_outcome",
+   "fieldtype": "Select",
+   "label": "HR Outcome",
+   "options": "\nRecommend for final\nHold\nNot recommended",
+   "depends_on": "eval:doc.round_type=='HR Interaction'"
+  },
+  {
    "default": "0",
    "fieldname": "panelist_signature_confirmed",
    "fieldtype": "Check",
@@ -124,7 +146,20 @@
   {
    "fieldname": "recommendation",
    "fieldtype": "Small Text",
-   "label": "Additional Comments"
+   "label": "Additional Comments",
+   "description": "Additional comments; for a Round 1 (HR) assessment, the HR interaction note."
+  },
+  {
+   "fieldname": "expected_salary",
+   "fieldtype": "Data",
+   "label": "Salary Expectation",
+   "depends_on": "eval:doc.round_type=='HR Interaction'"
+  },
+  {
+   "fieldname": "notice_period",
+   "fieldtype": "Data",
+   "label": "Notice Period",
+   "depends_on": "eval:doc.round_type=='HR Interaction'"
   },
   {
    "fieldname": "criteria_section",
@@ -136,11 +171,27 @@
    "fieldtype": "Table",
    "label": "Criteria",
    "options": "Score Criterion Value"
+  },
+  {
+   "fieldname": "signature_section",
+   "fieldtype": "Section Break",
+   "label": "Signature"
+  },
+  {
+   "fieldname": "panelist_signature",
+   "fieldtype": "Signature",
+   "label": "Signature of Panellist"
+  },
+  {
+   "fieldname": "signed_on",
+   "fieldtype": "Datetime",
+   "label": "Signed On",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-09-21 00:00:00.000000",
+ "modified": "2026-10-23 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "Pathways",
  "name": "Interview Assessment",

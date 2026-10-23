@@ -70,18 +70,45 @@
       </DataTable>
 
       <!-- Post-offer onboarding verification checklists -->
-      <DataTable
-        export-name="documents"
-        v-else
-        :columns="collectionColumns"
-        :rows="collections.data || []"
-        :loading="collections.loading"
-        :filters="[{ key: 'overall_status', label: 'Statuses' }]"
-        empty-title="No onboarding checklists yet"
-        search-placeholder="Search onboarding checklists..."
-      >
-        <template #cell-overall_status="{ value }"><StatusBadge :status="value" /></template>
-      </DataTable>
+      <template v-else>
+        <div class="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div v-for="card in onboardingCards" :key="card.label" class="rounded-lg border bg-white px-4 py-3">
+            <div class="text-xs text-gray-500">{{ card.label }}</div>
+            <div class="text-xl font-semibold text-gray-900">{{ card.value }}</div>
+          </div>
+        </div>
+        <DataTable
+          export-name="onboarding-documents"
+          :columns="collectionColumns"
+          :rows="collections"
+          :loading="collectionsLoading"
+          :filters="[{ key: 'overall_status', label: 'Statuses' }, { key: 'job_title', label: 'Job Openings' }]"
+          clickable
+          empty-title="No onboarding checklists yet"
+          search-placeholder="Search candidate, application or job..."
+          @row-click="openChecklist"
+        >
+          <template #cell-candidate_name="{ row }">
+            <div class="font-medium text-gray-900">{{ row.candidate_name }}</div>
+            <div class="font-mono text-xs text-gray-500">{{ row.application_id }}</div>
+          </template>
+          <template #cell-progress="{ row }">
+            <div class="flex items-center gap-2">
+              <div class="h-1.5 w-20 overflow-hidden rounded-full bg-gray-100">
+                <div class="h-full bg-green-600" :style="{ width: (row.total ? (row.verified / row.total) * 100 : 0) + '%' }" />
+              </div>
+              <span class="text-xs text-gray-600">{{ row.verified }}/{{ row.total }}</span>
+              <span v-if="row.submitted" class="rounded-full bg-blue-50 px-1.5 text-xs text-blue-700">{{ row.submitted }} to check</span>
+            </div>
+          </template>
+          <template #cell-overall_status="{ value }"><StatusBadge :status="value" /></template>
+          <template #actions="{ row }">
+            <div class="flex justify-end" @click.stop>
+              <Button size="sm" icon-left="check-square" @click="openChecklist(row)">Review</Button>
+            </div>
+          </template>
+        </DataTable>
+      </template>
     </div>
 
     <DocumentViewer
@@ -92,19 +119,23 @@
       :download-all-url="viewerRow ? applicationService.downloadAllDocumentsUrl(viewerRow.name) : ''"
     />
     <SharePanelDialog v-model:open="share.open" :applications="share.applications" @saved="share.clear?.()" />
+    <VerifyChecklistDialog v-model:open="checklistOpen" :collection="checklistName" @changed="loadCollections" />
   </StaffLayout>
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import dayjs from 'dayjs'
-import { Button, FeatherIcon, createListResource } from 'frappe-ui'
+import { Button, FeatherIcon } from 'frappe-ui'
+import { useRoute } from 'vue-router'
 import StaffLayout from '@/layouts/StaffLayout.vue'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import DataTable from '@/components/common/DataTable.vue'
 import DocumentViewer from '@/components/common/DocumentViewer.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
 import SharePanelDialog from '@/components/documents/SharePanelDialog.vue'
+import VerifyChecklistDialog from '@/components/onboarding/VerifyChecklistDialog.vue'
+import { documentService } from '@/services/documents'
 import { applicationService } from '@/services/applications'
 import { useSessionStore } from '@/stores/session'
 import { BTN_BRAND } from '@/utils/buttonStyles'
@@ -114,7 +145,9 @@ const TABS = [
   { key: 'candidate', label: 'Candidate Documents' },
   { key: 'onboarding', label: 'Onboarding Verification' },
 ]
-const tab = ref('candidate')
+// ?tab=onboarding (e.g. from a joining) opens the verification tab.
+const route = useRoute()
+const tab = ref(route.query.tab === 'onboarding' ? 'onboarding' : 'candidate')
 
 // ----- candidate documents
 const rows = ref([])
@@ -183,17 +216,45 @@ async function openViewer(row) {
 }
 
 // ----- onboarding checklists (post-offer verification)
-const collections = createListResource({
-  doctype: 'Document Collection',
-  fields: ['name', 'application', 'overall_status'],
-  orderBy: 'creation desc',
-  // DataTable searches, filters and paginates client-side, so load all rows.
-  pageLength: 1000,
-  auto: true,
-})
+const collections = ref([])
+const collectionsLoading = ref(false)
+async function loadCollections() {
+  collectionsLoading.value = true
+  try {
+    collections.value = await documentService.listOnboardingCollections()
+  } finally {
+    collectionsLoading.value = false
+  }
+}
+watch(
+  tab,
+  (value) => {
+    if (value === 'onboarding' && !collections.value.length) loadCollections()
+  },
+  { immediate: true },
+)
 
 const collectionColumns = [
-  { key: 'application', label: 'Application' },
+  { key: 'candidate_name', label: 'Candidate', format: (r) => `${r.candidate_name || ''} ${r.application_id || ''}` },
+  { key: 'job_title', label: 'Job Opening' },
+  { key: 'progress', label: 'Verified', format: (r) => `${r.verified}/${r.total}` },
   { key: 'overall_status', label: 'Overall Status' },
+  { key: 'joining_date', label: 'Joining', format: (r) => (r.joining_date ? dayjs(r.joining_date).format('DD MMM YYYY') : '') },
 ]
+const onboardingCards = computed(() => {
+  const rows = collections.value
+  return [
+    { label: 'Checklists', value: rows.length },
+    { label: 'Awaiting verification', value: rows.filter((r) => r.submitted).length },
+    { label: 'Resubmission requested', value: rows.filter((r) => r.overall_status === 'Resubmission Requested').length },
+    { label: 'Complete', value: rows.filter((r) => r.overall_status === 'Complete').length },
+  ]
+})
+
+const checklistOpen = ref(false)
+const checklistName = ref('')
+function openChecklist(row) {
+  checklistName.value = row.name
+  checklistOpen.value = true
+}
 </script>

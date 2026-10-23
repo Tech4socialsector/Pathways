@@ -23,6 +23,7 @@
   "eligibility_checked_by",
   "eligibility_checked_on",
   "regret_sent_on",
+  "interview_regret_sent_on",
   "details_tab",
   "current_salary",
   "expected_salary",
@@ -206,6 +207,13 @@
    "fieldname": "regret_sent_on",
    "fieldtype": "Datetime",
    "label": "Regret Email Sent On",
+   "read_only": 1
+  },
+  {
+   "description": "Regret after the final interview (workflow step 32). Separate from the screening regret above.",
+   "fieldname": "interview_regret_sent_on",
+   "fieldtype": "Datetime",
+   "label": "Post-Interview Regret Sent On",
    "read_only": 1
   },
   {
@@ -493,7 +501,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-10-08 10:28:43.554252",
+ "modified": "2026-10-23 12:00:01.000000",
  "modified_by": "Administrator",
  "module": "Pathways",
  "name": "Application",
@@ -546,6 +554,11 @@
   {
    "read": 1,
    "role": "Pathways Selection Committee Member"
+  },
+  {
+   "print": 1,
+   "read": 1,
+   "role": "Pathways Tagged Colleague"
   },
   {
    "create": 1,

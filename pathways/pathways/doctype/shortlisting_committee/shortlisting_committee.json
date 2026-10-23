@@ -9,6 +9,7 @@
   "naming_series",
   "job_opening",
   "office_order_reference",
+  "office_order_attachment",
   "column_break_1",
   "shortlisting_deadline",
   "members_section",
@@ -37,6 +38,11 @@
    "label": "Office Order Reference"
   },
   {
+   "fieldname": "office_order_attachment",
+   "fieldtype": "Attach",
+   "label": "Office Order"
+  },
+  {
    "fieldname": "column_break_1",
    "fieldtype": "Column Break"
   },
@@ -60,7 +66,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-09-21 00:00:00.000000",
+ "modified": "2026-10-23 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "Pathways",
  "name": "Shortlisting Committee",

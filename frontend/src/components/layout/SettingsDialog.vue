@@ -498,6 +498,18 @@ const DUTIES = [
     hint: 'May create and sign a Corrigendum.',
     empty: 'No one can issue a Corrigendum while this is empty.',
   },
+  {
+    field: 'offer_reviewer_roles',
+    label: 'Offer Reviewer Roles',
+    hint: 'May approve a draft appointment order for signature, or return it for changes.',
+    empty: 'No one can review appointment orders while this is empty.',
+  },
+  {
+    field: 'offer_signatory_roles',
+    label: 'Offer Signatory Roles',
+    hint: 'May sign appointment orders (the Registrar).',
+    empty: 'No one can sign appointment orders while this is empty.',
+  },
 ]
 
 // ----- general: checked here for instant feedback; the server checks again.
@@ -580,6 +592,8 @@ watch(isOpen, async (open) => {
   form.interview_google_calendar = values.interview_google_calendar || NONE
   form.document_verifier_roles = [...(values.document_verifier_roles || [])]
   form.corrigendum_signer_roles = [...(values.corrigendum_signer_roles || [])]
+  form.offer_reviewer_roles = [...(values.offer_reviewer_roles || [])]
+  form.offer_signatory_roles = [...(values.offer_signatory_roles || [])]
 })
 
 // ----- Google Meet

@@ -46,6 +46,13 @@
             </li>
           </ul>
           <p v-if="s.committee.office_order_reference" class="mt-2 text-xs text-gray-500">Office order: {{ s.committee.office_order_reference }}</p>
+          <a v-if="s.committee.office_order_attachment" :href="s.committee.office_order_attachment" target="_blank" rel="noopener" class="mt-1 inline-flex items-center gap-1 text-xs font-medium text-brand-700 hover:underline">
+            <FeatherIcon name="paperclip" class="h-3.5 w-3.5" /> Office order
+          </a>
+          <p v-if="s.committee.shortlisting_deadline" class="mt-1 text-xs text-gray-500">Shortlisting due {{ s.committee.shortlisting_deadline }}</p>
+          <Button v-if="s.can_edit_committee" class="mt-2 w-full" size="sm" variant="outline" icon-left="edit-2" @click="committeeOpen = true">
+            Edit committee
+          </Button>
         </template>
         <div v-else class="rounded-lg border border-orange-200 bg-orange-50 px-3 py-2 text-orange-800">
           No committee yet.
@@ -133,7 +140,7 @@
 
     <ShortlistingSheetDialog v-model:open="reportOpen" :job-opening="job.name" :job-title="job.job_title" :track="job.track" />
 
-    <CommitteeSetupDialog v-model:open="committeeOpen" :job-opening="job.name" @created="emit('changed')" />
+    <CommitteeSetupDialog v-model:open="committeeOpen" :job-opening="job.name" @created="emit('changed')" @updated="emit('changed')" />
   </SectionCard>
 </template>
 

@@ -100,6 +100,12 @@ def sync_job_opening(green_sheet):
 	updates = {k: v for k, v in updates.items() if job.get(k) != v}
 	if updates:
 		frappe.db.set_value("Job Opening", job.name, updates)
+	if updates.get("status") == "Approved":
+		# Workflow step 3: the Registrar's Office and Communications turn the
+		# draft into the official notification (once, as the job is approved).
+		from pathways.api.job_notice import request_official_notification
+
+		request_official_notification(job.name, green_sheet.name)
 
 
 @frappe.whitelist()

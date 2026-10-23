@@ -1,0 +1,144 @@
+{
+ "actions": [],
+ "creation": "2026-10-23 12:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "job_opening",
+  "job_title",
+  "column_break_1",
+  "prepared_by",
+  "prepared_on",
+  "note_section",
+  "note",
+  "shortlist_section",
+  "final_shortlist",
+  "attachments_section",
+  "attachments"
+ ],
+ "fields": [
+  {
+   "fieldname": "job_opening",
+   "fieldtype": "Link",
+   "options": "Job Opening",
+   "label": "Job Opening",
+   "reqd": 1,
+   "unique": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "job_title",
+   "fieldtype": "Data",
+   "label": "Position",
+   "read_only": 1,
+   "in_list_view": 1,
+   "fetch_from": "job_opening.job_title"
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "prepared_by",
+   "fieldtype": "Link",
+   "options": "User",
+   "label": "Prepared By"
+  },
+  {
+   "fieldname": "prepared_on",
+   "fieldtype": "Datetime",
+   "label": "Last Updated On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "note_section",
+   "fieldtype": "Section Break",
+   "label": "Shortlisting Note"
+  },
+  {
+   "fieldname": "note",
+   "fieldtype": "Text Editor",
+   "label": "Note"
+  },
+  {
+   "fieldname": "shortlist_section",
+   "fieldtype": "Section Break",
+   "label": "Final Shortlist"
+  },
+  {
+   "fieldname": "final_shortlist",
+   "fieldtype": "Table",
+   "options": "Final Shortlist Row",
+   "label": "Final Shortlist"
+  },
+  {
+   "fieldname": "attachments_section",
+   "fieldtype": "Section Break",
+   "label": "Attachments"
+  },
+  {
+   "fieldname": "attachments",
+   "fieldtype": "Table",
+   "options": "Shortlisting Note Attachment",
+   "label": "Attachments"
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "links": [],
+ "modified": "2026-10-23 12:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Pathways",
+ "name": "Shortlisting Note",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "role": "System Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "report": 1,
+   "export": 1,
+   "share": 1,
+   "print": 1,
+   "email": 1
+  },
+  {
+   "role": "Pathways Admin",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1
+  },
+  {
+   "role": "Pathways Recruiter",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1
+  },
+  {
+   "role": "Pathways PNCO",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "report": 1,
+   "print": 1
+  }
+ ],
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": [],
+ "autoname": "hash",
+ "naming_rule": "Random",
+ "title_field": "job_title",
+ "track_changes": 1,
+ "default_print_format": "Shortlisting Note"
+}

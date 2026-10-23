@@ -24,6 +24,8 @@ Revision), approval_steps (Approval Chain Step) and approval_log (Green
 Sheet Approval Log). Register it in APPROVABLE_DOCTYPES.
 """
 
+from urllib.parse import quote
+
 import frappe
 from frappe import _
 from frappe.utils import cint, now_datetime
@@ -351,21 +353,35 @@ def notify_approvers(doc, step):
 		doc,
 		_("{0} {1} is awaiting your approval ({2})").format(_(doc.doctype), doc.name, step.approver_label or ""),
 	)
-	if doc.doctype == "Pre-Recruitment Green Sheet":
-		from pathways.utils.communication import send_event
+	from pathways.utils.communication import send_event
 
-		send_event(
-			"green_sheet_approval",
-			doc.doctype,
-			doc.name,
-			{
-				"doc_name": doc.name,
-				"job_title": frappe.db.get_value("Job Opening", doc.job_opening, "job_title"),
-				"approver_label": step.approver_label or describe_approver(step),
-				"link": frappe.utils.get_url(f"/pathways/jobs/{doc.job_opening}"),
-			},
-			approvers=users,
-		)
+	send_event(
+		"green_sheet_approval",
+		doc.doctype,
+		doc.name,
+		{
+			"doc_name": doc.name,
+			"doc_type": _(doc.doctype),
+			"job_title": frappe.db.get_value("Job Opening", doc.get("job_opening"), "job_title") if doc.get("job_opening") else "",
+			"approver_label": step.approver_label or describe_approver(step),
+			"link": approval_link(doc),
+		},
+		approvers=users,
+	)
+
+
+# Where an approver opens each approvable document in the SPA; anything not
+# listed opens in the My Approvals review dialog.
+APPROVAL_LINKS = {
+	"Pre-Recruitment Green Sheet": lambda doc: f"/pathways/jobs/{doc.job_opening}",
+	"Post-Interview Green Sheet": lambda doc: f"/pathways/selection-green-sheets/{doc.name}",
+}
+
+
+def approval_link(doc):
+	build = APPROVAL_LINKS.get(doc.doctype)
+	path = build(doc) if build else "/pathways/approvals?open=" + quote(f"{doc.doctype}::{doc.name}")
+	return frappe.utils.get_url(path)
 
 
 def _notify(users, doc, subject):

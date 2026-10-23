@@ -144,6 +144,16 @@
           </div>
 
           <div class="flex justify-end gap-2 border-t px-6 py-3">
+            <!-- The selection sheet has its own page with print formats and annexures. -->
+            <Button
+              v-if="reviewItem?.doctype === 'Post-Interview Green Sheet'"
+              variant="ghost"
+              icon-left="external-link"
+              class="mr-auto"
+              @click="router.push(`/selection-green-sheets/${reviewItem.name}`)"
+            >
+              Open full sheet
+            </Button>
             <Button variant="outline" @click="openDialog(reviewItem, 'Returned for Revision')">Return</Button>
             <Button variant="solid" :class="BTN_DARK" @click="openDialog(reviewItem, 'Approved')">Approve</Button>
           </div>

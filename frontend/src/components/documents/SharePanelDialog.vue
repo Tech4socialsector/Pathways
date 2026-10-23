@@ -1,8 +1,11 @@
 <template>
   <!-- Choose which documents of the chosen candidates each panellist of the
        job's Selection Committee gets. Ticks already shared start ticked;
-       only the cells you change are saved. -->
-  <Dialog :model-value="open" :options="{ title: 'Share documents with the panel', size: '4xl' }" @update:model-value="(v) => emit('update:open', v)">
+       only the cells you change are saved. With `jobOpening` (and no
+       candidates) it shares the job's own files instead (workflow step 16):
+       notification, panel details, blank assessment sheets, Shortlisting
+       Note, HR interaction notes and the interview schedule. -->
+  <Dialog :model-value="open" :options="{ title: jobMode ? 'Share interview files with the panel' : 'Share documents with the panel', size: '4xl' }" @update:model-value="(v) => emit('update:open', v)">
     <template #body-content>
       <div v-if="state.loading" class="h-56 animate-pulse rounded-lg bg-gray-100" />
       <p v-else-if="state.error" class="whitespace-pre-line rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{{ state.error }}</p>
@@ -11,7 +14,8 @@
           <div class="font-medium text-gray-900">
             {{ options.job.job_title }}<span v-if="options.job.position" class="text-gray-500"> · {{ options.job.position }}</span>
           </div>
-          <div class="mt-0.5 text-xs text-gray-600">
+          <div v-if="jobMode" class="mt-0.5 text-xs text-gray-600">Job-level files. Each is generated when opened, so the panel always sees the current version.</div>
+          <div v-else class="mt-0.5 text-xs text-gray-600">
             {{ options.applications.length === 1 ? options.applications[0].candidate_name + ' · ' + options.applications[0].application_id : `${options.applications.length} candidates: ${candidateList}` }}
           </div>
         </div>
@@ -19,13 +23,16 @@
         <div v-if="!options.panel.length" class="rounded-lg border border-orange-200 bg-orange-50 px-3 py-2 text-orange-800">
           This job has no Selection Committee yet. Set up the panel on the job's Interviews tab first.
         </div>
+        <div v-else-if="!options.documents.length && jobMode" class="rounded-lg border border-dashed px-3 py-6 text-center text-gray-500">
+          This job has no files to share yet (notification, Selection Committee, Shortlisting Note or interviews).
+        </div>
         <div v-else-if="!options.documents.length" class="rounded-lg border border-dashed px-3 py-6 text-center text-gray-500">
           {{ options.applications.length === 1 ? 'This candidate has' : 'These candidates have' }} not uploaded any documents.
         </div>
         <template v-else>
           <div class="flex flex-wrap items-center gap-2 text-xs text-gray-600">
             <span>
-              Check the documents each panellist should see. Documents already shared are checked.
+              Check the {{ jobMode ? 'files' : 'documents' }} each panellist should see. Documents already shared are checked.
               <template v-if="options.applications.length > 1"> A dash means shared for some of the candidates.</template>
             </span>
             <div class="ml-auto flex gap-1">
@@ -72,6 +79,7 @@
                         />
                         <span class="text-gray-900">{{ d.label }}</span>
                         <span v-if="options.applications.length > 1" class="text-xs text-gray-400">{{ d.count }} of {{ options.applications.length }}</span>
+                        <button v-if="jobMode" type="button" class="ml-1 text-xs text-brand-700 hover:underline" @click.prevent="preview(d.label)">Preview</button>
                       </label>
                     </td>
                     <td v-for="p in options.panel" :key="p.user" class="border-l px-2 py-1.5 text-center">
@@ -94,8 +102,8 @@
           <label class="flex items-start gap-2.5">
             <input v-model="form.notify" type="checkbox" class="mt-0.5 rounded border-gray-300 text-brand-700 focus:ring-brand-700" />
             <span>
-              Email each panellist who gets new documents
-              <span class="block text-xs text-gray-500">One email per panellist, listing the candidates and documents with a link to view them after logging in. Files are not attached.</span>
+              Email each panellist who gets new {{ jobMode ? 'files' : 'documents' }}
+              <span class="block text-xs text-gray-500">One email per panellist, listing what was shared with a link to view it after logging in. Files are not attached.</span>
             </span>
           </label>
           <p v-if="form.error" class="whitespace-pre-line rounded-md bg-red-50 px-3 py-2 text-red-700">{{ form.error }}</p>
@@ -132,7 +140,10 @@ const props = defineProps({
   open: { type: Boolean, default: false },
   // Application names (one job opening)
   applications: { type: Array, default: () => [] },
+  // Job-level files of this job instead of candidate documents
+  jobOpening: { type: String, default: '' },
 })
+const jobMode = computed(() => !!props.jobOpening && !props.applications.length)
 const emit = defineEmits(['update:open', 'saved'])
 
 const options = ref(null)
@@ -156,7 +167,13 @@ async function load() {
   state.loading = true
   state.error = ''
   try {
-    options.value = await panelService.getShareOptions(props.applications)
+    if (jobMode.value) {
+      const o = await panelService.getJobShareOptions(props.jobOpening)
+      // Same matrix as candidate documents: each file counts once.
+      options.value = { ...o, applications: [], documents: o.files.map((f) => ({ ...f, count: 1 })) }
+    } else {
+      options.value = await panelService.getShareOptions(props.applications)
+    }
   } catch (e) {
     state.error = e?.messages?.join('\n') || 'Could not load the panel and documents.'
   } finally {
@@ -214,13 +231,15 @@ async function save() {
   form.saving = true
   form.error = ''
   try {
-    const r = await panelService.shareWithPanel(props.applications, changes.value, form.note.trim(), form.notify)
+    const r = jobMode.value
+      ? await panelService.shareJobFiles(props.jobOpening, changes.value, form.note.trim(), form.notify)
+      : await panelService.shareWithPanel(props.applications, changes.value, form.note.trim(), form.notify)
     const parts = []
     if (r.added) parts.push(`${r.added} document${r.added === 1 ? '' : 's'} shared with ${r.panellists} panellist${r.panellists === 1 ? '' : 's'}`)
     if (r.removed) parts.push(`${r.removed} no longer shared`)
     toast({ title: parts.length ? parts.join(' · ') + '.' : 'Nothing to change.', icon: 'check', iconClasses: 'text-green-500' })
     if (form.notify && r.panellists && !r.emailed) {
-      toast({ title: 'No email sent: the "Candidate documents shared" email is turned off in Email Setup.', icon: 'alert-triangle', iconClasses: 'text-orange-500' })
+      toast({ title: `No email sent: the "${jobMode.value ? 'Interview files shared' : 'Candidate documents shared'}" email is turned off in Email Setup.`, icon: 'alert-triangle', iconClasses: 'text-orange-500' })
     }
     emit('saved')
     emit('update:open', false)
@@ -228,6 +247,14 @@ async function save() {
     form.error = e?.messages?.join('\n') || 'Could not save the sharing.'
   } finally {
     form.saving = false
+  }
+}
+
+async function preview(label) {
+  try {
+    await panelService.downloadJobFile(props.jobOpening, label)
+  } catch (e) {
+    form.error = e?.messages?.join('\n') || 'Could not open the file.'
   }
 }
 </script>

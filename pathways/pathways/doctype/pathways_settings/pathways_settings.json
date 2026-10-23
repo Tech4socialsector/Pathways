@@ -38,8 +38,35 @@
   "application_instructions",
   "roles_section",
   "pathways_roles",
+  "reference_checks_section",
+  "reference_link_expiry_days",
+  "column_break_reference_checks",
+  "reference_reminder_after_days",
   "google_meet_section",
-  "interview_google_calendar"
+  "interview_google_calendar",
+  "offers_section",
+  "offer_requires_green_sheet",
+  "offer_reviewer_roles",
+  "offer_signatory_roles",
+  "column_break_offers",
+  "offer_signatory_title",
+  "registrar_signature_image",
+  "interview_rounds_section",
+  "hr_assessors_per_interview",
+  "require_assessment_signature",
+  "column_break_interview_rounds",
+  "calendar_block_roles",
+  "committee_block_hours",
+  "joining_section",
+  "default_reporting_location",
+  "column_break_joining",
+  "default_reporting_time",
+  "honorarium_section",
+  "honorarium_internal_amount",
+  "honorarium_external_amount",
+  "honorarium_external_only",
+  "column_break_honorarium",
+  "honorarium_approver_roles"
  ],
  "fields": [
   {
@@ -245,6 +272,29 @@
    "options": "Pathways Role"
   },
   {
+   "fieldname": "reference_checks_section",
+   "fieldtype": "Section Break",
+   "label": "Reference Checks"
+  },
+  {
+   "default": "14",
+   "description": "A referee's form link stops working this many days after it is sent. Resending issues a new link.",
+   "fieldname": "reference_link_expiry_days",
+   "fieldtype": "Int",
+   "label": "Referee Link Valid For (Days)"
+  },
+  {
+   "fieldname": "column_break_reference_checks",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "3",
+   "description": "Referees who have not answered get one reminder this many days after the link was sent. 0 turns reminders off.",
+   "fieldname": "reference_reminder_after_days",
+   "fieldtype": "Int",
+   "label": "Remind Referee After (Days)"
+  },
+  {
    "fieldname": "google_meet_section",
    "fieldtype": "Section Break",
    "label": "Google Meet"
@@ -255,12 +305,148 @@
    "options": "Google Calendar",
    "label": "Calendar for Interview Meetings",
    "description": "Interviews scheduled with Google Meet create an event in this Google Calendar, with a Meet link, inviting the candidate (and the panel for final interviews)."
+  },
+  {
+   "fieldname": "offers_section",
+   "fieldtype": "Section Break",
+   "label": "Offers & Appointment Orders",
+   "description": "Who reviews and signs appointment orders (workflow steps 26-28)."
+  },
+  {
+   "default": "1",
+   "fieldname": "offer_requires_green_sheet",
+   "fieldtype": "Check",
+   "label": "Offer Requires Approved Post-Interview Green Sheet",
+   "description": "When ticked, an offer can only be created for a candidate named as recommended or waitlisted on an approved Post-Interview Green Sheet."
+  },
+  {
+   "fieldname": "offer_reviewer_roles",
+   "fieldtype": "Table MultiSelect",
+   "label": "Offer Reviewer Roles",
+   "options": "Pathways Role",
+   "description": "May approve a draft appointment order for signature, or return it for changes (Assistant Manager PNC)."
+  },
+  {
+   "fieldname": "offer_signatory_roles",
+   "fieldtype": "Table MultiSelect",
+   "label": "Offer Signatory Roles",
+   "options": "Pathways Role",
+   "description": "May sign appointment orders (the Registrar)."
+  },
+  {
+   "fieldname": "column_break_offers",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "Registrar",
+   "fieldname": "offer_signatory_title",
+   "fieldtype": "Data",
+   "label": "Signatory Title",
+   "description": "Printed under the signature on appointment orders."
+  },
+  {
+   "fieldname": "registrar_signature_image",
+   "fieldtype": "Attach Image",
+   "label": "Saved Registrar Signature",
+   "description": "Optional. A signatory can sign with this image instead of drawing a signature each time."
+  },
+  {
+   "fieldname": "interview_rounds_section",
+   "fieldtype": "Section Break",
+   "label": "Interview Rounds",
+   "description": "Round 1 (HR interaction) assessors, the panellist's signature on the Interview Assessment Form, and the Selection Committee calendar block (workflow steps 13, 15 and 18)."
+  },
+  {
+   "default": "2",
+   "fieldname": "hr_assessors_per_interview",
+   "fieldtype": "Int",
+   "label": "HR Assessors per Round 1 Interview",
+   "description": "The most HR assessors one Round 1 (HR interaction) interview can have."
+  },
+  {
+   "default": "0",
+   "fieldname": "require_assessment_signature",
+   "fieldtype": "Check",
+   "label": "Require Drawn Signature on Assessment Forms",
+   "description": "Panellists and HR assessors must sign the assessment form on screen before submitting their scores. Scores typed in by the recruitment team from a signed paper form are exempt."
+  },
+  {
+   "fieldname": "column_break_interview_rounds",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "calendar_block_roles",
+   "fieldtype": "Table MultiSelect",
+   "label": "Calendar Block Roles",
+   "options": "Pathways Role",
+   "description": "Besides the panel, users with these roles get the Selection Committee sitting in their calendar when its date and time are saved."
+  },
+  {
+   "default": "3",
+   "fieldname": "committee_block_hours",
+   "fieldtype": "Float",
+   "label": "Committee Sitting Length (Hours)"
+  },
+  {
+   "fieldname": "joining_section",
+   "fieldtype": "Section Break",
+   "label": "Joining & Onboarding",
+   "description": "Defaults for a new joiner's first day, used in the onboarding email until the joining is finalised (workflow steps 31 and 34). Which documents a joiner must submit is set per document on the Document Type master (Used In: Onboarding or Both, optionally per track)."
+  },
+  {
+   "fieldname": "default_reporting_location",
+   "fieldtype": "Data",
+   "label": "Default Reporting Location",
+   "default": "Ground Floor, Training Centre Room No. 004"
+  },
+  {
+   "fieldname": "column_break_joining",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "default_reporting_time",
+   "fieldtype": "Time",
+   "label": "Default Reporting Time",
+   "default": "10:00:00"
+  },
+  {
+   "fieldname": "honorarium_section",
+   "fieldtype": "Section Break",
+   "label": "Panel Honorarium",
+   "description": "Used by \"Send thank-you to panel\" on the consolidated score sheet (workflow step 33)."
+  },
+  {
+   "fieldname": "honorarium_internal_amount",
+   "fieldtype": "Currency",
+   "label": "Default Honorarium: Internal Panellist"
+  },
+  {
+   "fieldname": "honorarium_external_amount",
+   "fieldtype": "Currency",
+   "label": "Default Honorarium: External Expert"
+  },
+  {
+   "default": "1",
+   "fieldname": "honorarium_external_only",
+   "fieldtype": "Check",
+   "label": "Honorarium for External Experts Only",
+   "description": "Internal panellists are still thanked; their honorarium is recorded as Not applicable."
+  },
+  {
+   "fieldname": "column_break_honorarium",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "honorarium_approver_roles",
+   "fieldtype": "Table MultiSelect",
+   "label": "Honorarium Approver Roles",
+   "options": "Pathways Role"
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-10-08 12:00:00.000000",
+ "modified": "2026-10-23 12:25:00.000000",
  "modified_by": "Administrator",
  "module": "Pathways",
  "name": "Pathways Settings",

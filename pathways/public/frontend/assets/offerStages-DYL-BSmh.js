@@ -1,0 +1,1 @@
+const e=["Draft","Under Review","Approved for Signature","Signed by Registrar","Sent","Accepted","Declined","Expired"],r={Draft:"bg-orange-400","Under Review":"bg-yellow-400","Approved for Signature":"bg-blue-500","Signed by Registrar":"bg-indigo-500",Sent:"bg-teal-500",Accepted:"bg-green-500",Declined:"bg-red-500",Expired:"bg-gray-400"};export{e as O,r as S};

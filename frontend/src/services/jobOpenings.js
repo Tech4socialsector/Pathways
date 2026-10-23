@@ -33,6 +33,16 @@ export const jobOpeningService = {
   bulkDelete(names) {
     return callMethod('pathways.api.job_opening.bulk_delete_job_openings', { names })
   },
+  // Workflow step 7: department folder and "Shared with" colleagues.
+  getSharing(jobOpening) {
+    return callMethod('pathways.api.job_opening.get_job_sharing', { job_opening: jobOpening })
+  },
+  setColleagues(jobOpening, colleagues) {
+    return callMethod('pathways.api.job_opening.set_job_colleagues', { job_opening: jobOpening, colleagues })
+  },
+  ensureFolder(jobOpening) {
+    return callMethod('pathways.api.job_opening.ensure_job_folder', { job_opening: jobOpening })
+  },
   deleteJob(jobOpening) {
     return callMethod('pathways.api.job_opening.delete_job_opening', { job_opening: jobOpening })
   },

@@ -16,12 +16,20 @@ export const scoringService = {
   getCommitteeOptions() {
     return callMethod('pathways.api.scoring.get_committee_options')
   },
-  createShortlistingCommittee(jobOpening, members, officeOrderReference) {
+  // extra: { shortlisting_deadline, office_order_attachment }
+  createShortlistingCommittee(jobOpening, members, officeOrderReference, extra = {}) {
     return callMethod('pathways.api.scoring.create_shortlisting_committee', {
       job_opening: jobOpening,
       members,
       office_order_reference: officeOrderReference,
+      ...extra,
     })
+  },
+  getShortlistingCommittee(jobOpening) {
+    return callMethod('pathways.api.scoring.get_shortlisting_committee', { job_opening: jobOpening })
+  },
+  updateShortlistingCommittee(jobOpening, data) {
+    return callMethod('pathways.api.scoring.update_shortlisting_committee', { job_opening: jobOpening, ...data })
   },
   getShortlistingReport(jobOpening) {
     return callMethod('pathways.api.shortlisting_report.get_shortlisting_report', { job_opening: jobOpening })
@@ -34,11 +42,5 @@ export const scoringService = {
   },
   submitShortlistingScore(data) {
     return callMethod('pathways.api.scoring.submit_shortlisting_score', data)
-  },
-  submitInterviewAssessment(data) {
-    return callMethod('pathways.api.scoring.submit_interview_assessment', data)
-  },
-  consolidateScores(interview) {
-    return callMethod('pathways.api.scoring.consolidate_scores', { interview })
   },
 }

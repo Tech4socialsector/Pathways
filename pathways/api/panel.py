@@ -3,7 +3,12 @@
 
 """Interview panel (workflow folder "6. Final Interview"): each member of
 the job's Selection Committee scores every candidate on the Interview
-Assessment Form; the scores are averaged in the consolidated score sheet."""
+Assessment Form; the scores are averaged in the consolidated score sheet.
+
+Round 1 / HR interaction (workflow step 13) uses the same form: the
+interview's HR assessors score it on the track's "HR Interaction" rubric
+and record an HR outcome and note, which the final panel then reads.
+Panellists sign the form on screen (step 18)."""
 
 import frappe
 from frappe import _
@@ -13,6 +18,7 @@ from pathways.api.interviews import _can_manage
 from pathways.pathways.doctype.interview_assessment.interview_assessment import interview_rubric
 
 VERDICTS = ("Recommended", "Waitlist", "Not Recommended")
+HR_OUTCOMES = ("Recommend for final", "Hold", "Not recommended")
 # Decided applications: their scores are part of the record and stay as they are.
 DECIDED = ("Selected", "Not Selected", "Offer Extended", "Offer Accepted", "Offer Declined", "Documents Pending", "Documents Verified", "Joined", "Withdrawn")
 # The Admin and Faculty forms ask for the candidate's area of specialization.
@@ -33,6 +39,20 @@ def _panel_members(committee):
 	)
 
 
+def _hr_assessors(interview):
+	return frappe.get_all(
+		"Interview HR Assessor", filters={"parent": interview, "parenttype": "Interview"}, order_by="idx asc", pluck="assessor"
+	)
+
+
+def _scorers(iv):
+	"""Who fills the form for this interview: its HR assessors (Round 1) or
+	the job's Selection Committee (final)."""
+	if iv.round_type == "HR Interaction":
+		return _hr_assessors(iv.name)
+	return _panel_members(iv.selection_committee)
+
+
 def score_summary(interviews):
 	"""{interview: {scored, panel_size, average, max_score, percent}} for the
 	recruitment team's lists."""
@@ -41,15 +61,16 @@ def score_summary(interviews):
 	rows = frappe.get_all(
 		"Interview Assessment", filters={"interview": ["in", list(interviews)]}, fields=["interview", "total_score", "max_score"]
 	)
-	committees = dict(frappe.get_all("Interview", filters={"name": ["in", list(interviews)]}, fields=["name", "selection_committee"], as_list=True))
+	info = {r.name: r for r in frappe.get_all("Interview", filters={"name": ["in", list(interviews)]}, fields=["name", "selection_committee", "round_type"])}
 	out = {}
 	for name in interviews:
 		mine = [r for r in rows if r.interview == name]
 		avg = sum(flt(r.total_score) for r in mine) / len(mine) if mine else 0
 		top = flt(mine[0].max_score) if mine else 0
+		iv = info.get(name)
 		out[name] = {
 			"scored": len(mine),
-			"panel_size": len(_panel_members(committees.get(name))),
+			"panel_size": len(_scorers(iv)) if iv else 0,
 			"average": round(avg, 2),
 			"max_score": top,
 			"percent": round(avg * 100 / top, 1) if top else 0,
@@ -64,35 +85,52 @@ def get_my_panel():
 	score and how many panellists have scored."""
 	manage = _can_manage()
 	committees = _my_committees()
-	if not committees and not manage:
+	assessed = frappe.get_all("Interview HR Assessor", filters={"assessor": frappe.session.user, "parenttype": "Interview"}, pluck="parent")
+	if not committees and not assessed and not manage:
 		return {"interviews": [], "can_manage": 0, "is_panellist": 0}
-	filters = {"round_type": "Final", "status": ["!=", "Cancelled"]}
+	fields = [
+		"name", "application", "candidate_name", "job_title", "position", "status", "scheduled_datetime", "mode", "round_type",
+		"meeting_platform", "meeting_link", "location", "selection_committee",
+		"application.application_id as application_id", "application.job_opening as job_opening", "application.status as application_status",
+	]
+	or_filters = None
 	if not manage:
-		filters["selection_committee"] = ["in", committees]
-	rows = frappe.get_all(
-		"Interview",
-		filters=filters,
-		fields=[
-			"name", "application", "candidate_name", "job_title", "position", "status", "scheduled_datetime", "mode",
-			"meeting_platform", "meeting_link", "location", "selection_committee",
-			"application.application_id as application_id", "application.job_opening as job_opening", "application.status as application_status",
-		],
-		order_by="scheduled_datetime asc",
-	)
+		or_filters = []
+		if committees:
+			or_filters.append(["Interview", "selection_committee", "in", committees])
+		if assessed:
+			or_filters.append(["Interview", "name", "in", assessed])
+	rows = frappe.get_all("Interview", filters={"status": ["!=", "Cancelled"]}, or_filters=or_filters, fields=fields, order_by="scheduled_datetime asc")
+	# Final interviews of the user's committees and the Round 1 interviews
+	# they assess (the recruitment team sees all of both).
+	rows = [
+		r for r in rows
+		if (r.round_type == "Final" and (manage or r.selection_committee in committees)) or (r.round_type == "HR Interaction" and (manage or r.name in assessed))
+	]
 	mine = {
 		r.interview: r
 		for r in frappe.get_all(
 			"Interview Assessment",
 			filters={"panelist": frappe.session.user, "interview": ["in", [r.name for r in rows] or [""]]},
-			fields=["interview", "total_score", "max_score", "score_percent", "verdict", "modified"],
+			fields=["interview", "total_score", "max_score", "score_percent", "verdict", "hr_outcome", "modified"],
 		)
 	}
 	summary = score_summary([r.name for r in rows])
+	assessors = {}
+	for a in frappe.get_all(
+		"Interview HR Assessor", filters={"parenttype": "Interview", "parent": ["in", [r.name for r in rows if r.round_type == "HR Interaction"] or [""]]},
+		fields=["parent", "assessor_name"], order_by="idx asc",
+	):
+		assessors.setdefault(a.parent, []).append(a.assessor_name)
 	for r in rows:
-		r.is_panellist = 1 if r.selection_committee in committees else 0
+		if r.round_type == "HR Interaction":
+			r.is_panellist = 1 if r.name in assessed else 0
+			r.hr_assessor_names = assessors.get(r.name, [])
+		else:
+			r.is_panellist = 1 if r.selection_committee in committees else 0
 		r.my_score = mine.get(r.name)
 		r.scores = summary.get(r.name)
-	return {"interviews": rows, "can_manage": 1 if manage else 0, "is_panellist": 1 if committees else 0}
+	return {"interviews": rows, "can_manage": 1 if manage else 0, "is_panellist": 1 if committees or assessed else 0, "is_hr_assessor": 1 if assessed else 0}
 
 
 @frappe.whitelist()
@@ -104,7 +142,8 @@ def get_assessment_form(interview, panelist=None):
 	iv = frappe.get_doc("Interview", interview)
 	iv.check_permission("read")
 	user = frappe.session.user
-	members = _panel_members(iv.selection_committee)
+	is_hr = iv.round_type == "HR Interaction"
+	members = _scorers(iv)
 	manage = _can_manage()
 	if panelist and panelist != user and not (manage and panelist in members):
 		frappe.throw(_("You can only enter your own scores."), frappe.PermissionError)
@@ -115,13 +154,15 @@ def get_assessment_form(interview, panelist=None):
 			# The first panellist still to score, for the recruitment team.
 			done = set(frappe.get_all("Interview Assessment", filters={"interview": iv.name}, pluck="panelist"))
 			panelist = next((m for m in members if m not in done), members[0] if members else user)
-	if iv.round_type != "Final":
-		frappe.throw(_("Only final interviews are scored by the panel."))
 	app = frappe.db.get_value("Application", iv.application, ["name", "application_id", "job_opening", "status", "selection_outcome"], as_dict=True)
 	track = frappe.db.get_value("Job Opening", app.job_opening, "track")
 	rubric = interview_rubric(iv.name)
 	if not rubric:
-		frappe.throw(_("No active Final Interview rubric for the {0} track. Add one in Master Setup > Scoring Rubrics.").format(track or "?"))
+		frappe.throw(
+			_("No active {0} rubric for the {1} track. Add one in Master Setup > Scoring Rubrics.").format(
+				_("HR Interaction") if is_hr else _("Final Interview"), track or "?"
+			)
+		)
 
 	existing = frappe.db.get_value("Interview Assessment", {"interview": iv.name, "panelist": panelist}, "name")
 	mine = frappe.get_doc("Interview Assessment", existing) if existing else None
@@ -135,13 +176,13 @@ def get_assessment_form(interview, panelist=None):
 	elif app.status in DECIDED or app.selection_outcome:
 		locked = _("A decision has been recorded for this candidate ({0}), so the scores can no longer be changed.").format(app.selection_outcome or app.status)
 	elif not members:
-		locked = _("This job has no Selection Committee yet.")
+		locked = _("This interview has no HR assessors yet.") if is_hr else _("This job has no Selection Committee yet.")
 	elif panelist not in members:
-		locked = _("Only members of this job's Selection Committee can score.")
+		locked = _("Only this interview's HR assessors can score.") if is_hr else _("Only members of this job's Selection Committee can score.")
 
 	return {
 		"interview": {
-			"name": iv.name, "candidate_name": iv.candidate_name, "candidate": iv.candidate, "job_title": iv.job_title, "position": iv.position,
+			"name": iv.name, "candidate_name": iv.candidate_name, "candidate": iv.candidate, "job_title": iv.job_title, "position": iv.position, "round_type": iv.round_type,
 			"scheduled_datetime": iv.scheduled_datetime, "status": iv.status, "mode": iv.mode, "meeting_platform": iv.get("meeting_platform"),
 			"meeting_link": iv.meeting_link, "location": iv.get("location"),
 		},
@@ -154,10 +195,16 @@ def get_assessment_form(interview, panelist=None):
 			"max_score": sum(flt(c.max_score) for c in rubric.criteria),
 			"criteria": [{"label": c.criterion_label, "max_score": flt(c.max_score), "guidance": c.guidance_text or "", "score": given.get(c.criterion_label)} for c in rubric.criteria],
 		},
-		"ask_specialization": 1 if track in SPECIALIZATION_TRACKS else 0,
+		"ask_specialization": 1 if track in SPECIALIZATION_TRACKS and not is_hr else 0,
+		"is_hr": 1 if is_hr else 0,
+		"hr_outcomes": list(HR_OUTCOMES),
+		# Pathways Settings: a drawn signature is needed to submit (not for paper forms typed in).
+		"signature_required": 1 if cint(frappe.get_cached_doc("Pathways Settings").get("require_assessment_signature")) and not on_behalf else 0,
 		"mine": {
 			"name": mine.name, "total_score": mine.total_score, "verdict": mine.verdict, "additional_comments": mine.recommendation,
 			"area_of_specialization": mine.area_of_specialization, "modified": mine.modified,
+			"hr_outcome": mine.get("hr_outcome"), "expected_salary": mine.get("expected_salary"), "notice_period": mine.get("notice_period"),
+			"signature": mine.get("panelist_signature"), "signed_on": mine.get("signed_on"),
 		} if mine else None,
 		"can_score": 0 if locked else 1,
 		"locked_reason": locked,
@@ -188,17 +235,36 @@ def _panel_status(interview, members):
 
 
 @frappe.whitelist(methods=["POST"])
-def submit_assessment(interview, scores, verdict=None, additional_comments=None, area_of_specialization=None, panelist=None):
+def submit_assessment(
+	interview, scores, verdict=None, additional_comments=None, area_of_specialization=None, panelist=None,
+	hr_outcome=None, expected_salary=None, notice_period=None, signature=None,
+):
 	"""Save an Interview Assessment Form for one candidate: the signed-in
 	panellist's own, or (recruitment team) a panellist's paper form typed
 	in, recorded with who entered it. Can be changed until a decision is
-	recorded for the candidate."""
+	recorded for the candidate. Round 1: hr_outcome (Recommend for final /
+	Hold / Not recommended), the note in additional_comments, salary
+	expectation and notice period. signature: the drawn signature as a
+	data URL (required when Pathways Settings asks for it)."""
 	form = get_assessment_form(interview, panelist)
 	if not form["can_score"]:
 		frappe.throw(form["locked_reason"], frappe.PermissionError)
 	scores = frappe.parse_json(scores) if isinstance(scores, str) else (scores or {})
-	if verdict and verdict not in VERDICTS:
+	is_hr = form["is_hr"]
+	if is_hr:
+		verdict = None
+		if hr_outcome not in HR_OUTCOMES:
+			frappe.throw(_("Choose the HR outcome: recommend for final, hold or not recommended."))
+	elif verdict and verdict not in VERDICTS:
 		frappe.throw(_("Choose a recommendation."))
+	signature = (signature or "").strip() or None
+	if signature and not signature.startswith("data:image/"):
+		frappe.throw(_("The signature is not a valid image."))
+	if signature and len(signature) > 500000:
+		frappe.throw(_("The signature image is too large. Clear it and sign again."))
+	previous_signature = (form["mine"] or {}).get("signature")
+	if form["signature_required"] and not (signature or previous_signature):
+		frappe.throw(_("Please sign the assessment form before submitting."))
 
 	rows = []
 	for c in form["rubric"]["criteria"]:
@@ -221,8 +287,14 @@ def submit_assessment(interview, scores, verdict=None, additional_comments=None,
 			"recommendation": (additional_comments or "").strip() or None,
 			"area_of_specialization": (area_of_specialization or "").strip() or None,
 			"panelist_signature_confirmed": 1,
+			"hr_outcome": hr_outcome if is_hr else None,
+			"expected_salary": ((expected_salary or "").strip() or None) if is_hr else None,
+			"notice_period": ((notice_period or "").strip() or None) if is_hr else None,
 		}
 	)
+	if signature and signature != previous_signature:
+		doc.panelist_signature = signature
+		doc.signed_on = frappe.utils.now_datetime()
 	doc.set("criteria", rows)
 	# Access was checked above: a member of this interview's committee.
 	doc.flags.ignore_permissions = True
@@ -238,7 +310,7 @@ OUTCOME_FROM = ("Interview Scheduled", "Interview Completed", "Selected", "Not S
 
 
 def _can_view_sheet(job_opening):
-	if _can_manage():
+	if _can_manage() or frappe.flags.get("pathways_sheet_access") == job_opening:
 		return True
 	return bool(frappe.db.exists("Selection Committee", [["Committee Member Row", "member", "=", frappe.session.user], ["job_opening", "=", job_opening]]))
 
@@ -573,8 +645,11 @@ def candidate_brief(application, panelist=None):
 	shortlisting = frappe.get_all("Shortlisting Score", filters={"application": application}, fields=["remarks", "total_score", "is_shortlisted"], order_by="modified desc", limit=1)
 	round1 = frappe.get_all(
 		"Interview", filters={"application": application, "round_type": "HR Interaction", "status": ["!=", "Cancelled"]},
-		fields=["status", "scheduled_datetime"], order_by="scheduled_datetime desc", limit=1,
+		fields=["name", "status", "scheduled_datetime"], order_by="scheduled_datetime desc", limit=1,
 	)
+	# The job's Shortlisting Note (step 14): its remarks for this candidate.
+	note = frappe.db.get_value("Shortlisting Note", {"job_opening": app.job_opening}, "name")
+	final_row = frappe.db.get_value("Final Shortlist Row", {"parenttype": "Shortlisting Note", "parent": note or "", "application": application}, "remarks")
 	return {
 		"full_name": frappe.db.get_value("Candidate", app.candidate, "full_name"),
 		"application_id": app.application_id,
@@ -594,8 +669,113 @@ def candidate_brief(application, panelist=None):
 		],
 		"documents": docs,
 		"shortlisting_note": (shortlisting[0].remarks if shortlisting else "") or "",
-		"round1": {"status": round1[0].status, "date": round1[0].scheduled_datetime} if round1 else None,
+		"final_shortlist_remarks": final_row or "",
+		"round1": {"status": round1[0].status, "date": round1[0].scheduled_datetime, "assessments": hr_assessments(round1[0].name)} if round1 else None,
 	}
+
+
+# ------------------------------------------------- Round 1 / HR outcomes
+
+
+def hr_assessments(interview):
+	"""What each HR assessor recorded for a Round 1 interview."""
+	return [
+		{
+			"assessor": a.panelist,
+			"assessor_name": frappe.utils.get_fullname(a.panelist),
+			"total_score": a.total_score,
+			"max_score": a.max_score,
+			"score_percent": a.score_percent,
+			"hr_outcome": a.hr_outcome or "",
+			"note": a.recommendation or "",
+			"expected_salary": a.expected_salary or "",
+			"notice_period": a.notice_period or "",
+			"modified": a.modified,
+		}
+		for a in frappe.get_all(
+			"Interview Assessment",
+			filters={"interview": interview},
+			fields=["panelist", "total_score", "max_score", "score_percent", "hr_outcome", "recommendation", "expected_salary", "notice_period", "modified"],
+			order_by="creation asc",
+		)
+	]
+
+
+def hr_outcome_summary(interviews):
+	"""{interview: [{assessor_name, hr_outcome, total_score, max_score}]}"""
+	out = {}
+	if not interviews:
+		return out
+	for a in frappe.get_all(
+		"Interview Assessment",
+		filters={"interview": ["in", list(interviews)]},
+		fields=["interview", "panelist", "hr_outcome", "total_score", "max_score"],
+		order_by="creation asc",
+	):
+		out.setdefault(a.interview, []).append(
+			{"assessor_name": frappe.utils.get_fullname(a.panelist), "hr_outcome": a.hr_outcome or "", "total_score": a.total_score, "max_score": a.max_score}
+		)
+	return out
+
+
+def hr_outcome_label(application):
+	"""One line for the final shortlist: each assessor's outcome."""
+	iv = frappe.get_all(
+		"Interview", filters={"application": application, "round_type": "HR Interaction", "status": ["!=", "Cancelled"]},
+		order_by="scheduled_datetime desc", limit=1, pluck="name",
+	)
+	if not iv:
+		return ""
+	return "; ".join(f"{a['hr_outcome'] or _('not given')} ({a['assessor_name']})" for a in hr_outcome_summary(iv).get(iv[0], []))
+
+
+HR_NOTES_HTML = """
+<style>
+	body { font-family: Arial, sans-serif; font-size: 11px; color: #111; }
+	h1 { font-size: 15px; text-align: center; margin: 0 0 2px; }
+	h2 { font-size: 12px; text-align: center; margin: 0 0 10px; }
+	table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
+	td, th { border: 1px solid #555; padding: 5px 6px; vertical-align: top; }
+	th { background: #f2e6e8; text-align: left; }
+	.cand { font-weight: bold; font-size: 12px; margin: 10px 0 4px; }
+</style>
+<h1>NATIONAL LAW SCHOOL OF INDIA UNIVERSITY, BENGALURU</h1>
+<h2>ROUND 1 (HR INTERACTION) NOTES | {{ job_title | upper }}</h2>
+{% for c in candidates %}
+<div class="cand">{{ loop.index }}. {{ c.candidate_name }} ({{ c.application_id }}) &middot; {{ c.date }} &middot; {{ c.status }}</div>
+{% if c.assessments %}
+<table>
+	<tr><th style="width:16%">HR assessor</th><th style="width:10%">Score</th><th style="width:14%">Outcome</th><th style="width:12%">Salary expectation</th><th style="width:12%">Notice period</th><th>HR interaction note</th></tr>
+	{% for a in c.assessments %}
+	<tr><td>{{ a.assessor_name }}</td><td>{{ a.total_score }} / {{ a.max_score }}</td><td>{{ a.hr_outcome }}</td><td>{{ a.expected_salary }}</td><td>{{ a.notice_period }}</td><td>{{ a.note }}</td></tr>
+	{% endfor %}
+</table>
+{% else %}<p>No HR assessment recorded.</p>{% endif %}
+{% endfor %}
+"""
+
+
+def hr_notes_pdf(job_opening):
+	"""Every candidate's Round 1 notes for a job, as PDF bytes (no permission check)."""
+	from frappe.utils.pdf import get_pdf
+
+	apps = frappe.get_all("Application", filters={"job_opening": job_opening}, pluck="name")
+	interviews = frappe.get_all(
+		"Interview",
+		filters={"application": ["in", apps or [""]], "round_type": "HR Interaction", "status": ["!=", "Cancelled"]},
+		fields=["name", "candidate_name", "status", "scheduled_datetime", "application.application_id as application_id"],
+		order_by="scheduled_datetime asc",
+	)
+	candidates = [
+		{
+			"candidate_name": iv.candidate_name, "application_id": iv.application_id, "status": iv.status,
+			"date": frappe.utils.format_datetime(iv.scheduled_datetime, "dd MMM yyyy, h:mm a") if iv.scheduled_datetime else "",
+			"assessments": [{**a, "total_score": f"{flt(a['total_score']):g}", "max_score": f"{flt(a['max_score']):g}"} for a in hr_assessments(iv.name)],
+		}
+		for iv in interviews
+	]
+	html = frappe.render_template(HR_NOTES_HTML, {"candidates": candidates, "job_title": frappe.db.get_value("Job Opening", job_opening, "job_title")})
+	return get_pdf(html, {"orientation": "Landscape", "page-size": "A4"})
 
 
 # --------------------------------------------- printable assessment forms
@@ -661,7 +841,7 @@ FORM_HTML = """
 	</table>
 	<table class="foot" style="margin-top:8px">
 		<tr><td style="width:22%"><b>Recommendation of the Panelist:</b></td><td>{{ f.recommendation }}</td></tr>
-		<tr><td><b>Signature of Panelist:</b></td><td>{{ f.signature }}</td></tr>
+		<tr><td><b>Signature of Panelist:</b></td><td>{% if f.signature_image %}<img src="{{ f.signature_image }}" style="height:48px"><br>{% endif %}<span class="muted">{{ f.signature }}</span></td></tr>
 	</table>
 </div>
 {% endfor %}
@@ -669,26 +849,48 @@ FORM_HTML = """
 
 
 @frappe.whitelist()
-def download_assessment_forms(job_opening, panelist=None, interview_date=None):
+def download_assessment_forms(job_opening, panelist=None, interview_date=None, blank=0):
 	"""The Interview Assessment Form as a PDF, one page per panellist with
 	every candidate of the job, filled with the scores given so far (blank
 	where not scored, for use on paper). Panellists get their own form; the
-	recruitment team gets every panellist's, or one with `panelist`."""
-	data = get_consolidated(job_opening, interview_date)
+	recruitment team gets every panellist's, or one with `panelist`. blank=1:
+	the empty forms, to share with the panel before the interviews."""
+	frappe.local.response.filecontent, filename = assessment_forms_pdf(job_opening, panelist, interview_date, blank)
+	frappe.local.response.filename = filename
+	frappe.local.response.type = "download"
+
+
+def assessment_forms_pdf(job_opening, panelist=None, interview_date=None, blank=0, members_override=None):
+	"""(pdf bytes, file name). members_override: [{user, full_name}] to print
+	for, skipping the caller's permission scoping (job files shared with a
+	panellist)."""
+	blank = cint(blank)
+	data = get_consolidated(job_opening, interview_date) if members_override is None else _consolidated_unchecked(job_opening, interview_date)
 	members = [p for p in data["panel"]]
-	if not _can_manage():
+	if members_override is not None:
+		members = members_override
+	elif not _can_manage():
 		members = [p for p in members if p["user"] == frappe.session.user]
 	elif panelist:
 		members = [p for p in members if p["user"] == panelist]
 	if not members:
 		frappe.throw(_("No panellist to print a form for."))
+	signatures = {}
+	if not blank:
+		for a in frappe.get_all(
+			"Interview Assessment",
+			filters={"interview": ["in", [r["interview"] for r in data["rows"]] or [""]], "panelist_signature": ["is", "set"]},
+			fields=["panelist", "panelist_signature"],
+			order_by="signed_on asc",
+		):
+			signatures[a.panelist] = a.panelist_signature
 	job = data["job"]
 	labels = {"Recommended": _("Recommended"), "Waitlist": _("Waitlist"), "Not Recommended": _("Not recommended")}
 	forms = []
 	for p in members:
 		rows, by_verdict, confirmed = [], {}, []
 		for r in data["rows"]:
-			s = r["scores"].get(p["user"])
+			s = None if blank else r["scores"].get(p["user"])
 			rows.append(
 				{
 					"name": r["candidate_name"], "id": r["application_id"], "area": (s or {}).get("area") or "",
@@ -705,7 +907,9 @@ def download_assessment_forms(job_opening, panelist=None, interview_date=None):
 		signature = ""
 		if confirmed:
 			signature = _("Confirmed on the recruitment platform") + (f" ({_('entered by')} {', '.join(sorted(entered))})" if entered else "")
-		forms.append({"panellist": p["full_name"], "rows": rows, "recommendation": recommendation, "signature": signature})
+		forms.append(
+			{"panellist": p["full_name"], "rows": rows, "recommendation": recommendation, "signature": signature, "signature_image": signatures.get(p["user"], "")}
+		)
 
 	times = sorted(r["scheduled_datetime"] for r in data["rows"] if r["scheduled_datetime"])
 	when = times[0] if times else None
@@ -728,6 +932,13 @@ def download_assessment_forms(job_opening, panelist=None, interview_date=None):
 	pdf = get_pdf(html, {"orientation": "Landscape", "page-size": "A4", "margin-top": "10mm", "margin-bottom": "10mm", "margin-left": "8mm", "margin-right": "8mm"})
 	who = members[0]["full_name"] if len(members) == 1 else _("All panellists")
 	suffix = f" - {frappe.utils.formatdate(interview_date, 'dd.MM.yyyy')}" if interview_date else ""
-	frappe.local.response.filename = f"Interview Assessment Form - {job.job_title} - {who}{suffix}.pdf"
-	frappe.local.response.filecontent = pdf
-	frappe.local.response.type = "download"
+	return pdf, f"Interview Assessment Form{' (blank)' if blank else ''} - {job.job_title} - {who}{suffix}.pdf"
+
+
+def _consolidated_unchecked(job_opening, interview_date=None):
+	"""get_consolidated for a caller that has checked access itself."""
+	try:
+		frappe.flags.pathways_sheet_access = job_opening
+		return get_consolidated(job_opening, interview_date)
+	finally:
+		frappe.flags.pathways_sheet_access = None

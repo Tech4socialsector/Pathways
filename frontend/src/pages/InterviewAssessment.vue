@@ -3,7 +3,7 @@
     <PageHeader :title="form ? form.interview.candidate_name : 'Interview Assessment'" back-to="/panel">
       <template v-if="form" #meta>
         <span class="text-sm text-gray-500">
-          {{ form.interview.job_title }} · Final interview · {{ dayjs(form.interview.scheduled_datetime).format('ddd, DD MMM YYYY, h:mm A [IST]') }}
+          {{ form.interview.job_title }} · {{ isHr ? 'Round 1 (HR interaction)' : 'Final interview' }} · {{ dayjs(form.interview.scheduled_datetime).format('ddd, DD MMM YYYY, h:mm A [IST]') }}
         </span>
       </template>
       <template v-if="form" #actions>
@@ -94,7 +94,26 @@
                 <dt class="text-xs text-gray-500">Round 1 (HR interaction)</dt>
                 <dd class="text-gray-800">{{ brief.round1 ? `${brief.round1.status} · ${dayjs(brief.round1.date).format('DD MMM YYYY')}` : 'No Round 1 interview' }}</dd>
               </div>
+              <div v-if="brief.final_shortlist_remarks" class="sm:col-span-2">
+                <dt class="text-xs text-gray-500">Final shortlist remarks</dt>
+                <dd class="whitespace-pre-line text-gray-800">{{ brief.final_shortlist_remarks }}</dd>
+              </div>
             </dl>
+            <!-- HR interaction notes, for the final panel (workflow step 16) -->
+            <ul v-if="!isHr && brief.round1?.assessments?.length" class="mt-3 flex flex-col gap-2">
+              <li v-for="a in brief.round1.assessments" :key="a.assessor" class="rounded-lg bg-gray-50 px-3 py-2 text-sm">
+                <div class="flex flex-wrap items-baseline justify-between gap-2">
+                  <span class="font-medium text-gray-900">{{ a.assessor_name }}</span>
+                  <span class="text-xs" :class="HR_TONE[a.hr_outcome] || 'text-gray-600'">{{ a.hr_outcome || 'No outcome' }} · {{ fmt(a.total_score) }}/{{ fmt(a.max_score) }}</span>
+                </div>
+                <p v-if="a.note" class="mt-1 whitespace-pre-line text-gray-700">{{ a.note }}</p>
+                <p v-if="a.expected_salary || a.notice_period" class="mt-1 text-xs text-gray-500">
+                  <template v-if="a.expected_salary">Salary expectation: {{ a.expected_salary }}</template>
+                  <template v-if="a.expected_salary && a.notice_period"> · </template>
+                  <template v-if="a.notice_period">Notice period: {{ a.notice_period }}</template>
+                </p>
+              </li>
+            </ul>
             <router-link v-if="session.hasMenu('applications')" :to="`/applications/${form.application.name}`" class="mt-3 inline-block text-xs text-brand-700 hover:underline">
               Open the full application
             </router-link>
@@ -105,9 +124,9 @@
         <!-- Interview Assessment Form -->
         <section class="overflow-hidden rounded-xl border bg-white shadow-sm lg:sticky lg:top-0">
           <header class="border-b bg-brand-700 px-5 py-3 text-white">
-            <div class="text-sm font-semibold">Interview Assessment Form</div>
+            <div class="text-sm font-semibold">{{ isHr ? 'HR Assessment Sheet' : 'Interview Assessment Form' }}</div>
             <div class="text-xs text-white/80">
-              Panellist: {{ form.panellist_name }} · out of {{ fmt(form.rubric.max_score) }} · {{ fmt(form.rubric.pass_percent) }}% needed for an offer
+              {{ isHr ? 'HR assessor' : 'Panellist' }}: {{ form.panellist_name }} · out of {{ fmt(form.rubric.max_score) }}<template v-if="!isHr"> · {{ fmt(form.rubric.pass_percent) }}% needed for an offer</template>
             </div>
           </header>
 
@@ -170,10 +189,10 @@
               </div>
               <div class="relative mt-2 h-2 overflow-hidden rounded-full bg-gray-200">
                 <div class="h-full rounded-full transition-all" :class="meetsBar ? 'bg-green-600' : 'bg-orange-500'" :style="{ width: `${Math.min(100, percent)}%` }" />
-                <div class="absolute inset-y-0 w-0.5 bg-gray-500" :style="{ left: `${form.rubric.pass_percent}%` }" title="Needed for an offer" />
+                <div class="absolute inset-y-0 w-0.5 bg-gray-500" :style="{ left: `${form.rubric.pass_percent}%` }" :title="isHr ? 'Pass mark' : 'Needed for an offer'" />
               </div>
               <div class="mt-1 text-xs" :class="!complete ? 'text-gray-500' : meetsBar ? 'text-green-700' : 'text-orange-700'">
-                {{ fmt(percent) }}% · {{ !complete ? 'Score every criterion' : meetsBar ? 'Meets the bar for an offer' : `Below the ${fmt(form.rubric.pass_percent)}% needed for an offer` }}
+                {{ fmt(percent) }}% · {{ !complete ? 'Score every criterion' : isHr ? `${meetsBar ? 'At or above' : 'Below'} ${fmt(form.rubric.pass_percent)}% of the HR sheet` : meetsBar ? 'Meets the bar for an offer' : `Below the ${fmt(form.rubric.pass_percent)}% needed for an offer` }}
               </div>
             </div>
 
@@ -185,7 +204,30 @@
               placeholder="e.g. Constitutional law, Financial reporting"
             />
 
-            <div>
+            <div v-if="isHr">
+              <div class="mb-1.5 text-xs font-medium text-gray-700">HR outcome</div>
+              <div class="grid grid-cols-3 gap-2" role="radiogroup" aria-label="HR outcome">
+                <button
+                  v-for="v in HR_OUTCOMES"
+                  :key="v.value"
+                  type="button"
+                  role="radio"
+                  :aria-checked="extra.hrOutcome === v.value"
+                  :disabled="!form.can_score"
+                  class="rounded-lg border px-2 py-2 text-xs font-medium transition disabled:cursor-not-allowed"
+                  :class="extra.hrOutcome === v.value ? v.on : 'border-gray-200 text-gray-700 hover:bg-gray-50'"
+                  @click="extra.hrOutcome = extra.hrOutcome === v.value ? '' : v.value"
+                >
+                  {{ v.value }}
+                </button>
+              </div>
+            </div>
+            <div v-if="isHr" class="grid grid-cols-2 gap-3">
+              <FormControl label="Salary expectation" v-model="extra.salary" :disabled="!form.can_score" placeholder="e.g. 12 LPA" />
+              <FormControl label="Notice period" v-model="extra.notice" :disabled="!form.can_score" placeholder="e.g. 30 days" />
+            </div>
+
+            <div v-else>
               <div class="mb-1.5 text-xs font-medium text-gray-700">Your recommendation</div>
               <div class="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Recommendation">
                 <button
@@ -204,13 +246,22 @@
               </div>
             </div>
 
-            <FormControl label="Additional comments" type="textarea" v-model="extra.comments" :rows="3" :disabled="!form.can_score" />
+            <FormControl :label="isHr ? 'HR interaction note' : 'Additional comments'" type="textarea" v-model="extra.comments" :rows="3" :disabled="!form.can_score" />
+
+            <!-- Workflow step 18: the panellist signs the form on screen -->
+            <SignaturePad
+              v-if="!form.on_behalf && (form.can_score || form.mine?.signature)"
+              v-model="extra.signature"
+              :disabled="!form.can_score"
+              :label="form.signature_required ? 'Your signature (required)' : 'Your signature'"
+            />
 
             <template v-if="form.can_score">
               <label class="flex items-start gap-2.5 text-gray-700">
                 <input v-model="extra.confirm" type="checkbox" class="mt-0.5 rounded border-gray-300 text-brand-700 focus:ring-brand-700" />
                 <span v-if="form.on_behalf">I have entered these scores exactly as given on {{ form.panellist_name }}'s signed assessment form.</span>
-                <span v-else>I confirm this is my assessment of the candidate as a member of the Selection Committee. <span class="text-xs text-gray-500">(In place of the panellist's signature.)</span></span>
+                <span v-else-if="isHr">I confirm this is my assessment of the candidate as an HR assessor for Round 1.</span>
+                <span v-else>I confirm this is my assessment of the candidate as a member of the Selection Committee.</span>
               </label>
               <p v-if="saveError" class="rounded-md bg-red-50 px-3 py-2 text-red-700">{{ saveError }}</p>
               <div class="flex items-center gap-3">
@@ -236,6 +287,7 @@ import dayjs from 'dayjs'
 import StaffLayout from '@/layouts/StaffLayout.vue'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import DocumentViewer from '@/components/common/DocumentViewer.vue'
+import SignaturePad from '@/components/common/SignaturePad.vue'
 import { useSessionStore } from '@/stores/session'
 import { panelService } from '@/services/panel'
 import { BTN_BRAND } from '@/utils/buttonStyles'
@@ -250,11 +302,19 @@ const VERDICTS = [
   { value: 'Not Recommended', label: 'Not recommended', on: 'border-red-500 bg-red-50 text-red-700' },
 ]
 
+const HR_OUTCOMES = [
+  { value: 'Recommend for final', on: 'border-green-600 bg-green-50 text-green-800' },
+  { value: 'Hold', on: 'border-amber-500 bg-amber-50 text-amber-800' },
+  { value: 'Not recommended', on: 'border-red-500 bg-red-50 text-red-700' },
+]
+const HR_TONE = { 'Recommend for final': 'text-green-700', Hold: 'text-amber-700', 'Not recommended': 'text-red-700' }
+
 const form = ref(null)
+const isHr = computed(() => !!form.value?.is_hr)
 const loading = ref(false)
 const error = ref('')
 const scores = reactive({})
-const extra = reactive({ verdict: '', comments: '', area: '', confirm: false })
+const extra = reactive({ verdict: '', hrOutcome: '', salary: '', notice: '', comments: '', area: '', signature: '', confirm: false })
 const saving = ref(false)
 const saveError = ref('')
 
@@ -282,7 +342,8 @@ const percent = computed(() => (form.value?.rubric.max_score ? (total.value * 10
 const meetsBar = computed(() => complete.value && percent.value >= (form.value?.rubric.pass_percent || 50))
 const blocker = computed(() => {
   if (!complete.value) return 'Score every criterion.'
-  if (!extra.verdict) return 'Choose your recommendation.'
+  if (isHr.value ? !extra.hrOutcome : !extra.verdict) return isHr.value ? 'Choose the HR outcome.' : 'Choose your recommendation.'
+  if (form.value?.signature_required && !extra.signature) return 'Sign the form to submit.'
   if (!extra.confirm) return 'Tick the confirmation to submit.'
   return ''
 })
@@ -300,6 +361,10 @@ async function load(name, panelist = null) {
       verdict: f.mine?.verdict || '',
       comments: f.mine?.additional_comments || '',
       area: f.mine?.area_of_specialization || '',
+      hrOutcome: f.mine?.hr_outcome || '',
+      salary: f.mine?.expected_salary || '',
+      notice: f.mine?.notice_period || '',
+      signature: f.mine?.signature || '',
       confirm: !!f.mine,
     })
   } catch (e) {
@@ -335,6 +400,11 @@ async function save() {
       verdict: extra.verdict,
       additionalComments: extra.comments,
       areaOfSpecialization: extra.area,
+      hrOutcome: isHr.value ? extra.hrOutcome : null,
+      expectedSalary: extra.salary,
+      noticePeriod: extra.notice,
+      // Only a newly drawn one is sent; the server keeps the earlier signature otherwise.
+      signature: extra.signature && extra.signature !== form.value.mine?.signature ? extra.signature : null,
     })
     toast({ title: `Scores saved: ${fmt(r.total_score)} / ${fmt(r.max_score)}.`, icon: 'check', iconClasses: 'text-green-500' })
     await load(props.interview, form.value.panelist)

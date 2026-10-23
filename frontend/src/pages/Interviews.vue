@@ -171,10 +171,10 @@
       </DataTable>
     </div>
 
-    <EditInterviewDialog v-model:open="editDialog.open" :interview="editDialog.interview" @saved="load" />
+    <EditInterviewDialog v-model:open="editDialog.open" :interview="editDialog.interview" :assessor-limit="assessorLimit" @saved="load" />
     <CancelInterviewDialog v-model:open="cancelDialog.open" :interview="cancelDialog.interview" :interviews="cancelDialog.interviews" @saved="onCancelled" />
     <ConfirmActionDialog v-model:open="confirmBox.open" v-bind="confirmBox" />
-    <ScheduleInterviewDialog v-model:open="scheduleDialog.open" :candidates="scheduleDialog.candidates" :round="scheduleDialog.round" @scheduled="onScheduled" />
+    <ScheduleInterviewDialog v-model:open="scheduleDialog.open" :candidates="scheduleDialog.candidates" :round="scheduleDialog.round" :assessor-limit="assessorLimit" @scheduled="onScheduled" />
   </StaffLayout>
 </template>
 
@@ -207,6 +207,8 @@ const TABS = [
   { key: 'cancelled', label: 'Cancelled' },
 ]
 const tab = ref('scheduled')
+// Most HR assessors per Round 1 interview (Pathways Settings), sent with each row.
+const assessorLimit = computed(() => rows.value[0]?.hr_assessor_limit || 2)
 // Scheduled tab: open and completed interviews; cancelled ones have their own tab.
 const activeRows = computed(() => rows.value.filter((r) => r.status !== 'Cancelled'))
 const cancelledRows = computed(() => rows.value.filter((r) => r.status === 'Cancelled'))

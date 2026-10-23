@@ -100,6 +100,10 @@ class JobOpening(Document):
 		self.validate_status_transition()
 		self.validate_application_form()
 		self.set_advertisement_url()
+		self.validate_shared_with()
+
+	def after_insert(self):
+		self.ensure_files_folder()
 
 	def on_update(self):
 		if self.application_start and self.application_deadline and get_datetime(self.application_start) >= get_datetime(self.application_deadline):
@@ -113,6 +117,50 @@ class JobOpening(Document):
 				"Recruitment Notification", {"job_opening": self.name}, "notification_number"
 			)
 			send_event("job_advertised", "Job Opening", self.name, context, job_opening=self.name)
+			self.ensure_files_folder()
+
+		from pathways.api.job_notice import sync_notification_status
+
+		before = self.get_doc_before_save()
+		sync_notification_status(self, previous_status=before.status if before else None)
+		self.sync_shared_with(before)
+
+	def ensure_files_folder(self):
+		"""Home/Pathways/<Department>/<Job title - ID> (workflow step 7). A
+		folder problem must never block saving or advertising the job."""
+		from pathways.utils.folders import ensure_job_folder
+
+		try:
+			ensure_job_folder(self)
+		except Exception:
+			frappe.log_error(title=f"Pathways: could not create the folder for {self.name}")
+
+	def validate_shared_with(self):
+		seen = set()
+		for row in self.get("shared_with") or []:
+			if row.user in seen:
+				frappe.throw(_("{0} is tagged twice on this job.").format(row.user))
+			if row.user in ("Guest", "Administrator"):
+				frappe.throw(_("{0} cannot be tagged on a job.").format(row.user))
+			seen.add(row.user)
+			if not row.tagged_on:
+				row.tagged_by = frappe.session.user
+				row.tagged_on = now_datetime()
+
+	def sync_shared_with(self, before):
+		"""Tagged colleagues get the Tagged Colleague role (read on the jobs
+		they are tagged on, see pathways.permissions) and an email; people
+		untagged everywhere lose the role again."""
+		from pathways.utils.sharing import grant_tagged_role, notify_tagged, revoke_tagged_role_if_unused
+
+		previous = {row.user for row in (before.get("shared_with") if before else None) or []}
+		current = {row.user: row for row in self.get("shared_with") or []}
+		for user, row in current.items():
+			if user not in previous:
+				grant_tagged_role(user)
+				notify_tagged(self, row)
+		for user in previous - set(current):
+			revoke_tagged_role_if_unused(user)
 
 	def apply_position_defaults(self):
 		"""When a Position is picked, start the job from it: empty fields and

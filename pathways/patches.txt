@@ -30,3 +30,17 @@ pathways.patches.v1_0.candidate_mobile_login
 pathways.patches.v1_0.seed_email_events #panel-documents-shared
 pathways.patches.v1_0.copy_shared_departments
 pathways.patches.v1_0.ist_in_email_times
+pathways.patches.v1_0.seed_email_events #post-interview-regret-and-panel-thanks
+pathways.patches.v1_0.post_interview_comms
+pathways.patches.v1_0.seed_reference_check_templates
+pathways.patches.v1_0.seed_email_events #reference-checks
+pathways.patches.v1_0.hr_round_setup
+pathways.patches.v1_0.seed_email_events #hr-assessor-and-panel-job-files
+pathways.patches.v1_0.post_interview_green_sheet_setup
+pathways.patches.v1_0.seed_email_events #post-interview-green-sheet-approval
+pathways.patches.v1_0.tagged_colleague_role
+pathways.patches.v1_0.seed_email_events #notification-requested-ad-closed-colleague-tagged
+pathways.patches.v1_0.offer_appointment_orders
+pathways.patches.v1_0.seed_email_events #offer-review-sign-send
+pathways.patches.v1_0.onboarding_setup
+pathways.patches.v1_0.seed_email_events #onboarding-joining-it

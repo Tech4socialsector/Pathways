@@ -7,9 +7,12 @@
  "engine": "InnoDB",
  "field_order": [
   "joining",
+  "application",
   "employee_name",
   "designation",
+  "department",
   "date_of_joining",
+  "reporting_location",
   "column_break_1",
   "personal_email",
   "official_email",
@@ -17,7 +20,13 @@
   "status_section",
   "laptop_arranged",
   "official_email_created",
-  "status"
+  "access_card_issued",
+  "seating_arranged",
+  "column_break_2",
+  "status",
+  "remarks",
+  "completed_by",
+  "completed_on"
  ],
  "fields": [
   {
@@ -28,6 +37,13 @@
    "options": "Joining",
    "reqd": 1,
    "unique": 1
+  },
+  {
+   "fieldname": "application",
+   "fieldtype": "Link",
+   "label": "Application",
+   "options": "Application",
+   "read_only": 1
   },
   {
    "fieldname": "employee_name",
@@ -42,10 +58,20 @@
    "label": "Designation"
   },
   {
+   "fieldname": "department",
+   "fieldtype": "Data",
+   "label": "Department"
+  },
+  {
    "fieldname": "date_of_joining",
    "fieldtype": "Date",
    "in_list_view": 1,
    "label": "Date of Joining"
+  },
+  {
+   "fieldname": "reporting_location",
+   "fieldtype": "Data",
+   "label": "Reporting Location"
   },
   {
    "fieldname": "column_break_1",
@@ -60,7 +86,7 @@
   {
    "fieldname": "official_email",
    "fieldtype": "Data",
-   "label": "Official Email ID (filled by IT)",
+   "label": "Official (NLS) Email",
    "options": "Email"
   },
   {
@@ -71,36 +97,64 @@
   {
    "fieldname": "status_section",
    "fieldtype": "Section Break",
-   "label": "Provisioning Status"
+   "label": "Provisioning"
   },
   {
-   "default": "0",
    "fieldname": "laptop_arranged",
    "fieldtype": "Check",
-   "in_list_view": 1,
    "label": "Laptop Arranged"
   },
   {
-   "default": "0",
    "fieldname": "official_email_created",
    "fieldtype": "Check",
-   "in_list_view": 1,
-   "label": "Official Email Created"
+   "label": "Official Email ID Created"
   },
   {
-   "default": "Pending",
+   "fieldname": "access_card_issued",
+   "fieldtype": "Check",
+   "label": "Access Card Issued"
+  },
+  {
+   "fieldname": "seating_arranged",
+   "fieldtype": "Check",
+   "label": "Seating Arranged"
+  },
+  {
+   "fieldname": "column_break_2",
+   "fieldtype": "Column Break"
+  },
+  {
    "fieldname": "status",
    "fieldtype": "Select",
-   "in_list_view": 1,
-   "in_standard_filter": 1,
    "label": "Status",
    "options": "Pending\nIn Progress\nCompleted",
+   "default": "Pending",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Small Text",
+   "label": "Remarks"
+  },
+  {
+   "fieldname": "completed_by",
+   "fieldtype": "Link",
+   "label": "Completed By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "completed_on",
+   "fieldtype": "Datetime",
+   "label": "Completed On",
    "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-09-21 00:00:00.000000",
+ "modified": "2026-10-23 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "Pathways",
  "name": "IT Facilities Provisioning Request",
@@ -144,5 +198,6 @@
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],
- "track_changes": 1
+ "track_changes": 1,
+ "title_field": "employee_name"
 }

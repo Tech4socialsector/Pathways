@@ -6,7 +6,13 @@
 application; the candidate is found by email or created. preview_import
 checks every row without saving; run_import saves the rows that pass, each
 on its own, so one bad row never blocks the rest. Candidates are emailed
-only when asked (portal login, application received)."""
+only when asked (portal login, application received).
+
+Historical import (an explicit option): applications from past cycles,
+already decided, are loaded for records and analytics. Any Application
+status is accepted (Not Selected, Interview Completed, Selected, Joined...),
+jobs may be Closed or Filled, and nobody is emailed and no portal accounts
+are created, whatever else is ticked."""
 
 import base64
 import csv
@@ -25,6 +31,45 @@ MAX_BYTES = 5 * 1024 * 1024
 # Imported applications start early in the process: later stages
 # (interviews, offers) create their own records and must be done in the app.
 IMPORT_STATUSES = ("Submitted", "Under Review", "Shortlisted")
+# Words past cycles' sheets use for a status the Application does not have
+# by that name; used only when the word itself is not a valid status.
+HISTORICAL_ALIASES = {
+	"interviewed": "Interview Completed",
+	"not shortlisted": "Not Selected",
+	"rejected": "Not Selected",
+	"regretted": "Not Selected",
+	"offered": "Offer Extended",
+	"accepted": "Offer Accepted",
+	"declined": "Offer Declined",
+}
+
+
+def application_statuses():
+	"""Every status the Application allows (read from the DocType, so new
+	statuses are picked up without a code change)."""
+	options = frappe.get_meta("Application").get_field("status").options or ""
+	return tuple(o.strip() for o in options.splitlines() if o.strip())
+
+
+def historical_statuses():
+	return application_statuses()
+
+
+def _status(value, historical, errors):
+	if not historical:
+		return _choice(value, IMPORT_STATUSES, _("Status"), errors, "Submitted")
+	options = historical_statuses()
+	text = _text(value)
+	if not text:
+		errors.append(_("Status is required for a historical import"))
+		return None
+	match = next((o for o in options if o.lower() == text.lower()), None)
+	alias = HISTORICAL_ALIASES.get(text.lower())
+	if not match and alias in options:
+		match = alias
+	if not match:
+		errors.append(_("Status: must be one of {0}").format(", ".join(options)))
+	return match
 ELIGIBILITY = ("Pending", "Eligible", "Not Eligible")
 GENDERS = ("Female", "Male", "Prefer not to say", "Other")
 CATEGORIES = ("General", "SC", "ST", "OBC", "PWD", "Other")
@@ -70,10 +115,11 @@ def _require_create():
 
 
 @frappe.whitelist()
-def download_template():
+def download_template(historical=0):
 	"""The Excel template: the columns with a help row, and the job
-	openings to choose from."""
+	openings to choose from (past ones too for a historical import)."""
 	_require_create()
+	historical = cint(historical)
 	from openpyxl import Workbook
 	from openpyxl.styles import Alignment, Font, PatternFill
 	from openpyxl.utils import get_column_letter
@@ -93,7 +139,12 @@ def download_template():
 	ws.row_dimensions[2].height = 42
 	ws.freeze_panes = "A3"
 
-	jobs = frappe.get_all("Job Opening", filters={"status": ["not in", ["Draft", "Cancelled"]]}, fields=["name", "job_title", "position", "status"], order_by="creation desc")
+	jobs = frappe.get_all(
+		"Job Opening",
+		filters={"status": ["not in", ["Draft"] if historical else ["Draft", "Cancelled"]]},
+		fields=["name", "job_title", "position", "status"],
+		order_by="creation desc",
+	)
 	js = wb.create_sheet("Job Openings")
 	js.append(["Job Opening ID", "Job Title", "Job Code", "Status"])
 	for cell in js[1]:
@@ -113,13 +164,20 @@ def download_template():
 		choose(None, letter["job_opening"], f"'Job Openings'!$A$2:$A${len(jobs) + 1}")
 	choose(GENDERS, letter["gender"])
 	choose(CATEGORIES, letter["category"])
-	choose(IMPORT_STATUSES, letter["status"])
+	if historical:
+		ws.cell(2, list(letter).index("status") + 1, "Required: " + " / ".join(historical_statuses()))
+		statuses = wb.create_sheet("Statuses")
+		for status in historical_statuses():
+			statuses.append([status])
+		choose(None, letter["status"], f"Statuses!$A$1:$A${len(historical_statuses())}")
+	else:
+		choose(IMPORT_STATUSES, letter["status"])
 	choose(ELIGIBILITY, letter["eligibility_status"])
 	choose(DEGREE_LEVELS, letter["degree_level"])
 
 	buffer = io.BytesIO()
 	wb.save(buffer)
-	frappe.local.response.filename = "Applications Import Template.xlsx"
+	frappe.local.response.filename = "Historical Applications Import Template.xlsx" if historical else "Applications Import Template.xlsx"
 	frappe.local.response.filecontent = buffer.getvalue()
 	frappe.local.response.type = "download"
 
@@ -127,7 +185,7 @@ def download_template():
 # ------------------------------------------------------------ reading
 
 
-def _read_rows(filename, content):
+def _read_rows(filename, content, historical=False):
 	"""[(sheet row number, {key: value})] from an .xlsx or .csv file."""
 	try:
 		raw = base64.b64decode((content or "").split(",", 1)[-1])
@@ -161,6 +219,8 @@ def _read_rows(filename, content):
 		frappe.throw(_("These columns are missing: {0}. Download the template and keep its header row.").format(", ".join(missing)))
 
 	help_row = {re.sub(r"\s+", " ", t).strip() for _h, _k, _r, t in COLUMNS if t}
+	if historical:
+		help_row.add("Required: " + " / ".join(historical_statuses()))
 	rows = []
 	for number, values in enumerate(table[1:], start=2):
 		record = {key: values[i] for i, key in enumerate(headers) if key and i < len(values)}
@@ -227,7 +287,7 @@ def _choice(value, options, label, errors, default=None):
 	return match or default
 
 
-def _check_rows(rows):
+def _check_rows(rows, historical=False):
 	"""Validate every row; [{row, values, errors, candidate, job_title}]."""
 	jobs = {j.name: j for j in frappe.get_all("Job Opening", fields=["name", "job_title", "status", "track"])}
 	sources = {s.lower(): s for s in frappe.get_all("Candidate Source", pluck="name")}
@@ -245,7 +305,7 @@ def _check_rows(rows):
 			errors.append(_("Job Opening ID is required"))
 		elif job not in jobs:
 			errors.append(_("Job Opening {0} does not exist").format(job))
-		elif jobs[job].status in ("Draft", "Cancelled"):
+		elif jobs[job].status in (("Draft",) if historical else ("Draft", "Cancelled")):
 			errors.append(_("Job Opening {0} is {1}").format(job, jobs[job].status))
 		v["job_opening"] = job
 
@@ -275,7 +335,7 @@ def _check_rows(rows):
 		if applied and applied > getdate(today()):
 			errors.append(_("Application Date cannot be in the future"))
 		v["application_date"] = applied or getdate(today())
-		v["status"] = _choice(r.get("status"), IMPORT_STATUSES, _("Status"), errors, "Submitted")
+		v["status"] = _status(r.get("status"), historical, errors)
 		v["eligibility_status"] = _choice(r.get("eligibility_status"), ELIGIBILITY, _("Eligibility"), errors, "Pending")
 		source = _text(r.get("source"))
 		v["source"] = sources.get(source.lower()) if source else None
@@ -347,22 +407,25 @@ def _summary(checked):
 
 
 @frappe.whitelist(methods=["POST"])
-def preview_import(filename, content):
+def preview_import(filename, content, historical=0):
 	"""Check the file without saving anything."""
 	_require_create()
-	checked = _check_rows(_read_rows(filename, content))
+	historical = bool(cint(historical))
+	checked = _check_rows(_read_rows(filename, content, historical), historical)
 	return {
 		"rows": _summary(checked),
 		"total": len(checked),
 		"valid": sum(1 for c in checked if not c["errors"]),
 		"new_candidates": len({c["values"]["email"] for c in checked if not c["errors"] and not c["candidate"]}),
+		"historical": historical,
+		"statuses": list(historical_statuses() if historical else IMPORT_STATUSES),
 	}
 
 
 # ------------------------------------------------------------ importing
 
 
-def _create(c, created_candidates):
+def _create(c, created_candidates, historical=False):
 	v = c["values"]
 	candidate = c["candidate"] or created_candidates.get(v["email"])
 	if not candidate:
@@ -416,18 +479,35 @@ def _create(c, created_candidates):
 		)
 	if v["designation"]:
 		app.append("employment_history", {"designation": v["designation"], "employer_name": v["employer_name"], "is_current": 1})
+	if historical:
+		# A past cycle's outcome is a fact to record, not an action: no
+		# status-change side effects (emails, onboarding) should fire.
+		app.flags.historical_import = True
+		app.flags.mute_emails = True
 	app.insert(ignore_permissions=True)
-	app.add_comment("Info", _("Imported from a file by {0}.").format(frappe.utils.get_fullname(frappe.session.user)))
+	if historical:
+		app.add_comment(
+			"Info",
+			_("Historical import by {0}: status {1} recorded from a past cycle; no emails sent.").format(
+				frappe.utils.get_fullname(frappe.session.user), v["status"]
+			),
+		)
+	else:
+		app.add_comment("Info", _("Imported from a file by {0}.").format(frappe.utils.get_fullname(frappe.session.user)))
 	return candidate, app
 
 
 @frappe.whitelist(methods=["POST"])
-def run_import(filename, content, send_login=0, send_acknowledgement=0):
-	"""Save every row that passes the checks; each row on its own."""
+def run_import(filename, content, send_login=0, send_acknowledgement=0, historical=0):
+	"""Save every row that passes the checks; each row on its own. A
+	historical import never emails anyone or creates portal accounts."""
 	_require_create()
 	from pathways.utils.candidate_account import claim_records, queue_portal_account
 
-	checked = _check_rows(_read_rows(filename, content))
+	historical = bool(cint(historical))
+	if historical:
+		send_login = send_acknowledgement = 0
+	checked = _check_rows(_read_rows(filename, content, historical), historical)
 	created_candidates = {}
 	done, failed = [], []
 	for c in checked:
@@ -437,7 +517,7 @@ def run_import(filename, content, send_login=0, send_acknowledgement=0):
 		frappe.db.savepoint("import_row")
 		try:
 			new_candidate = not c["candidate"] and c["values"]["email"] not in created_candidates
-			candidate, app = _create(c, created_candidates)
+			candidate, app = _create(c, created_candidates, historical)
 		except Exception as e:
 			frappe.db.rollback(save_point="import_row")
 			frappe.clear_last_message()
@@ -454,4 +534,4 @@ def run_import(filename, content, send_login=0, send_acknowledgement=0):
 		if cint(send_acknowledgement):
 			frappe.enqueue("pathways.api.application.send_acknowledgement", application_name=app.name, enqueue_after_commit=True)
 		done.append({"row": c["row"], "full_name": c["values"]["full_name"], "application_id": app.application_id, "name": app.name})
-	return {"done": done, "failed": failed}
+	return {"done": done, "failed": failed, "historical": historical}

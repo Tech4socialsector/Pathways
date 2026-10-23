@@ -1,0 +1,145 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "field:template_name",
+ "creation": "2026-10-23 10:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "template_name",
+  "track",
+  "employment_type",
+  "column_break_1",
+  "is_active",
+  "description",
+  "designations_section",
+  "designations",
+  "letter_section",
+  "letter_body"
+ ],
+ "fields": [
+  {
+   "fieldname": "template_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Template Name",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "track",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Track",
+   "options": "Recruitment Track",
+   "description": "Leave blank to use for every track."
+  },
+  {
+   "fieldname": "employment_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Employment Type",
+   "options": "\nPermanent\nConsultant\nGrant-funded\nContract",
+   "description": "Leave blank to use for every employment type."
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "1",
+   "fieldname": "is_active",
+   "fieldtype": "Check",
+   "label": "Is Active"
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Small Text",
+   "label": "When to use"
+  },
+  {
+   "fieldname": "designations_section",
+   "fieldtype": "Section Break",
+   "label": "Designations"
+  },
+  {
+   "fieldname": "designations",
+   "fieldtype": "Table",
+   "label": "Designations",
+   "options": "Appointment Order Template Designation",
+   "description": "Optional. When set, the template is suggested first for offers with one of these designations."
+  },
+  {
+   "fieldname": "letter_section",
+   "fieldtype": "Section Break",
+   "label": "Letter"
+  },
+  {
+   "fieldname": "letter_body",
+   "fieldtype": "Text Editor",
+   "label": "Letter Body",
+   "reqd": 1,
+   "description": "Jinja placeholders: {{ candidate_name }}, {{ candidate_address }}, {{ candidate_email }}, {{ application_id }}, {{ job_title }}, {{ designation }}, {{ department }}, {{ track }}, {{ employment_type }}, {{ pay_level }}, {{ pay_scale }}, {{ consolidated_fee }}, {{ gross_monthly_salary }}, {{ allowances }}, {{ probation_period }}, {{ contract_period }}, {{ contract_end_date }}, {{ proposed_doj }}, {{ reporting_to }}, {{ place_of_posting }}, {{ terms }}, {{ acceptance_deadline }}, {{ offer_date }}, {{ reference_number }}, {{ signatory_title }}. The Registrar's signature block is added below the letter automatically."
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "links": [],
+ "modified": "2026-10-23 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Pathways",
+ "name": "Appointment Order Template",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "read": 1,
+   "role": "System Manager",
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1
+  },
+  {
+   "read": 1,
+   "role": "Pathways Admin",
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1
+  },
+  {
+   "read": 1,
+   "role": "Pathways PNCO",
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "write": 1,
+   "create": 1
+  },
+  {
+   "read": 1,
+   "role": "Pathways Recruiter",
+   "report": 1,
+   "export": 1,
+   "print": 1
+  },
+  {
+   "read": 1,
+   "role": "Pathways Registrar",
+   "report": 1,
+   "export": 1,
+   "print": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "template_name",
+ "track_changes": 1
+}

@@ -152,6 +152,30 @@ TEMPLATES = {
 		"<li>Ensure your computer's mic and camera are functioning well, with the background being clear.</li>"
 		"<li>Test your internet speed/stability, keep a backup.</li></ol>",
 	),
+	# Internal hand-offs on an appointment order (workflow steps 26-27).
+	"Appointment Order Review Request": (
+		"Appointment order for review: {{ candidate_name }} ({{ designation or job_title }})",
+		"<p>Dear {{ recipient_name }},</p>"
+		"<p>The draft appointment order <b>{{ offer_name }}</b> for <b>{{ candidate_name }}</b> "
+		"({{ designation or job_title }}) is ready for your review.</p>"
+		"<p>Please check the letter and either approve it for the Registrar's signature or return it for changes: "
+		"<a href=\"{{ link }}\">{{ link }}</a></p>" + SIGN_OFF,
+	),
+	"Appointment Order Signature Request": (
+		"Appointment order for signature: {{ candidate_name }} ({{ designation or job_title }})",
+		"<p>Dear {{ recipient_name }},</p>"
+		"<p>The appointment order <b>{{ offer_name }}</b> for <b>{{ candidate_name }}</b> "
+		"({{ designation or job_title }}) has been reviewed and is ready for your signature.</p>"
+		"<p>Open it to preview the letter and sign: <a href=\"{{ link }}\">{{ link }}</a></p>" + SIGN_OFF,
+	),
+	"Appointment Order Returned": (
+		"Appointment order returned for changes: {{ candidate_name }}",
+		"<p>Dear {{ recipient_name }},</p>"
+		"<p>The appointment order <b>{{ offer_name }}</b> for <b>{{ candidate_name }}</b> "
+		"({{ designation or job_title }}) has been returned to draft for changes.</p>"
+		"{% if remarks %}<p>Remarks: <i>{{ remarks }}</i></p>{% endif %}"
+		"<p><a href=\"{{ link }}\">{{ link }}</a></p>" + SIGN_OFF,
+	),
 	# Workflow folder: 10. Appointment Order email / Letter to Candidate.
 	"Appointment Order Covering Note": (
 		"Appointment Letter - {{ job_title }}",
@@ -182,7 +206,7 @@ TEMPLATES = {
 	"Green Sheet Approval Request": (
 		"Approval needed: Green Sheet for {{ job_title }}",
 		"<p>Dear {{ recipient_name }},</p>"
-		"<p>The Pre-Recruitment Green Sheet <b>{{ doc_name }}</b> for <b>{{ job_title }}</b> is awaiting your approval "
+		"<p>The {{ doc_type or 'Pre-Recruitment Green Sheet' }} <b>{{ doc_name }}</b> for <b>{{ job_title }}</b> is awaiting your approval "
 		"({{ approver_label }}).</p><p><a href=\"{{ link }}\">Open it in Pathways</a> to approve or return it.</p>" + SIGN_OFF,
 	),
 	"Job Advertised Notice": (
@@ -265,6 +289,8 @@ TEMPLATES = {
 		"<p><b>Onboarding on to the ERP</b></p>"
 		"<p>As a part of the onboarding process, we have sent you a link from people@nls.ac.in for updating your details on "
 		"the ERP. Please fill in the details and upload the relevant documents at the earliest.</p>"
+		"{% if portal_link %}<p><b>Upload your joining documents</b><br>Please also upload a scanned copy of each document above on the "
+		"candidate portal, so that we can verify them before you join: <a href=\"{{ portal_link }}\">{{ portal_link }}</a></p>{% endif %}"
 		"<p>On the day of joining{% if joining_date %} ({{ joining_date }}){% endif %}, please meet me on the "
 		"{{ reporting_location or 'Ground Floor, Training Centre Room No. 004' }} at {{ reporting_time or '10:00 am' }}.</p>"
 		"<p>Regards,<br>People and Culture Team<br>NLSIU, Bengaluru</p>",
@@ -273,10 +299,14 @@ TEMPLATES = {
 	"IT & Facilities Intimation": (
 		"New joiner: {{ candidate_name }}, {{ job_title }}",
 		"<p>Dear Team,</p>"
+		"{% if updated %}<p style=\"padding:10px 12px;background:#FFF4E5;border-left:3px solid #D97706\"><b>Please note: the joining "
+		"details have changed. This email replaces our earlier intimation.</b></p>{% endif %}"
 		"<p>The following staff member is joining as indicated against their name. Kindly arrange for a laptop, create NLS "
 		"email ID, and share the same.</p>"
 		"<p>Name: {{ candidate_name }}<br>Designation: {{ job_title }}<br>Date of Joining: {{ joining_date }}<br>"
 		"Email: {{ candidate_email }}<br>Mobile No. : {{ candidate_mobile }}</p>"
+		"{% if request_link %}<p>Please record the laptop, the NLS email ID and the access card / seating on Pathways: "
+		"<a href=\"{{ request_link }}\">{{ request_link }}</a></p>{% endif %}"
 		"<p>Thanks!</p><p>Regards,<br>People and Culture Team<br>NLSIU, Bengaluru</p>",
 	),
 }
@@ -292,13 +322,153 @@ TEMPLATES["Panel Documents Shared"] = (
 	"<p>Please keep these documents confidential and do not share them outside the panel.</p>" + SIGN_OFF,
 )
 
+# No template in the workflow folder (step 13): the two people taking a
+# Round 1 / HR interaction, with the candidate, the link and the sheet.
+TEMPLATES["HR Assessor Assignment"] = (
+	"Round 1 (HR interaction): {{ candidate_name }}, {{ job_title }}",
+	"<p>Dear {{ recipient_name }},</p>"
+	"{% if updated %}<p style=\"padding:10px 12px;background:#FFF4E5;border-left:3px solid #D97706\"><b>Please note: the interview details "
+	"have changed. This email replaces the earlier one.</b></p>{% endif %}"
+	"<p>You have been assigned as an HR assessor for the <b>Round 1 (HR interaction)</b> of <b>{{ candidate_name }}</b> "
+	"({{ application_id }}) for the position of <b>{{ job_title }}</b>.</p>"
+	"<p><b>When:</b> {{ interview_date_time }}<br>"
+	"{% if interview_location %}<b>Where:</b> {{ interview_location }}{% else %}<b>{{ meeting_platform or 'Meeting' }} link:</b> "
+	"{% if meeting_link %}<a href=\"{{ meeting_link }}\">{{ meeting_link }}</a>{% else %}to follow{% endif %}{% endif %}</p>"
+	"<p>The candidate's CV and statement of purpose, and the HR assessment sheet to fill after the interaction, are on Pathways: "
+	"<a href=\"{{ assessment_link }}\">{{ assessment_link }}</a></p>"
+	"<p>Please record your scores, your recommendation (recommend for the final interview, hold or not recommended) and a short "
+	"HR interaction note, including the candidate's salary expectation and notice period.</p>" + SIGN_OFF,
+)
+
+# Workflow step 16: job-level files for the panel (notification, panel
+# details, assessment sheets, shortlisting note, HR notes, schedule).
+TEMPLATES["Panel Job Files Shared"] = (
+	"Interview files for {{ job_title }}",
+	"<p>Dear {{ recipient_name }},</p>"
+	"<p>The recruitment team has shared the following files with you for the interviews for the position of <b>{{ job_title }}</b>:</p>"
+	"<ul>{% for f in files %}<li>{{ f }}</li>{% endfor %}</ul>"
+	"{% if note %}<p><b>Note from {{ shared_by }}:</b> {{ note }}</p>{% endif %}"
+	"<p>Please log in to view them: <a href=\"{{ documents_link }}\">{{ documents_link }}</a></p>"
+	"<p>Please keep these files confidential and do not share them outside the panel.</p>" + SIGN_OFF,
+)
+
+# Workflow folder: 9. Regret Mails / Regret Email Template. Same wording as
+# "Regret Mail" today, but its own template so the post-interview regret can
+# be edited without changing the screening regret.
+TEMPLATES["Regret After Interview"] = (
+	"Important: Update on your job application for {{ job_title }}",
+	"<p>Dear Candidate,</p>"
+	"<p>We have an update on your application for the position of {{ job_title }} at NLSIU Bangalore.</p>"
+	"<p>We regret to inform you that we will not be moving forward with your application. We truly appreciate the time "
+	"and effort put in by you for your application.</p>"
+	"<p>Please note that this decision is not a reflection of your abilities, and we encourage you to apply for positions "
+	"that may/will come up in the future.</p>"
+	"<p>Please keep a lookout on the website - "
+	"<a href=\"https://www.nls.ac.in/news-and-events/work-with-us/\">https://www.nls.ac.in/news-and-events/work-with-us/</a></p>"
+	+ SIGN_OFF,
+)
+
+# Workflow folder: 7. Reference Checks forms (the covering text of the
+# Admin and Research forms). Sent to the referee, who is not a Pathways user.
+TEMPLATES["Reference Check Request"] = (
+	"NLSIU Reference Check | {{ candidate_name }}",
+	"<p>Dear {{ referee_name }},</p>"
+	"<p>Greetings from National Law School of India University (NLSIU), Bangalore!</p>"
+	"<p>I am reaching out to you in connection with a reference check. An applicant to our institution, "
+	"<b>{{ candidate_name }}</b>, has given your reference to us when applying for the post of <b>{{ job_title }}</b>. "
+	"Your insights and feedback would greatly assist us in making an informed hiring decision. We would appreciate it "
+	"if you could spare a few minutes to answer a few questions.</p>"
+	"<p><a href=\"{{ form_link }}\">Open the reference check form</a></p>"
+	"<p>We would be grateful if you can share your feedback by <b>{{ expires_on }}</b>, after which the link stops working. "
+	"Your responses are kept confidential and are not shared with the candidate.</p>"
+	"<p>Thank you in advance for your time, and we greatly appreciate your support in our hiring process.</p>" + SIGN_OFF,
+)
+TEMPLATES["Reference Check Reminder"] = (
+	"Reminder: NLSIU Reference Check | {{ candidate_name }}",
+	"<p>Dear {{ referee_name }},</p>"
+	"<p>This is a gentle reminder about the reference check for <b>{{ candidate_name }}</b>, who has applied for the post of "
+	"<b>{{ job_title }}</b> at NLSIU. We would be grateful for your feedback.</p>"
+	"<p><a href=\"{{ form_link }}\">Open the reference check form</a></p>"
+	"<p>The link works until <b>{{ expires_on }}</b>. Your responses are kept confidential and are not shared with the candidate.</p>"
+	"<p>Thank you for your time.</p>" + SIGN_OFF,
+)
+TEMPLATES["Reference Check Received"] = (
+	"Reference received: {{ candidate_name }}, {{ job_title }}",
+	"<p>Dear {{ recipient_name }},</p>"
+	"<p><b>{{ referee_name }}</b> has submitted the reference check for <b>{{ candidate_name }}</b> "
+	"({{ application_id }}, {{ job_title }}).</p>"
+	"<p>View the responses on the application's References panel: <a href=\"{{ application_link }}\">{{ application_link }}</a></p>" + SIGN_OFF,
+)
+REFERENCE_VARS = "candidate_name, job_title, referee_name, form_link, expires_on, contact_email"
+
+# No template in the workflow folder: a joining document was not accepted.
+TEMPLATES["Document Resubmission Request"] = (
+	"Action Required: Document Resubmission - {{ document_name }}",
+	"<p>Dear {{ candidate_name }},</p>"
+	"<p>We reviewed the document you submitted for <b>{{ document_name }}</b> and it could not be accepted for the "
+	"following reason:</p>"
+	"<p><i>{{ rejection_reason }}</i></p>"
+	"<p>Please upload a corrected copy on the candidate portal at your earliest convenience"
+	"{% if portal_link %}: <a href=\"{{ portal_link }}\">{{ portal_link }}</a>{% endif %}.</p>"
+	"<p>Regards,<br>People and Culture Team<br>NLSIU, Bengaluru</p>",
+)
+# No template in the workflow folder: IT & Facilities have set up a new joiner.
+TEMPLATES["IT & Facilities Completed"] = (
+	"IT & Facilities ready: {{ candidate_name }}, {{ job_title }}",
+	"<p>Dear {{ recipient_name }},</p>"
+	"<p>IT &amp; Facilities have completed the set-up for <b>{{ candidate_name }}</b> ({{ job_title }}), joining on "
+	"<b>{{ joining_date }}</b>.</p>"
+	"<p>{% if official_email %}Official email ID: <b>{{ official_email }}</b><br>{% endif %}Completed by: {{ completed_by }}</p>"
+	"{% if joining_link %}<p><a href=\"{{ joining_link }}\">Open the joining in Pathways</a></p>{% endif %}" + SIGN_OFF,
+)
+
+# Workflow step 3: approval -> official notification (no template in the folder).
+TEMPLATES["Official Notification Request"] = (
+	"Action required: official notification for {{ job_title }}",
+	"<p>Dear {{ recipient_name }},</p>"
+	"<p>The Pre-Recruitment Green Sheet{% if green_sheet %} ({{ green_sheet }}){% endif %} for <b>{{ job_title }}</b>"
+	"{% if department %} ({{ department }}){% endif %} has been approved.</p>"
+	"<p>Please convert the draft advertisement into the official notification and publish it on the NLSIU website, "
+	"LinkedIn and Indeed. Once it is out, please record the notification number, the official link and where it was "
+	"published on the job page in Pathways (Notification &amp; Corrigenda, and Publishing).</p>"
+	"<ul>{% if jd_link %}<li>Job description / draft notice: <a href=\"{{ jd_link }}\">{{ jd_link }}</a></li>{% endif %}"
+	"<li>Job page: <a href=\"{{ job_link }}\">{{ job_link }}</a></li>"
+	"{% if deadline %}<li>Application deadline: {{ deadline }}</li>{% endif %}</ul>" + SIGN_OFF,
+)
+# Workflow step 6: the ad has closed, take it down.
+TEMPLATES["Advertisement Closed"] = (
+	"Advertisement closed: {{ job_title }}",
+	"<p>Dear {{ recipient_name }},</p>"
+	"<p>The advertisement for <b>{{ job_title }}</b>{% if department %} ({{ department }}){% endif %} has closed"
+	"{% if deadline %} (deadline {{ deadline }}){% endif %}. {{ application_count }} application(s) were received.</p>"
+	"<p>Please take the advertisement down from the NLSIU website and the job portals"
+	"{% if published_links %}:</p><ul>{% for l in published_links %}<li>{{ l.label }}: <a href=\"{{ l.url }}\">{{ l.url }}</a></li>{% endfor %}</ul>"
+	"{% else %}.</p>{% endif %}"
+	"<p>Job page: <a href=\"{{ job_link }}\">{{ job_link }}</a></p>" + SIGN_OFF,
+)
+# Workflow step 7: a colleague is tagged on a job.
+TEMPLATES["Colleague Tagged on Job"] = (
+	"You have been given access to {{ job_title }} on Pathways",
+	"<p>Dear {{ recipient_name }},</p>"
+	"<p>{{ tagged_by }} has shared the recruitment for <b>{{ job_title }}</b>{% if department %} ({{ department }}){% endif %} "
+	"with you on Pathways. You can now read its applications and the candidates' documents.</p>"
+	"{% if access_note %}<p><b>Note:</b> {{ access_note }}</p>{% endif %}"
+	"<p>Applications: <a href=\"{{ applications_link }}\">{{ applications_link }}</a><br>"
+	"Job page: <a href=\"{{ job_link }}\">{{ job_link }}</a></p>"
+	"<p>Please keep the candidates' information confidential.</p>" + SIGN_OFF,
+)
+
 JOB_VARS = "job_title, job_code, department, vacancies, deadline, posting_link, job_link, recipient_name, contact_email"
 CANDIDATE_VARS = "candidate_name, application_id, job_title, recipient_name, contact_email"
+OFFER_VARS = "offer_name, candidate_name, job_title, designation, status, link, recipient_name"
 
 # (stage, event, label, when, template, recipients, automatic, enabled, variables)
 EVENTS = [
-	("Job & Advertisement", "green_sheet_approval", "Green Sheet awaiting approval", "A Pre-Recruitment Green Sheet reaches an approval step (also a bell notification).",
-		"Green Sheet Approval Request", {"send_to_approvers": 1}, True, True, "doc_name, job_title, approver_label, link, recipient_name"),
+	("Job & Advertisement", "green_sheet_approval", "Green Sheet awaiting approval", "A Pre-Recruitment or Post-Interview (selection) Green Sheet, or any other approvable document, reaches an approval step (also a bell notification).",
+		"Green Sheet Approval Request", {"send_to_approvers": 1}, True, True, "doc_name, doc_type, job_title, approver_label, link, recipient_name"),
+	("Job & Advertisement", "notification_requested", "Green Sheet approved: prepare the official notification",
+		"The Pre-Recruitment Green Sheet is fully approved: the Registrar's Office and Communications convert the draft into the official notification (workflow step 3).",
+		"Official Notification Request", {"roles": ["Pathways Registrar", "Pathways Communications"]}, True, True, JOB_VARS + ", green_sheet, jd_link, track"),
 	("Job & Advertisement", "job_advertised", "Advertisement live: Registrar's Office & Communications",
 		"A job is advertised (workflow step 3: official notification, website and social media).",
 		"Job Advertised Notice", {"roles": ["Pathways Registrar", "Pathways Communications"]}, True, True, JOB_VARS + ", notification_number"),
@@ -306,6 +476,12 @@ EVENTS = [
 		"Corrigendum Notice", {"roles": ["Pathways Registrar", "Pathways Communications"]}, True, True, JOB_VARS + ", change, remarks"),
 	("Job & Advertisement", "ad_closing_soon", "Advertisement closing within 24 hours", "Daily check, one day before the deadline (decide whether to extend).",
 		"Advertisement Closing Soon", {"roles": ["Pathways Recruiter"]}, True, True, JOB_VARS + ", application_count"),
+	("Job & Advertisement", "ad_closed", "Advertisement closed: take the ad down",
+		"A job's deadline passes and it closes (hourly check), or it is closed by hand (workflow step 6). Its notification is closed too.",
+		"Advertisement Closed", {"roles": ["Pathways Communications", "Pathways Recruiter"]}, True, True, JOB_VARS + ", application_count, published_links"),
+	("Job & Advertisement", "colleague_tagged", "Colleague tagged on a job",
+		"Someone is added to a job's \"Shared with\" list and can now read its applications and documents (workflow step 7).",
+		"Colleague Tagged on Job", {"send_to_approvers": 1}, True, True, JOB_VARS + ", tagged_by, access_note, applications_link"),
 	("Applications", "application_received", "Application received (to candidate)", "A candidate submits an application.",
 		"Application Acknowledgement", {"send_to_candidate": 1}, True, True, CANDIDATE_VARS),
 	("Applications", "candidate_portal_access", "Candidate portal login (to candidate)",
@@ -328,6 +504,13 @@ EVENTS = [
 	("Interviews", "panel_documents_shared", "Candidate documents shared (to panellists)",
 		"The recruitment team shares candidates' documents with Selection Committee panellists from the Documents page (one email per panellist).",
 		"Panel Documents Shared", {"send_to_approvers": 1}, True, True, JOB_VARS + ", candidates, candidate_count, note, shared_by, documents_link"),
+	("Interviews", "panel_job_files_shared", "Interview files shared (to panellists)",
+		"The recruitment team shares job-level files (notification, panel details, assessment sheets, shortlisting note, HR notes, schedule) with panellists (workflow step 16).",
+		"Panel Job Files Shared", {"send_to_approvers": 1}, True, True, JOB_VARS + ", files, note, shared_by, documents_link"),
+	("Interviews", "hr_assessor_assigned", "HR assessor assigned (Round 1)",
+		"Someone is made an HR assessor of a Round 1 / HR interaction interview (workflow step 13; one email per new assessor).",
+		"HR Assessor Assignment", {"send_to_approvers": 1}, True, True,
+		CANDIDATE_VARS + ", interview_date_time, meeting_platform, meeting_link, interview_location, assessment_link, updated"),
 	("Interviews", "interview_invite_round1", "Interview invite: Round 1 / HR interaction", "Round 1 is scheduled (workflow step 13).",
 		"Interview Invite (Round 1)", {"send_to_candidate": 1}, True, True, CANDIDATE_VARS + ", interview_date_time, meeting_link, meeting_platform, interview_location, rsvp_deadline, rsvp_link, rsvp_respond_link, updated, change_note"),
 	("Interviews", "interview_call_letter", "Interview call letter: final interview", "The final interview is scheduled (workflow steps 14-16).",
@@ -337,17 +520,44 @@ EVENTS = [
 		"Interview Cancelled", {"send_to_candidate": 1}, True, True, CANDIDATE_VARS + ", interview_round, interview_date_time, reason"),
 	("Interviews", "interview_reminder", "Interview reminder (to candidate)", "Daily, the day before a scheduled interview.",
 		"Interview Reminder", {"send_to_candidate": 1}, True, True, CANDIDATE_VARS + ", interview_date_time, meeting_link"),
-	("Selection & Offer", "appointment_order", "Appointment order (to candidate)", "The signed appointment order is sent (workflow step 28).",
-		"Appointment Order Covering Note", {"send_to_candidate": 1, "attach_record_files": 1}, False, True, CANDIDATE_VARS + ", acceptance_deadline, pnc_contacts"),
-	("Selection & Offer", "regret_after_interview", "Regret after interview (to candidate)", "Interviewed candidates who were not selected (workflow step 32).",
-		"Regret Mail", {"send_to_candidate": 1}, False, True, CANDIDATE_VARS),
-	("Onboarding & Closure", "panel_thanks", "Thank you to panellists", "After the interviews (workflow step 33).",
-		"Panel Thank You", {}, False, True, "job_title, recipient_name"),
+	("Selection & Offer", "reference_request", "Reference check request (to referee)",
+		"The recruiter sends (or resends) a referee their reference check form link from the application's References panel (workflow step 21).",
+		"Reference Check Request", {}, True, True, REFERENCE_VARS),
+	("Selection & Offer", "reference_reminder", "Reference check reminder (to referee)",
+		"Daily check: one reminder to a referee who has not answered a set number of days after the link was sent (Pathways Settings > Reference Checks).",
+		"Reference Check Reminder", {}, True, True, REFERENCE_VARS),
+	("Selection & Offer", "reference_received", "Reference received (to recruiter)",
+		"A referee submits the reference check form. Goes to the staff member who sent the request.",
+		"Reference Check Received", {"send_to_approvers": 1}, True, True, "candidate_name, application_id, job_title, referee_name, application_link, recipient_name"),
+	("Selection & Offer", "offer_review_requested", "Appointment order ready for review",
+		"A draft appointment order is submitted for review (workflow step 26). Goes to the Offer Reviewer Roles in Settings.",
+		"Appointment Order Review Request", {"send_to_approvers": 1}, True, True, OFFER_VARS),
+	("Selection & Offer", "offer_signature_requested", "Appointment order ready for signature",
+		"A reviewed appointment order is approved for signature (workflow step 27). Goes to the Offer Signatory Roles in Settings.",
+		"Appointment Order Signature Request", {"send_to_approvers": 1}, True, True, OFFER_VARS),
+	("Selection & Offer", "offer_returned", "Appointment order returned for changes",
+		"A reviewer or signatory returns an appointment order to draft. Goes to whoever submitted it for review.",
+		"Appointment Order Returned", {"send_to_approvers": 1}, True, True, OFFER_VARS + ", remarks"),
+	("Selection & Offer", "appointment_order", "Appointment order (to candidate)", "The signed appointment order is sent (workflow step 28). The letter PDF is attached.",
+		"Appointment Order Covering Note", {"send_to_candidate": 1, "attach_record_files": 1}, True, True, CANDIDATE_VARS + ", acceptance_deadline, pnc_contacts, designation, portal_link"),
+	("Selection & Offer", "regret_after_interview", "Regret after interview (to candidate)",
+		"Sent from the consolidated score sheet to interviewed candidates marked Not selected (and, once the waitlist is released, waitlisted ones) who have not had it yet (workflow step 32).",
+		"Regret After Interview", {"send_to_candidate": 1}, True, True, CANDIDATE_VARS),
+	("Onboarding & Closure", "panel_thanks", "Thank you to panellists",
+		"Sent from the consolidated score sheet, once to each Selection Committee panellist; also starts their honorarium record (workflow step 33).",
+		"Panel Thank You", {"send_to_approvers": 1}, True, True, "job_title, recipient_name, interview_date, is_external"),
 	("Onboarding & Closure", "onboarding", "Onboarding documents (to new joiner)", "The candidate accepts the offer (workflow step 34).",
-		"Onboarding Documents", {"send_to_candidate": 1}, False, True, CANDIDATE_VARS + ", joining_date, reporting_location, reporting_time"),
-	("Onboarding & Closure", "it_facilities", "Intimation to IT & Facilities", "Joining is confirmed (laptop, NLS email ID).",
-		"IT & Facilities Intimation", {"roles": ["Pathways IT Facilities"]}, False, True,
-		"candidate_name, job_title, joining_date, candidate_email, candidate_mobile"),
+		"Onboarding Documents", {"send_to_candidate": 1}, True, True, CANDIDATE_VARS + ", joining_date, reporting_location, reporting_time, portal_link"),
+	("Onboarding & Closure", "document_resubmission", "Joining document needs resubmission (to new joiner)",
+		"Staff reviewing a new joiner's documents ask for one to be uploaded again (Documents > Onboarding Verification).",
+		"Document Resubmission Request", {"send_to_candidate": 1}, True, True, CANDIDATE_VARS + ", document_name, rejection_reason, portal_link"),
+	("Onboarding & Closure", "it_facilities", "Intimation to IT & Facilities", "Joining is confirmed, or a confirmed joining is rescheduled (laptop, NLS email ID).",
+		"IT & Facilities Intimation", {"roles": ["Pathways IT Facilities"]}, True, True,
+		"candidate_name, job_title, joining_date, candidate_email, candidate_mobile, department, reporting_location, request_link, updated"),
+	("Onboarding & Closure", "it_facilities_completed", "IT & Facilities ready (to recruitment team)",
+		"IT & Facilities complete a new joiner's request (laptop, NLS email ID, access card / seating). Also a bell notification to whoever confirmed the joining.",
+		"IT & Facilities Completed", {"roles": ["Pathways Recruiter"]}, True, True,
+		"candidate_name, job_title, joining_date, official_email, completed_by, joining_link, recipient_name"),
 ]
 
 

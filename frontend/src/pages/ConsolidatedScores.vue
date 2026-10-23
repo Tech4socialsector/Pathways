@@ -11,6 +11,16 @@
           <Button variant="outline" icon-left="printer" icon-right="chevron-down" :loading="printing">Assessment forms (PDF)</Button>
         </Dropdown>
         <Button variant="outline" icon-left="download" :loading="exporting" @click="exportSheet">Download Excel</Button>
+        <Button
+          v-if="data.can_decide && data.rows.some((r) => r.outcome === 'Selected')"
+          variant="solid"
+          icon-left="file-plus"
+          class="!bg-brand-700 !text-white hover:!bg-brand-800"
+          :loading="raisingSheet"
+          @click="openSelectionSheet"
+        >
+          Selection Green Sheet
+        </Button>
       </template>
     </PageHeader>
 
@@ -270,23 +280,108 @@
           Ranked by average score. Click a candidate to see each panellist's recommendation and comments.
           A waitlisted candidate stays at "Interview Completed" on the candidate portal.
         </p>
+
+        <!-- After the interviews: regrets (workflow step 32) and panel thanks (step 33) -->
+        <section v-if="data.can_decide && postInterview" class="mt-5 rounded-xl border bg-white shadow-sm" aria-label="After the interviews">
+          <header class="border-b px-4 py-3">
+            <h2 class="text-sm font-semibold text-gray-900">After the interviews</h2>
+            <p class="text-xs text-gray-500">For the whole position, whatever date is shown above.</p>
+          </header>
+          <div class="grid gap-0 divide-y md:grid-cols-2 md:divide-x md:divide-y-0">
+            <div class="flex flex-col gap-2 p-4">
+              <div class="flex items-center gap-2 text-sm font-medium text-gray-900"><FeatherIcon name="mail" class="h-4 w-4 text-brand-700" />Regret emails</div>
+              <p class="text-xs text-gray-600">
+                {{ postInterview.regret.not_selected }} not selected waiting for a regret<template v-if="postInterview.regret.waitlisted">
+                  · {{ postInterview.regret.waitlisted }} waitlisted {{ postInterview.regret.waitlist_released ? '(waitlist released)' : '(held until the waitlist is released)' }}</template>
+                <template v-if="postInterview.regret.sent"> · {{ postInterview.regret.sent }} already sent</template>
+              </p>
+              <p v-if="!postInterview.regret.enabled" class="text-xs text-orange-700">The “Regret after interview” email is switched off in Email Setup.</p>
+              <div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  icon-left="send"
+                  :disabled="!postInterview.regret.enabled || !(postInterview.regret.not_selected + postInterview.regret.waitlisted)"
+                  @click="openRegret"
+                >
+                  Send regrets
+                </Button>
+              </div>
+            </div>
+            <div class="flex flex-col gap-2 p-4">
+              <div class="flex items-center gap-2 text-sm font-medium text-gray-900"><FeatherIcon name="gift" class="h-4 w-4 text-brand-700" />Panel thank-you &amp; honorarium</div>
+              <p class="text-xs text-gray-600">
+                <template v-if="postInterview.thanks.committee">
+                  {{ postInterview.thanks.pending }} of {{ postInterview.thanks.panel_size }} panellists not thanked yet<template v-if="postInterview.thanks.sent"> · {{ postInterview.thanks.sent }} thanked</template>
+                </template>
+                <template v-else>No Selection Committee for this job.</template>
+              </p>
+              <p v-if="!postInterview.thanks.enabled" class="text-xs text-orange-700">The “Thank you to panellists” email is switched off in Email Setup.</p>
+              <div class="flex flex-wrap items-center gap-2">
+                <Button
+                  v-if="postInterview.thanks.can_send"
+                  size="sm"
+                  variant="outline"
+                  icon-left="heart"
+                  :disabled="!postInterview.thanks.enabled || !postInterview.thanks.pending"
+                  @click="askThanks"
+                >
+                  Send thank-you to panel
+                </Button>
+                <router-link v-if="session.hasMenu('honorarium')" to="/honorarium" class="text-xs text-brand-700 hover:underline">Open Panel Honorarium</router-link>
+              </div>
+            </div>
+          </div>
+        </section>
       </template>
     </div>
 
     <ConfirmActionDialog v-model:open="confirmBox.open" v-bind="confirmBox" />
+
+    <!-- Post-interview regrets: confirm, with the waitlist choice -->
+    <Dialog v-model="regretBox.open" :options="{ title: 'Send regret emails?', size: 'md' }">
+      <template #body-content>
+        <div v-if="postInterview" class="flex flex-col gap-3 text-sm text-gray-700">
+          <p>
+            The “Regret after interview” email goes to <b>{{ regretCount }}</b> candidate{{ regretCount === 1 ? '' : 's' }} of {{ data?.job.job_title }}
+            who {{ regretCount === 1 ? 'was' : 'were' }} interviewed and not selected. Each candidate gets it once.
+          </p>
+          <label v-if="postInterview.regret.waitlisted && !postInterview.regret.waitlist_released" class="flex items-start gap-2">
+            <input v-model="regretBox.includeWaitlisted" type="checkbox" class="mt-0.5 rounded border-gray-300 text-brand-700 focus:ring-brand-700" />
+            <span>
+              Also send to the {{ postInterview.regret.waitlisted }} waitlisted candidate{{ postInterview.regret.waitlisted === 1 ? '' : 's' }} (release the waitlist).
+              <span class="block text-xs text-gray-500">They are recorded as Not selected. Leave unticked while the waitlist may still be used.</span>
+            </span>
+          </label>
+          <p v-else-if="postInterview.regret.waitlisted" class="text-xs text-gray-600">
+            The waitlist is released (the job is Filled or Cancelled), so the {{ postInterview.regret.waitlisted }} waitlisted candidate(s) are included and recorded as Not selected.
+          </p>
+        </div>
+      </template>
+      <template #actions>
+        <div class="flex justify-end gap-2">
+          <Button variant="ghost" @click="regretBox.open = false">Cancel</Button>
+          <Button variant="solid" theme="red" :loading="regretBox.busy" :disabled="!regretCount" @click="sendRegrets">Send {{ regretCount }} regret{{ regretCount === 1 ? '' : 's' }}</Button>
+        </div>
+      </template>
+    </Dialog>
   </StaffLayout>
 </template>
 
 <script setup>
 import { computed, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { Button, Dropdown, FeatherIcon } from 'frappe-ui'
+import { Button, Dialog, Dropdown, FeatherIcon } from 'frappe-ui'
 import dayjs from 'dayjs'
 import StaffLayout from '@/layouts/StaffLayout.vue'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import ConfirmActionDialog from '@/components/common/ConfirmActionDialog.vue'
 import ToggleSwitch from '@/components/common/ToggleSwitch.vue'
 import { panelService } from '@/services/panel'
+import { postGreenSheetService } from '@/services/postGreenSheets'
+import { selectionService } from '@/services/selection'
+import { honorariumService } from '@/services/honorarium'
+import { useSessionStore } from '@/stores/session'
 import { toast } from '@/utils/notify'
 
 const props = defineProps({ job: { type: String, required: true } })
@@ -442,6 +537,20 @@ async function printForms(panelist) {
   }
 }
 
+// Steps 20/24: draft (or open the job's open) Post-Interview Green Sheet from the outcomes above.
+const raisingSheet = ref(false)
+async function openSelectionSheet() {
+  raisingSheet.value = true
+  try {
+    const name = await postGreenSheetService.createFromOutcomes(props.job)
+    router.push(`/selection-green-sheets/${name}`)
+  } catch (e) {
+    toast({ title: e?.messages?.[0] || 'Could not open the Selection Green Sheet.', icon: 'alert-triangle', iconClasses: 'text-red-500' })
+  } finally {
+    raisingSheet.value = false
+  }
+}
+
 async function exportSheet() {
   exporting.value = true
   try {
@@ -453,11 +562,72 @@ async function exportSheet() {
   }
 }
 
+// After the interviews: regrets (step 32) and panel thanks / honorarium (step 33).
+const session = useSessionStore()
+const postInterview = ref(null)
+async function loadPostInterview() {
+  if (!data.value?.can_decide) {
+    postInterview.value = null
+    return
+  }
+  try {
+    postInterview.value = await selectionService.getPostInterviewSummary(props.job)
+  } catch {
+    postInterview.value = null
+  }
+}
+
+const regretBox = reactive({ open: false, includeWaitlisted: false, busy: false })
+const regretCount = computed(() => {
+  const r = postInterview.value?.regret
+  if (!r) return 0
+  return r.not_selected + (r.waitlist_released || regretBox.includeWaitlisted ? r.waitlisted : 0)
+})
+function openRegret() {
+  Object.assign(regretBox, { open: true, includeWaitlisted: false, busy: false })
+}
+async function sendRegrets() {
+  regretBox.busy = true
+  try {
+    const r = await selectionService.sendRegrets(props.job, regretBox.includeWaitlisted)
+    toast({ title: `${r.sent} regret email${r.sent === 1 ? '' : 's'} queued.`, icon: 'check', iconClasses: 'text-green-500' })
+    regretBox.open = false
+    await load()
+  } catch (e) {
+    toast({ title: e?.messages?.[0] || 'Could not send the regrets.', icon: 'alert-triangle', iconClasses: 'text-red-500' })
+  } finally {
+    regretBox.busy = false
+  }
+}
+
+function askThanks() {
+  const t = postInterview.value.thanks
+  Object.assign(confirmBox, {
+    open: true,
+    title: 'Send thank-you to panel?',
+    message:
+      `The “Thank you to panellists” email goes to ${t.pending} panellist${t.pending === 1 ? '' : 's'} not thanked yet, and an honorarium record ` +
+      `is opened for each on the Panel Honorarium page${t.external_only ? ' (internal panellists: Not applicable)' : ''}.`,
+    label: 'Send thank-you',
+    theme: 'gray',
+    run: async () => {
+      try {
+        const r = await honorariumService.sendPanelThanks(props.job)
+        toast({ title: `Thank-you sent to ${r.sent} panellist${r.sent === 1 ? '' : 's'}.`, icon: 'check', iconClasses: 'text-green-500' })
+        await loadPostInterview()
+      } catch (e) {
+        toast({ title: e?.messages?.[0] || 'Could not send the thank-you.', icon: 'alert-triangle', iconClasses: 'text-red-500' })
+      }
+    },
+  })
+}
+
 async function load() {
   loading.value = true
   error.value = ''
   try {
     data.value = await panelService.getConsolidated(props.job, date.value)
+    loadPostInterview()
   } catch (e) {
     error.value = e?.messages?.[0] || 'Could not load the score sheet.'
   } finally {

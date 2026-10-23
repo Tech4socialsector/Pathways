@@ -43,9 +43,43 @@
           />
         </div>
 
-        <div v-if="!groups.length" class="rounded-xl border border-dashed bg-white px-6 py-12 text-center text-sm text-gray-500">
+        <!-- Job-level files (workflow step 16): notification, panel details,
+             assessment sheets, Shortlisting Note, HR notes, schedule -->
+        <section v-if="jobFileRows.length" class="mb-5 overflow-hidden rounded-xl border bg-white shadow-sm">
+          <header class="border-b bg-gray-50/60 px-5 py-3">
+            <h2 class="font-semibold text-gray-900">Interview files</h2>
+            <p class="text-xs text-gray-500">Generated when you open them, so they are always current.</p>
+          </header>
+          <ul class="divide-y">
+            <li v-for="r in jobFileRows" :key="r.name" class="px-5 py-3">
+              <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                <div>
+                  <span class="font-medium text-gray-900">{{ r.job_title }}</span>
+                  <span v-if="data.can_manage" class="ml-2 text-xs text-gray-600">→ {{ r.panelist_name }}</span>
+                </div>
+                <span class="text-xs text-gray-500">
+                  Shared {{ r.shared_on ? dayjs(r.shared_on).format('DD MMM YYYY, h:mm A [IST]') : '' }}<template v-if="r.shared_by"> by {{ r.shared_by }}</template>
+                </span>
+              </div>
+              <p v-if="r.note" class="mt-1 whitespace-pre-line rounded-md bg-amber-50 px-2 py-1 text-xs text-amber-900">{{ r.note }}</p>
+              <div class="mt-2 flex flex-wrap gap-2">
+                <button
+                  v-for="f in r.files"
+                  :key="f.label"
+                  type="button"
+                  class="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs text-gray-800 hover:border-brand-300 hover:bg-brand-50"
+                  @click="openJobFile(r, f)"
+                >
+                  <FeatherIcon name="download" class="h-3.5 w-3.5 text-brand-700" />{{ f.label }}
+                </button>
+              </div>
+            </li>
+          </ul>
+        </section>
+
+        <div v-if="!groups.length && !jobFileRows.length" class="rounded-xl border border-dashed bg-white px-6 py-12 text-center text-sm text-gray-500">
           <FeatherIcon name="folder" class="mx-auto mb-2 h-6 w-6 text-gray-300" />
-          {{ data.rows.length ? 'Nothing matches your search.' : 'No documents have been shared yet.' }}
+          {{ data.rows.length || data.job_files?.length ? 'Nothing matches your search.' : 'No documents have been shared yet.' }}
         </div>
 
         <section v-for="g in groups" :key="g.job_opening" class="mb-5 overflow-hidden rounded-xl border bg-white shadow-sm">
@@ -104,6 +138,7 @@ import StaffLayout from '@/layouts/StaffLayout.vue'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import DocumentViewer from '@/components/common/DocumentViewer.vue'
 import { panelService } from '@/services/panel'
+import { toast } from '@/utils/notify'
 
 const route = useRoute()
 const router = useRouter()
@@ -118,7 +153,7 @@ watch(job, (value) => router.replace({ query: value ? { job: value } : {} }))
 
 const jobOptions = computed(() => {
   const map = new Map()
-  for (const r of data.value?.rows || []) {
+  for (const r of [...(data.value?.rows || []), ...(data.value?.job_files || [])]) {
     if (!map.has(r.job_opening)) map.set(r.job_opening, { value: r.job_opening, label: r.position && r.position !== r.job_title ? `${r.job_title} · ${r.position}` : r.job_title, count: 0 })
     map.get(r.job_opening).count++
   }
@@ -126,7 +161,7 @@ const jobOptions = computed(() => {
 })
 const panellistOptions = computed(() => {
   const map = new Map()
-  for (const r of data.value?.rows || []) map.set(r.panelist, { value: r.panelist, label: r.panelist_name })
+  for (const r of [...(data.value?.rows || []), ...(data.value?.job_files || [])]) map.set(r.panelist, { value: r.panelist, label: r.panelist_name })
   return [...map.values()].sort((a, b) => a.label.localeCompare(b.label))
 })
 const groups = computed(() => {
@@ -142,6 +177,22 @@ const groups = computed(() => {
   }
   return [...out.values()]
 })
+
+const jobFileRows = computed(() => {
+  const q = search.value.trim().toLowerCase()
+  return (data.value?.job_files || []).filter((r) => {
+    if (job.value && jobOptions.value.some((j) => j.value === job.value) && r.job_opening !== job.value) return false
+    if (panellist.value && r.panelist !== panellist.value) return false
+    return !q || [r.job_title, r.panelist_name, ...r.files.map((f) => f.label)].some((v) => (v || '').toLowerCase().includes(q))
+  })
+})
+async function openJobFile(row, file) {
+  try {
+    await panelService.downloadJobFile(row.job_opening, file.label)
+  } catch (e) {
+    toast({ title: e?.messages?.[0] || 'Could not open the file.', icon: 'alert-triangle', iconClasses: 'text-red-500' })
+  }
+}
 
 const viewer = reactive({ open: false, row: null, index: 0 })
 function openViewer(row, index) {
