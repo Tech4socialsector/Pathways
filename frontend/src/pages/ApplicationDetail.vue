@@ -63,6 +63,20 @@
             </div>
             <ProgressStepper :steps="timelineSteps" />
           </div>
+          <!-- Where the next step happens, so staff are not left guessing which page moves the status. -->
+          <div
+            v-if="nextStep"
+            class="mt-4 flex flex-col gap-3 rounded-lg border border-brand-100 bg-brand-50/60 p-4 sm:flex-row sm:items-center"
+          >
+            <FeatherIcon name="navigation" class="hidden h-5 w-5 shrink-0 text-brand-700 sm:block" />
+            <div class="min-w-0 flex-1">
+              <div class="text-sm font-semibold text-gray-900">Next step: {{ nextStep.title }}</div>
+              <div class="mt-0.5 text-sm text-gray-600">{{ nextStep.text }}</div>
+            </div>
+            <RouterLink v-if="nextStep.to" :to="nextStep.to" class="shrink-0">
+              <Button variant="solid" :class="BTN_BRAND" icon-right="arrow-right">{{ nextStep.button }}</Button>
+            </RouterLink>
+          </div>
         </section>
 
         <div class="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_24rem]">
@@ -212,9 +226,19 @@
             v-model="statusForm.remarks"
             placeholder="Optional. Recorded in the application's timeline."
           />
-          <p class="text-xs text-gray-500">
-            Offer, document and joining statuses are set from their own records and need the status override role.
-          </p>
+          <div v-if="detail?.job_opening" class="rounded border border-brand-100 bg-brand-50/60 p-3 text-xs text-gray-700">
+            After the final interview, record <b>Select / Waitlist / Not selected</b> and send regrets on the
+            <RouterLink :to="`/panel/sheet/${detail.job_opening}`" class="font-medium text-brand-700 underline" @click="showStatusDialog = false">
+              consolidated score sheet</RouterLink>, not here. Use this dialog only to correct a status.
+          </div>
+          <div v-if="statusOptions.unavailable?.length" class="rounded border border-gray-200 bg-gray-50 p-3 text-xs text-gray-600">
+            <p class="mb-1 font-medium text-gray-700">Not available here</p>
+            <ul class="space-y-1">
+              <li v-for="row in statusOptions.unavailable" :key="row.status">
+                <span class="font-medium">{{ row.status }}:</span> {{ row.reason }}
+              </li>
+            </ul>
+          </div>
         </div>
       </template>
       <template #actions>
@@ -297,6 +321,50 @@ const timelineSteps = computed(() => {
   }))
 })
 
+// ----- next step: which page moves this application on from its current status
+const nextStep = computed(() => {
+  if (!status.value) return null
+  const job = detail.value?.job_opening
+  const sheet = job ? `/panel/sheet/${job}` : null
+  const jobPage = job ? `/jobs/${job}` : null
+  const outcome = detail.value?.selection_outcome
+  const finalDone = (status.value.interviews || []).some((iv) => /final/i.test(iv.round || iv.round_type || '') && iv.status === 'Completed')
+  switch (status.value.status) {
+    case 'Submitted':
+    case 'Under Review':
+      return { title: 'Eligibility and shortlisting', text: 'Mark the candidate eligible in the Eligibility card on the right, then the committee shortlists from the job page.', to: jobPage, button: 'Open job' }
+    case 'Shortlisted':
+      return { title: 'Schedule the interview', text: 'On the job page, Interviews: tick the candidate and schedule Round 1 (HR) or the Final interview.', to: jobPage, button: 'Open job' }
+    case 'Interview Scheduled':
+      return { title: 'Record the decision after the interview', text: 'Once the panel has scored, record Select / Waitlist / Not selected on the consolidated score sheet. Do not use Change Status for this.', to: sheet, button: 'Open score sheet' }
+    case 'Interview Completed':
+      return outcome === 'Waitlisted'
+        ? { title: 'Waitlisted', text: 'The candidate stays here until the waitlist is released. On the score sheet, either Select them or send regrets with "Also send to waitlisted".', to: sheet, button: 'Open score sheet' }
+        : { title: 'Record the decision', text: 'On the consolidated score sheet choose Select, Waitlist or Not selected. The status moves on its own.', to: sheet, button: 'Open score sheet' }
+    case 'Selected':
+      return { title: 'Selection green sheet, then the offer', text: 'On the score sheet click Selection Green Sheet and get it approved. Then use Create offer in the Offer card on this page.', to: sheet, button: 'Open score sheet' }
+    case 'Offer Extended':
+      return { title: 'Waiting for the candidate', text: 'The candidate accepts or declines from the portal. The status follows the offer.', to: '/offers', button: 'Open offers' }
+    case 'Offer Accepted':
+    case 'Documents Pending':
+      return status.value.offer_status
+        ? { title: 'Joining documents', text: 'The candidate uploads documents in the portal; verify them on the Documents page, then confirm the joining date on Joinings.', to: '/documents', button: 'Open documents' }
+        : { title: 'Status set by hand', text: 'There is no offer behind this status. Use Change Status to set it back to Selected, then follow the selection steps.', to: null }
+    case 'Documents Verified':
+      return { title: 'Confirm the joining', text: 'Confirm the date of joining (IT & Facilities are emailed), then mark the joiner as joined.', to: '/joinings', button: 'Open joinings' }
+    case 'Not Selected':
+      if (finalDone || outcome === 'Not Selected')
+        return detail.value?.interview_regret_sent_on
+          ? null
+          : { title: 'Send the regret', text: 'Regrets after the interview are sent together from the "After the interviews" card on the score sheet.', to: sheet, button: 'Open score sheet' }
+      return detail.value?.regret_sent_on
+        ? null
+        : { title: 'Send the regret', text: 'Regrets after screening are sent together from the Shortlisting card on the job page.', to: jobPage, button: 'Open job' }
+    default:
+      return null
+  }
+})
+
 // ----- manual status change (staff with write access)
 const statusOptions = ref({ can_change: false })
 const showStatusDialog = ref(false)
@@ -333,7 +401,8 @@ async function saveStatus() {
     await applicationService.setStatus(props.id, statusForm.status, statusForm.remarks)
     showStatusDialog.value = false
     toast({ title: `Status changed to ${statusForm.status}.`, icon: 'check', iconClasses: 'text-green-500' })
-    await Promise.all([fetchStatus(props.id), loadStatusOptions(props.id)])
+    // Same refresh as a shortlisting decision: header, progress, details and timeline.
+    onScored()
   } catch (e) {
     statusError.value = e?.messages?.[0] || 'Could not change the status.'
   } finally {

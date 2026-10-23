@@ -32,6 +32,7 @@ from frappe.rate_limiter import rate_limit
 from frappe.utils import add_days, cint, format_datetime, get_datetime, get_url, now_datetime
 
 from pathways.permissions import has_full_access
+from pathways.utils.db import commit
 
 DOCTYPE = "Reference Check"
 ANSWER_TYPES = ("Text", "Rating 1-5", "Yes-No")
@@ -540,4 +541,4 @@ def send_reminders():
 		doc.save()
 		_email_referee(doc, token, "reference_reminder")
 	if due:
-		frappe.db.commit()
+		commit()

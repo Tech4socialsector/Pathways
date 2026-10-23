@@ -3,6 +3,7 @@
 
 import frappe
 from frappe import _
+from pathways.utils.db import commit
 
 
 @frappe.whitelist()
@@ -179,7 +180,7 @@ def submit_shortlisting_score(application, shortlisting_committee, is_shortliste
 		score.insert(ignore_permissions=True)
 
 	status = apply_shortlisting_decision(score)
-	frappe.db.commit()
+	commit()
 	return {"name": score.name, "status": status}
 
 

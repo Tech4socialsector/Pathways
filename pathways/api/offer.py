@@ -33,6 +33,7 @@ from pathways.pathways.doctype.offer_appointment_order.offer_appointment_order i
 )
 from pathways.permissions import has_duty, has_full_access
 from pathways.utils.communication import candidate_email_context, send_event
+from pathways.utils.letterhead import letterhead_html
 
 DOCTYPE = "Offer Appointment Order"
 
@@ -235,10 +236,7 @@ ol li { margin-bottom: 6px; }
 </style></head>
 <body>
 {% if watermark %}<div class="draft">{{ watermark }}</div>{% endif %}
-<div class="head">
- <div class="org">National Law School of India University</div>
- <div class="sub">Nagarbhavi, Bengaluru 560 072</div>
-</div>
+{{ letterhead }}
 <table class="meta"><tr><td>Ref: {{ reference_number }}</td><td style="text-align:right">Date: {{ offer_date }}</td></tr></table>
 {{ body }}
 <div class="sign">
@@ -265,6 +263,7 @@ def render_letter(offer):
 		LETTER_WRAPPER,
 		{
 			**context,
+			"letterhead": letterhead_html(offer),
 			"body": body,
 			"signature": offer.registrar_signature if signed else None,
 			"signed_by_name": escape_html(offer.signed_by_name or "") if signed else "",

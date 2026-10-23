@@ -22,6 +22,7 @@ import frappe
 from frappe import _
 
 from pathways.permissions import CANDIDATE_ROLE
+from pathways.utils.db import commit
 
 PORTAL_PATH = "/pathways/portal/applications"
 
@@ -149,7 +150,7 @@ def create_portal_account(candidate):
 	user.insert(ignore_permissions=True)
 	cand.db_set("password_change_required", 1, update_modified=False)
 	claim_records(cand.name, cand.email)
-	frappe.db.commit()
+	commit()
 
 	from pathways.utils.communication import _send_event
 

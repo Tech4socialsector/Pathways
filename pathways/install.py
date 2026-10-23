@@ -82,6 +82,9 @@ def after_install():
 	from pathways.patches.v1_0.offer_appointment_orders import execute as seed_offer_defaults
 
 	seed_offer_defaults()
+	from pathways.utils.letterhead import ensure_letter_head
+
+	ensure_letter_head()
 
 
 def create_roles():

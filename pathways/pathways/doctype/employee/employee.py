@@ -3,6 +3,7 @@
 
 import frappe
 from frappe.model.document import Document
+from pathways.utils.db import commit
 
 
 class Employee(Document):
@@ -61,5 +62,5 @@ def create_employee_from_application(application_name):
 	application.status = "Joined"
 	application.save(ignore_permissions=True)
 
-	frappe.db.commit()
+	commit()
 	return employee.name

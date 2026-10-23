@@ -1155,7 +1155,7 @@ SCHEDULE_HTML = """
 	.num { text-align: center; }
 	ol { margin: 6px 0 0 16px; padding: 0; }
 </style>
-<h1>NATIONAL LAW SCHOOL OF INDIA UNIVERSITY, BENGALURU</h1>
+{{ letterhead }}
 <h2>INTERVIEW SCHEDULE | {{ round_label | upper }}</h2>
 <table class="meta" style="margin-bottom:8px">
 	<tr><td><b>Position:</b> {{ job_title }}</td><td><b>Date:</b> {{ date_label }}</td></tr>
@@ -1233,8 +1233,10 @@ def schedule_data(job_opening, round_type="Final", interview_date=None):
 def schedule_pdf(job_opening, round_type="Final", interview_date=None):
 	from frappe.utils.pdf import get_pdf
 
+	from pathways.utils.letterhead import letterhead_html
+
 	data = schedule_data(job_opening, round_type, interview_date)
-	return get_pdf(frappe.render_template(SCHEDULE_HTML, data), {"orientation": "Landscape", "page-size": "A4"})
+	return get_pdf(frappe.render_template(SCHEDULE_HTML, {**data, "letterhead": letterhead_html()}), {"orientation": "Landscape", "page-size": "A4"})
 
 
 def schedule_xlsx(job_opening, round_type="Final", interview_date=None):

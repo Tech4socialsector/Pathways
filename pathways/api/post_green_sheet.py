@@ -160,6 +160,19 @@ def _experience(app):
 	return " ".join(parts)
 
 
+def _published_on(job):
+	"""When the ad went out: the applications-open date, else the date
+	Communications recorded on the website, else the notification's
+	publish date. None leaves a blank to fill in on the sheet."""
+	if job.application_start:
+		return job.application_start
+	if job.get("website_published_on"):
+		return job.website_published_on
+	return frappe.db.get_value(
+		"Recruitment Notification", {"job_opening": job.name, "publish_date": ["is", "set"]}, "publish_date", order_by="publish_date asc"
+	)
+
+
 def _highest_qualification(application):
 	quals = frappe.get_all("Application Qualification", filters={"parent": application, "parenttype": "Application"}, fields=["degree_level", "degree_name"])
 	if not quals:
@@ -224,9 +237,10 @@ def draft_values(job_opening):
 	selected_names = [s["candidate_name"] for s in selected]
 	wait_name = waitlisted[0]["candidate_name"] if waitlisted else None
 
+	published = _published_on(job)
 	paragraphs = [
 		f"NLSIU called for applications for the appointment of {vacancies} {title}. "
-		f"The advertisement was published on {_long_date(job.application_start)}, and closed on {_long_date(job.application_deadline)}.",
+		f"The advertisement was published on {_long_date(published)}, and closed on {_long_date(job.application_deadline)}.",
 		f"The advertisement received {len(apps)} applications, and {shortlisted} candidates were shortlisted for interviews."
 		+ (f" Shortlisting was done by {_join(_member_names('Shortlisting Committee', shortlisters))}." if shortlisters else ""),
 		f"The interview committee consisting of {_join(_member_names('Selection Committee', committee)) if committee else '____'}, "
@@ -261,7 +275,7 @@ def draft_values(job_opening):
 	return {
 		"subject": f"Appointment of {title} ({vacancies} Vacanc{'ies' if vacancies != 1 else 'y'})",
 		"selection_note": "\n\n".join(paragraphs),
-		"advertisement_published_on": getdate(job.application_start) if job.application_start else None,
+		"advertisement_published_on": getdate(published) if published else None,
 		"advertisement_closed_on": getdate(job.application_deadline) if job.application_deadline else None,
 		"applications_received": len(apps),
 		"candidates_shortlisted": shortlisted,

@@ -120,10 +120,10 @@ get_website_user_home_page = "pathways.utils.home.get_home_page"
 # ----------
 
 # add methods and filters to jinja environment
-# jinja = {
-# 	"methods": "pathways.utils.jinja_methods",
-# 	"filters": "pathways.utils.jinja_filters"
-# }
+jinja = {
+	# The NLSIU letterhead (pathways.utils.letterhead) reads the logo through this.
+	"methods": ["pathways.utils.letterhead.pathways_logo_src", "pathways.utils.letterhead.pathways_letterhead"],
+}
 
 # Installation
 # ------------

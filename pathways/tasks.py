@@ -3,6 +3,7 @@
 
 import frappe
 from frappe.utils import add_days, getdate, now_datetime, today
+from pathways.utils.db import commit
 
 
 def hourly():
@@ -38,7 +39,7 @@ def close_expired_job_openings():
 		except Exception:
 			frappe.log_error(title=f"Pathways: closing the advertisement for {name} failed")
 		# One job at a time, so a later failure cannot undo an earlier close.
-		frappe.db.commit()
+		commit()
 
 
 def daily():
@@ -88,7 +89,7 @@ def flag_ads_closing_soon():
 		context = job_email_context(frappe.get_doc("Job Opening", job.name))
 		context["application_count"] = frappe.db.count("Application", {"job_opening": job.name})
 		send_event("ad_closing_soon", "Job Opening", job.name, context, job_opening=job.name)
-	frappe.db.commit()
+	commit()
 
 
 def expire_overdue_offers():
@@ -131,4 +132,4 @@ def delete_stale_application_drafts():
 		status = frappe.db.get_value("Job Opening", draft.job_opening, "status")
 		if not status or (status != "Advertised" and (not draft.saved_at or draft.saved_at < cutoff)):
 			frappe.delete_doc("Application Draft", draft.name, ignore_permissions=True, force=True)
-	frappe.db.commit()
+	commit()

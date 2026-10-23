@@ -16,6 +16,7 @@ from frappe.utils import cint, flt
 
 from pathways.api.interviews import _can_manage
 from pathways.pathways.doctype.interview_assessment.interview_assessment import interview_rubric
+from pathways.utils.letterhead import letterhead_html
 
 VERDICTS = ("Recommended", "Waitlist", "Not Recommended")
 HR_OUTCOMES = ("Recommend for final", "Hold", "Not recommended")
@@ -739,7 +740,7 @@ HR_NOTES_HTML = """
 	th { background: #f2e6e8; text-align: left; }
 	.cand { font-weight: bold; font-size: 12px; margin: 10px 0 4px; }
 </style>
-<h1>NATIONAL LAW SCHOOL OF INDIA UNIVERSITY, BENGALURU</h1>
+{{ letterhead }}
 <h2>ROUND 1 (HR INTERACTION) NOTES | {{ job_title | upper }}</h2>
 {% for c in candidates %}
 <div class="cand">{{ loop.index }}. {{ c.candidate_name }} ({{ c.application_id }}) &middot; {{ c.date }} &middot; {{ c.status }}</div>
@@ -774,7 +775,7 @@ def hr_notes_pdf(job_opening):
 		}
 		for iv in interviews
 	]
-	html = frappe.render_template(HR_NOTES_HTML, {"candidates": candidates, "job_title": frappe.db.get_value("Job Opening", job_opening, "job_title")})
+	html = frappe.render_template(HR_NOTES_HTML, {"letterhead": letterhead_html(), "candidates": candidates, "job_title": frappe.db.get_value("Job Opening", job_opening, "job_title")})
 	return get_pdf(html, {"orientation": "Landscape", "page-size": "A4"})
 
 
@@ -805,7 +806,7 @@ FORM_HTML = """
 </style>
 {% for f in forms %}
 <div class="page">
-	<h1>NATIONAL LAW SCHOOL OF INDIA UNIVERSITY, BENGALURU</h1>
+	{{ letterhead }}
 	<h2>{{ position | upper }} | RECRUITMENT | INTERVIEW ASSESSMENT FORM</h2>
 	<ul>
 		<li>{{ note }}</li>
@@ -916,6 +917,7 @@ def assessment_forms_pdf(job_opening, panelist=None, interview_date=None, blank=
 	html = frappe.render_template(
 		FORM_HTML,
 		{
+			"letterhead": letterhead_html(),
 			"forms": forms,
 			"position": job.job_title,
 			"note": TRACK_FORM_NOTE.get(job.track, TRACK_FORM_NOTE["Admin"]),

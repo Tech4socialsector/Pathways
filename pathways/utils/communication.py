@@ -5,6 +5,7 @@ import re
 
 import frappe
 from frappe.utils import now_datetime
+from pathways.utils.db import commit
 
 
 def template_body(template):
@@ -44,7 +45,7 @@ def send_templated_email(email_template, recipient, reference_doctype, reference
 	log.sent_on = now_datetime()
 	log.status = status
 	log.insert(ignore_permissions=True)
-	frappe.db.commit()
+	commit()
 	return status
 
 
@@ -195,7 +196,7 @@ def _send_event(rule_event=None, reference_doctype=None, reference_name=None, co
 			}
 		)
 		log.insert(ignore_permissions=True)
-	frappe.db.commit()
+	commit()
 
 
 def job_email_context(job):

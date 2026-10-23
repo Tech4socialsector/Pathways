@@ -342,7 +342,7 @@ PANEL_HTML = """
 	td, th { border: 1px solid #555; padding: 6px; text-align: left; }
 	th { background: #f2e6e8; }
 </style>
-<h1>NATIONAL LAW SCHOOL OF INDIA UNIVERSITY, BENGALURU</h1>
+{{ letterhead }}
 <h2>SELECTION COMMITTEE | {{ job_title | upper }}</h2>
 <p><b>Date of interviews:</b> {{ date or "To be confirmed" }}{% if time %} &nbsp; <b>From:</b> {{ time }}{% endif %}</p>
 <table>
@@ -355,6 +355,8 @@ PANEL_HTML = """
 def _panel_details_pdf(job_opening):
 	from frappe.utils.pdf import get_pdf
 
+	from pathways.utils.letterhead import letterhead_html
+
 	committee = frappe.get_doc("Selection Committee", frappe.db.get_value("Selection Committee", {"job_opening": job_opening}, "name"))
 	members = [
 		{"name": frappe.utils.get_fullname(m.member), "designation": m.designation_label or "", "kind": _("External expert") if m.is_external_expert else _("Internal")}
@@ -363,6 +365,7 @@ def _panel_details_pdf(job_opening):
 	html = frappe.render_template(
 		PANEL_HTML,
 		{
+			"letterhead": letterhead_html(),
 			"job_title": frappe.db.get_value("Job Opening", job_opening, "job_title"),
 			"date": frappe.utils.formatdate(committee.scheduled_date, "dd MMM yyyy") if committee.scheduled_date else "",
 			"time": frappe.utils.format_time(committee.scheduled_time, "h:mm a") if committee.scheduled_time else "",

@@ -558,28 +558,81 @@ def withdraw_application(application_name):
 	return app.status
 
 
-# Statuses normally set by their own records (Offer / Appointment Order,
-# Document Collection, Joining) or by the candidate (Withdrawn). Staff may
-# move an application through screening and selection by hand; these need
-# Pathways Settings > Job Status Override Role (or System Manager).
-SYSTEM_DRIVEN_STATUSES = (
-	"Offer Extended",
-	"Offer Accepted",
-	"Offer Declined",
-	"Documents Pending",
-	"Documents Verified",
-	"Joined",
-	"Withdrawn",
-)
+# Manual status changes (Change Status dialog, bulk change). Staff may move
+# an application through screening and selection by hand. Offer, document
+# and joining statuses are set by their own records: by hand they can only
+# be re-applied to match the record, and only with Pathways Settings > Job
+# Status Override Role (or System Manager). Withdrawn needs that role too.
+
+# Offer statuses that still stand: while one exists the offer, not this
+# dialog, decides where the application is.
+LIVE_OFFER_STATUSES = ("Draft", "Verbal Offer", "Drafted", "Under Review", "Approved for Signature", "Signed by Registrar", "Sent", "Accepted")
 
 
-def _settable_statuses(app):
+def _linked_records(app):
+	"""The offer, document checklist and joining behind an application."""
+	offer = frappe.db.get_value("Offer Appointment Order", {"application": app.name}, ["name", "status"], as_dict=True, order_by="creation desc")
+	collection = frappe.db.get_value("Document Collection", {"application": app.name}, ["name", "overall_status"], as_dict=True)
+	joining = frappe.db.get_value("Joining", {"application": app.name}, ["name", "status"], as_dict=True, order_by="creation desc")
+	return offer, collection, joining
+
+
+def _status_blockers(app):
+	"""{status: reason} for every status this application cannot be moved to
+	by hand. Offer, document and joining statuses must match their record, so
+	the label never runs ahead of the work (an "Offer Accepted" application
+	with no offer never starts onboarding). Manual changes may only repair a
+	status that has drifted from its record."""
 	from pathways.pathways.doctype.job_opening.job_opening import can_override_status
 
 	options = frappe.get_meta("Application").get_field("status").options.split("\n")
-	if can_override_status():
-		return options
-	return [s for s in options if s not in SYSTEM_DRIVEN_STATUSES or s == app.status]
+	offer, collection, joining = _linked_records(app)
+	offer_status = offer.status if offer else None
+	backed = {
+		"Offer Extended": offer_status == "Sent",
+		"Offer Accepted": offer_status == "Accepted",
+		"Offer Declined": offer_status == "Declined",
+		"Documents Pending": bool(collection) and collection.overall_status != "Complete",
+		"Documents Verified": bool(collection) and collection.overall_status == "Complete",
+		"Joined": bool(joining) and joining.status == "Joined",
+	}
+	actions = {
+		"Offer Extended": _("Send the offer from its offer page."),
+		"Offer Accepted": _("The candidate accepts the offer from the portal."),
+		"Offer Declined": _("The candidate declines the offer from the portal."),
+		"Documents Pending": _("Starts when the offer is accepted."),
+		"Documents Verified": _("Verify the joining documents on the Documents page."),
+		"Joined": _("Mark the joiner as joined on the Joinings page."),
+	}
+	override = can_override_status()
+	live = (offer and offer_status in LIVE_OFFER_STATUSES) or (joining and joining.status != "No-show")
+
+	blockers = {}
+	for status in options:
+		if not status or status == app.status:
+			continue
+		if status in backed:
+			if not backed[status]:
+				blockers[status] = actions[status]
+			elif not override:
+				blockers[status] = _("Needs the status override role.")
+		elif status == "Withdrawn" and not override:
+			blockers[status] = _("Withdrawn is set by the candidate, or by the status override role.")
+		elif live and status != "Withdrawn":
+			blockers[status] = (
+				_("This application has a joining record ({0}); change it on the Joinings page.").format(joining.name)
+				if joining and joining.status != "No-show"
+				else _("This application has an offer ({0}, {1}); return, decline or let it expire on the offer page first.").format(
+					offer.name, _(offer_status)
+				)
+			)
+	return blockers
+
+
+def _settable_statuses(app):
+	options = frappe.get_meta("Application").get_field("status").options.split("\n")
+	blockers = _status_blockers(app)
+	return [s for s in options if s and s not in blockers]
 
 
 def _get_staff_application(application_name, ptype):
@@ -596,7 +649,13 @@ def get_application_status_options(application_name):
 	app = _get_staff_application(application_name, "read")
 	if not frappe.has_permission("Application", "write", doc=app):
 		return {"can_change": False}
-	return {"can_change": True, "current": app.status, "options": _settable_statuses(app)}
+	blockers = _status_blockers(app)
+	return {
+		"can_change": True,
+		"current": app.status,
+		"options": _settable_statuses(app),
+		"unavailable": [{"status": s, "reason": r} for s, r in blockers.items()],
+	}
 
 
 @frappe.whitelist(methods=["POST"])
@@ -604,8 +663,13 @@ def set_application_status(application_name, status, remarks=None):
 	"""Change an application's status by hand. The change and any remarks
 	are recorded in the application's timeline."""
 	app = _get_staff_application(application_name, "write")
+	if status == app.status:
+		return app.status
+	blocker = _status_blockers(app).get(status)
+	if blocker:
+		frappe.throw(_("You cannot set the status to {0}. {1}").format(_(status), blocker))
 	if status not in _settable_statuses(app):
-		frappe.throw(_("You cannot set the status to {0}. It is set from its own record.").format(status))
+		frappe.throw(_("{0} is not a valid status.").format(status))
 	if status == app.status:
 		return app.status
 
