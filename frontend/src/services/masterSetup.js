@@ -20,8 +20,15 @@ export const masterSetupService = {
   getForm(doctype) {
     return callMethod(`${API}.get_master_form`, { doctype })
   },
-  getList(doctype, { txt = '', status = '', start = 0, pageLength = 20 } = {}) {
-    return callMethod(`${API}.get_master_list`, { doctype, txt, status, start, page_length: pageLength })
+  getList(doctype, { txt = '', status = '', start = 0, pageLength = 20, fieldFilters = {} } = {}) {
+    return callMethod(`${API}.get_master_list`, {
+      doctype,
+      txt,
+      status,
+      start,
+      page_length: pageLength,
+      field_filters: JSON.stringify(fieldFilters),
+    })
   },
   getDoc(doctype, name) {
     return callMethod(`${API}.get_master_doc`, { doctype, name })

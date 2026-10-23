@@ -21,10 +21,26 @@
       <div v-else class="mx-auto flex max-w-6xl flex-col gap-4 p-4 md:p-6">
         <!-- Toolbar -->
         <div class="flex flex-wrap items-center justify-between gap-3">
-          <div class="w-full sm:w-80">
-            <TextInput v-model="searchText" type="text" :placeholder="`Search ${form?.label?.toLowerCase() || 'records'}`" :aria-label="`Search ${form?.label || 'records'}`">
-              <template #prefix><FeatherIcon name="search" class="h-4 w-4 text-gray-500" /></template>
-            </TextInput>
+          <div class="flex w-full flex-wrap items-center gap-2 lg:w-auto">
+            <div class="w-full sm:w-72">
+              <TextInput v-model="searchText" type="text" :placeholder="`Search ${form?.label?.toLowerCase() || 'records'}`" :aria-label="`Search ${form?.label || 'records'}`">
+                <template #prefix><FeatherIcon name="search" class="h-4 w-4 text-gray-500" /></template>
+              </TextInput>
+            </div>
+            <select
+              v-for="ff in filterFields"
+              :key="ff.fieldname"
+              :value="fieldFilters[ff.fieldname] || ''"
+              :aria-label="`Filter by ${ff.label}`"
+              class="h-8 rounded-md border-gray-300 bg-white py-0 pl-2.5 pr-8 text-sm text-gray-800 shadow-sm focus:border-brand-500 focus:ring-brand-500"
+              :class="fieldFilters[ff.fieldname] && 'border-brand-500 text-brand-800'"
+              @change="setQuery({ [`f_${ff.fieldname}`]: $event.target.value || undefined, page: undefined })"
+            >
+              <option value="">All {{ ff.label.toLowerCase() }}</option>
+              <option v-if="ff.allow_blank" value="__blank__">{{ ff.label }}: not set (any)</option>
+              <option v-for="o in ff.options" :key="o" :value="o">{{ o }}</option>
+            </select>
+            <Button v-if="isFiltered" variant="ghost" icon-left="x" @click="clearFilters">Clear</Button>
           </div>
           <div v-if="form?.active_field" class="flex items-center gap-1 rounded-lg border bg-white p-1 text-sm" role="tablist" aria-label="Filter by status">
             <button
@@ -161,7 +177,15 @@ const pageError = ref(null)
 const q = computed(() => String(route.query.q || ''))
 const status = computed(() => (['active', 'inactive'].includes(route.query.status) ? route.query.status : ''))
 const page = computed(() => Math.max(parseInt(route.query.page, 10) || 1, 1))
-const isFiltered = computed(() => Boolean(q.value || status.value))
+// Dropdown filters live in the URL as f_<fieldname>.
+const fieldFilters = computed(() => {
+  const out = {}
+  for (const [key, value] of Object.entries(route.query)) {
+    if (key.startsWith('f_') && value) out[key.slice(2)] = String(value)
+  }
+  return out
+})
+const isFiltered = computed(() => Boolean(q.value || status.value || Object.keys(fieldFilters.value).length))
 
 function setQuery(patch) {
   const query = { ...route.query, ...patch }
@@ -170,7 +194,8 @@ function setQuery(patch) {
 }
 function clearFilters() {
   searchText.value = ''
-  setQuery({ q: undefined, status: undefined, page: undefined })
+  const cleared = Object.fromEntries(Object.keys(fieldFilters.value).map((f) => [`f_${f}`, undefined]))
+  setQuery({ q: undefined, status: undefined, page: undefined, ...cleared })
 }
 
 const searchText = ref(q.value)
@@ -204,6 +229,7 @@ async function init() {
 
 const rows = ref([])
 const columns = ref([])
+const filterFields = ref([])
 const total = ref(0)
 const loading = ref(false)
 const listError = ref('')
@@ -223,10 +249,12 @@ async function fetchList() {
       status: status.value,
       start: (page.value - 1) * PAGE_SIZE,
       pageLength: PAGE_SIZE,
+      fieldFilters: fieldFilters.value,
     })
     if (request !== listRequest) return
     rows.value = res?.rows || []
     columns.value = res?.columns || []
+    filterFields.value = res?.filter_fields || []
     total.value = res?.total || 0
     // A page past the end (records deleted meanwhile) falls back to the last one.
     if (!rows.value.length && total.value && page.value > 1) setQuery({ page: pageCount.value > 1 ? String(pageCount.value) : undefined })
@@ -239,10 +267,11 @@ async function fetchList() {
 
 watch(() => props.slug, async () => {
   rows.value = []
+  filterFields.value = []
   await init()
   fetchList()
 }, { immediate: true })
-watch([q, status, page], fetchList)
+watch([q, status, page, () => JSON.stringify(fieldFilters.value)], fetchList)
 
 function display(column, value) {
   if (value === null || value === undefined || value === '') return '—'

@@ -173,9 +173,33 @@ def get_master_form(doctype):
 	}
 
 
+def _filter_fields(doctype, meta, columns):
+	"""Dropdown filters for the list: the Select and Link columns, plus any
+	Select/Link field marked "In Standard Filter". Each comes with the values
+	to choose from (a Select's options; for a Link, the values in use)."""
+	seen, out = set(), []
+	candidates = [*columns, *(df for df in meta.fields if df.in_standard_filter and not df.hidden)]
+	for df in candidates:
+		if df.fieldname in seen or df.fieldtype not in ("Select", "Link"):
+			continue
+		seen.add(df.fieldname)
+		if df.fieldtype == "Select":
+			options = [o for o in (df.options or "").split("\n") if o]
+		else:
+			options = sorted(
+				v for v in frappe.get_list(doctype, pluck=df.fieldname, distinct=True, limit_page_length=0) if v
+			)
+		# Blank counts as a value when the field may be left empty (e.g. an
+		# approval chain for "any" employment type).
+		allow_blank = not df.reqd
+		out.append({"fieldname": df.fieldname, "label": _(df.label), "options": options, "allow_blank": allow_blank})
+	return out
+
+
 @frappe.whitelist()
-def get_master_list(doctype, txt="", status="", start=0, page_length=20):
-	"""One page of a master's records for the in-app list."""
+def get_master_list(doctype, txt="", status="", start=0, page_length=20, field_filters=None):
+	"""One page of a master's records for the in-app list. field_filters:
+	{fieldname: value} for the dropdown filters; "__blank__" matches empty."""
 	_check_master(doctype)
 	meta = frappe.get_meta(doctype)
 	active_field, active_value = get_active_field(meta)
@@ -191,6 +215,7 @@ def get_master_list(doctype, txt="", status="", start=0, page_length=20):
 		# The name column already shows the title and the naming field.
 		and df.fieldname not in (active_field, title_field, _name_field(meta))
 	][:4]
+	filter_fields = _filter_fields(doctype, meta, columns)
 
 	fields = ["name", "modified", *([title_field] if title_field else []), *(df.fieldname for df in columns)]
 	if active_field:
@@ -201,6 +226,13 @@ def get_master_list(doctype, txt="", status="", start=0, page_length=20):
 		filters[active_field] = active_value
 	elif active_field and status == "inactive":
 		filters[active_field] = ["!=", active_value]
+
+	# Only the offered dropdowns can filter: nothing else reaches the query.
+	allowed = {f["fieldname"] for f in filter_fields}
+	for fieldname, value in (frappe.parse_json(field_filters) if field_filters else {}).items():
+		if fieldname not in allowed or value in (None, ""):
+			continue
+		filters[fieldname] = ["is", "not set"] if value == "__blank__" else value
 
 	or_filters = None
 	txt = (txt or "").strip()
@@ -225,6 +257,7 @@ def get_master_list(doctype, txt="", status="", start=0, page_length=20):
 
 	return {
 		"columns": [{"fieldname": df.fieldname, "label": _(df.label), "fieldtype": df.fieldtype} for df in columns],
+		"filter_fields": filter_fields,
 		"rows": [
 			{
 				**r,
