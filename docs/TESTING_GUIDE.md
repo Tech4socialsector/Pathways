@@ -1,6 +1,6 @@
 # Pathways Recruitment: End-to-End Test Guide
 
-Covers the recruitment workflow from the green sheet through shortlisting, regret emails and the candidate portal (workflow steps 1–12). Work through the stages in order with one fresh test job. Tick a step when its result matches **Expect**. If a step fails, note the step number and send a screenshot or the error.
+Covers the whole recruitment workflow (steps 1–34): green sheet, advertisement, shortlisting, interviews, reference checks, selection green sheet, offer, onboarding and joining. Sections 1–10 cover steps 1–12; sections 11–23 cover the rest. Work through the stages in order with one fresh test job. Tick a step when its result matches **Expect**. If a step fails, note the step number and send a screenshot or the error.
 
 | | |
 |---|---|
@@ -197,4 +197,266 @@ Email Setup → Recent, and Desk → Error Log.
 
 ---
 
-**Not covered yet:** the interview stage onwards (Round 1, call letters, panel scoring, post-interview green sheet, offers, onboarding). Those emails exist in Email Setup, but their screens are the next build.
+## 11. Before testing the later stages
+
+User menu → Settings, Roles & Permissions, Master Setup.
+
+- [ ] **11.1** Roles & Permissions: give real test users (your own inboxes) these roles: PNCO, CFO, Registrar, Vice Chancellor, Communications, IT Facilities. Also create 3 panellist users and 2 HR assessor users.
+  **Expect:** each role shows at least one user.
+- [ ] **11.2** Master Setup → Approval Chains: open the **Post-Interview Green Sheet** chain for your test job's track.
+  **Expect:** a chain exists, e.g. Recruiter → PNCO → CFO → Registrar → VC. If none exists, create one before section 17.
+- [ ] **11.3** Settings → check the sections Interview Rounds, Reference Checks, Offers & Appointment Orders (Duty Roles), Joining & Onboarding, Panel Honorarium.
+  **Expect:** defaults filled in: 2 HR assessors, link valid 14 days, reviewer PNCO, signatory Registrar.
+- [ ] **11.4** Master Setup: open Appointment Order Templates, Reference Check Templates and Scoring Rubrics.
+  **Expect:** 5 appointment order templates; Admin, Faculty and Research reference templates; an HR Interaction rubric per track.
+- [ ] **11.5** Email Setup → Emails by Stage: switch on the Interviews, Selection & Offer and Onboarding & Closure emails.
+  **Expect:** no red "No recipients" chips on them.
+
+## 12. Advertisement extras
+
+Workflow steps 3, 6, 7 · Job page.
+
+- [ ] **12.1** Approve a new job's Pre-Recruitment Green Sheet (last step).
+  **Expect:** Registrar and Communications get "Green Sheet approved: prepare the official notification".
+- [ ] **12.2** As Communications: job page → Publishing → Edit. Enter website, LinkedIn and Indeed links with dates, then Save.
+  **Expect:** links shown on the card; an invalid URL is refused.
+- [ ] **12.3** With the job Advertised, click **Share on LinkedIn**.
+  **Expect:** LinkedIn's share window opens with the public job link.
+- [ ] **12.4** Open `/jobs-feed.xml` and `/jobs-feed.json` in a browser.
+  **Expect:** the advertised job is listed; draft and closed jobs are not; no internal fields.
+- [ ] **12.5** Job page → Folder & Sharing.
+  **Expect:** a folder path `Home/Pathways/<Department>/<Job>`.
+- [ ] **12.6** Tag a colleague (a staff user with no Pathways role), add a note, then click **Tag and notify**.
+  **Expect:** they get "Colleague tagged on a job" and, after logging in, can open this job's applications read-only, but no other job's.
+- [ ] **12.7** Remove the colleague (×).
+  **Expect:** they lose access.
+- [ ] **12.8** Shortlisting card → **Edit committee**: add one member, set the deadline, upload an office order PDF.
+  **Expect:** only the new member is emailed; the deadline and office order show on the card.
+- [ ] **12.9** Set an Advertised job's deadline a few minutes in the past and wait for the hourly run (or run `bench --site pathways.local execute pathways.tasks.hourly`).
+  **Expect:** the job and its notification are Closed; Communications and Recruiters get "Advertisement closed: take the ad down" exactly once.
+
+## 13. HR interaction round
+
+Workflow step 13 · Job page → Interviews; HR assessor's login.
+
+- [ ] **13.1** Tick 2 shortlisted candidates → **Schedule Round 1 (HR)**. Add 2 HR assessors and try to add a third.
+  **Expect:** a third is refused; after scheduling, candidates get the Round 1 invite and assessors get "HR assessor assigned (Round 1)".
+- [ ] **13.2** Candidate portal: open the application and confirm the interview.
+  **Expect:** RSVP shows Confirmed on the staff Interviews page.
+- [ ] **13.3** As an HR assessor: Interview Panel.
+  **Expect:** only their Round 1 rows are listed; Open shows the CV and SOP.
+- [ ] **13.4** Score → submit without an outcome, then with **Recommend for final**, salary expectation, notice period and note.
+  **Expect:** the outcome is required; the score bar says "of the HR sheet", not "needed for an offer"; the submission is saved.
+- [ ] **13.5** As the recruiter: open the candidate's application page.
+  **Expect:** the **HR interaction** card shows each assessor's outcome, score and note.
+- [ ] **13.6** As an HR assessor: change the URL to an application not assigned to you.
+  **Expect:** no access.
+
+## 14. Final shortlist and selection committee
+
+Workflow steps 14–16 · Job page → Interviews and Selection Committee.
+
+- [ ] **14.1** Tick candidates → **Final shortlist ▾ → Add ticked to final shortlist**.
+  **Expect:** a "Final" badge; they appear under Interviews → To schedule with next round Final.
+- [ ] **14.2** **Final shortlist ▾ → Shortlisting Note…** → write a note, attach a file, **Save note**, then **Print (PDF)**.
+  **Expect:** the PDF shows the note and the final shortlist.
+- [ ] **14.3** Selection Committee → Edit: add 3 panellists, set a date and time, then Save.
+  **Expect:** panellists are emailed. Desk → Event shows one event with the panellists plus VC and Registrar users.
+- [ ] **14.4** Change the committee time and save again.
+  **Expect:** the same event moves; no second event is created.
+- [ ] **14.5** Tick the final shortlist → **Schedule Final**.
+  **Expect:** candidates get the Interview Call Letter with date, time, link and RSVP.
+- [ ] **14.6** **Panel files ▾ → Share files with the panel…**: tick the Notification, blank assessment sheets, Shortlisting Note and HR notes for one panellist.
+  **Expect:** that panellist gets "Interview files shared"; Interview Panel → Shared documents lists the files and each opens.
+- [ ] **14.7** **Panel files ▾**: download the Final interview schedule as Excel and PDF, and the blank assessment sheets.
+  **Expect:** each file downloads and lists the scheduled candidates.
+
+## 15. Panel scoring and decisions
+
+Workflow steps 17–19 · Panellist's login; Interview Panel → Consolidated score sheet.
+
+- [ ] **15.1** As a panellist: Interview Panel → candidate → Score. Enter scores and a verdict, **draw a signature**, then Submit.
+  **Expect:** saved. With "Require signature" on in Settings, submitting without a signature is refused.
+- [ ] **15.2** Repeat for the other panellists.
+  **Expect:** the consolidated sheet shows each panellist's score and the average.
+- [ ] **15.3** Desk → Interview Assessment → open one → Print → **Interview Assessment**.
+  **Expect:** a form with scores, verdict, comments and the drawn signature.
+- [ ] **15.4** Consolidated sheet: mark one candidate Selected, one Waitlisted, the rest Not selected. Click Export.
+  **Expect:** statuses update; the Excel file matches the screen.
+
+## 16. Regrets, thanks and honorarium
+
+Workflow steps 32–33 · Consolidated sheet → "After the interviews" card; Panel Honorarium page.
+
+- [ ] **16.1** Click **Send regrets** without ticking "Also send to waitlisted".
+  **Expect:** the count excludes the waitlisted candidate; Not selected candidates get the Regret After Interview email.
+- [ ] **16.2** Click Send regrets again.
+  **Expect:** 0 to send; nobody gets a second email.
+- [ ] **16.3** Click **Send thank-you to panel**.
+  **Expect:** each panellist gets the thank-you once. Panel Honorarium lists one row per panellist; internal ones are "Not applicable" if "external experts only" is on.
+- [ ] **16.4** As Recruiter: edit a row: amount, a PAN in the wrong format, then a correct one.
+  **Expect:** the wrong PAN is refused.
+- [ ] **16.5** Try **Mark paid** on a Pending row.
+  **Expect:** refused until it is approved.
+- [ ] **16.6** As CFO: Approve the row. Then Mark paid with a date and reference, and click Download Excel.
+  **Expect:** status Paid; the Excel file includes the row.
+
+## 17. Reference checks
+
+Workflow step 21 · Applications → the Selected candidate → References panel.
+
+- [ ] **17.1** Click **Start checks**.
+  **Expect:** one check per referee the candidate entered, using the template for the job's track.
+- [ ] **17.2** On one check, click **Email form link** (use your own email as the referee's).
+  **Expect:** the referee email arrives; the panel shows the link with Copy.
+- [ ] **17.3** Open the link in a private window (not logged in).
+  **Expect:** candidate name, post and questions shown; no login asked.
+- [ ] **17.4** Submit with a required question empty, then complete it.
+  **Expect:** the empty question is flagged; after submitting, the recruiter gets "Reference received" and the check is Completed.
+- [ ] **17.5** Open the same link again.
+  **Expect:** "already submitted"; a made-up link says invalid.
+- [ ] **17.6** On the second check, click **Record answers**, fill in the answers and click **Mark complete**.
+  **Expect:** Completed, recorded by you.
+- [ ] **17.7** Responses → write the summary → Save summary → Print.
+  **Expect:** a printable reference check.
+- [ ] **17.8** Candidate portal: open the application.
+  **Expect:** nothing about reference checks is visible.
+
+## 18. Post-interview (selection) green sheet
+
+Workflow steps 20, 24, 25 · Consolidated sheet or job page → Selection card.
+
+- [ ] **18.1** Click **Selection Green Sheet**.
+  **Expect:** a draft with the selected and waitlisted candidates, process figures (applications, shortlisted, interviewed) and one fee row each.
+- [ ] **18.2** Check the sections for the job's employment type.
+  **Expect:** Pay Fixation only for Permanent; Deliverables for Consultant or contract; Funding for Research or grant-funded.
+- [ ] **18.3** **Print → Panel Recommendation (for VC)**.
+  **Expect:** a page with each candidate's averaged scores and the recommendation.
+- [ ] **18.4** Attach a PDF as "Panel Recommendation (signed by VC)", Save Draft, then **Submit for Approval**.
+  **Expect:** the first approver gets "Green Sheet awaiting approval" with a link to this sheet.
+- [ ] **18.5** As the second approver, try to approve before the first.
+  **Expect:** refused: not your step yet.
+- [ ] **18.6** Return it with a reason, then **Revise & Resubmit**.
+  **Expect:** a new draft with the same content; submitting restarts the chain.
+- [ ] **18.7** Approve every step as each approver (or from My Approvals → Open full sheet).
+  **Expect:** each next approver is emailed; at the end the status is Approved.
+- [ ] **18.8** **Print → Green Sheet**, then **Upload signed copy**.
+  **Expect:** the print matches the paper sheet's layout; the signed copy is listed.
+
+## 19. Offer and appointment order
+
+Workflow steps 22–23, 26–29 · Offers; Registrar and candidate logins.
+
+- [ ] **19.1** Before the green sheet is approved, try **Create offer** for the candidate.
+  **Expect:** refused: an approved selection green sheet is needed.
+- [ ] **19.2** After approval: Applications → candidate → Offer card → **Create offer** (template: Suggest).
+  **Expect:** the offer opens in Draft with the matching template.
+- [ ] **19.3** Fill in Appointment Details, Compensation, Verbal Offer and Terms → Save Draft → **Preview Letter**.
+  **Expect:** the letter shows the candidate, designation, pay and dates you entered.
+- [ ] **19.4** **Submit for Review**. As PNCO, use **Return for Changes** without remarks, then with remarks.
+  **Expect:** remarks are required; the drafter gets "Appointment order returned for changes"; status Draft.
+- [ ] **19.5** Resubmit; as PNCO, **Approve for Signature**.
+  **Expect:** the Registrar gets "Appointment order ready for signature".
+- [ ] **19.6** As Registrar: **Sign** → draw a signature, tick "Save this as the signature for future orders", and Sign.
+  **Expect:** status Signed by Registrar; Download PDF shows the signature, name and date.
+- [ ] **19.7** **Send to Candidate**.
+  **Expect:** the candidate gets the covering email with the PDF attached; status Sent.
+- [ ] **19.8** Candidate portal → the application → Appointment order card: View letter, Download PDF, Upload signed copy, pick a joining date, then **Accept offer**.
+  **Expect:** status Accepted on the staff side, with the joining date.
+- [ ] **19.9** Staff: offer page → Signed Copies → **Upload scan**.
+  **Expect:** the scan is listed separately from the candidate's signed copy.
+- [ ] **19.10** Second candidate (optional): create, sign and send, then **Decline** with a reason in the portal.
+  **Expect:** status Declined, with the reason shown.
+- [ ] **19.11** Set an offer's acceptance deadline to yesterday and run `bench --site pathways.local execute pathways.tasks.daily`.
+  **Expect:** the offer is Expired; the application is Not Selected.
+
+## 20. Onboarding documents
+
+Workflow step 34 · Automatic on acceptance; candidate portal; Documents.
+
+- [ ] **20.1** Right after 19.8, check the candidate's inbox.
+  **Expect:** one onboarding email with the joining date and portal link.
+- [ ] **20.2** Candidate portal → the application → **Joining documents**.
+  **Expect:** the checklist from Document Type Master; each row has Upload.
+- [ ] **20.3** Upload all documents; Replace one.
+  **Expect:** each row is Submitted; the replaced file is the new one.
+- [ ] **20.4** As document verifier: **Documents → Onboarding Verification** → Review. Verify all but one; **Ask again** on that one, first without a reason and then with one.
+  **Expect:** a reason is required; the candidate gets "Joining document needs resubmission" with the reason and sees it in the portal.
+- [ ] **20.5** Candidate re-uploads; verifier verifies it.
+  **Expect:** overall status Complete.
+- [ ] **20.6** As the candidate, try to open another candidate's document collection (change the ID in the URL).
+  **Expect:** no access.
+
+## 21. Joining and IT/Facilities
+
+Workflow step 31, folder 12 · Joinings; IT Requests (IT Facilities login).
+
+- [ ] **21.1** **Joinings**.
+  **Expect:** a draft joining for the accepted candidate, with their chosen date.
+- [ ] **21.2** Open it: set reporting time, location and manager, and upload the bio and photo → **Confirm joining**.
+  **Expect:** status Confirmed; IT & Facilities get the intimation email with the joiner's details.
+- [ ] **21.3** Change the joining date and save, first without a reason and then with one.
+  **Expect:** a reason is required; IT gets an updated email.
+- [ ] **21.4** As IT Facilities: **IT Requests** → Update. Try **Complete & notify recruiter** with nothing ticked.
+  **Expect:** refused until the laptop is ticked and an official email is entered.
+- [ ] **21.5** Tick everything, enter the official email, and Complete.
+  **Expect:** status Completed; the recruiter gets "IT & Facilities ready".
+- [ ] **21.6** Back on the joining: **Mark joined**.
+  **Expect:** the application is Joined; an Employee record is created (Desk → Employee) because documents were verified in 20.5.
+- [ ] **21.7** Desk → Report → **New Joiners**, then **ERP Upload** → export.
+  **Expect:** the joiner appears in both; the ERP Upload export includes designation, department, joining date and pay.
+
+## 22. Reports, email log and import
+
+- [ ] **22.1** **Reports**: filter by the test job's track.
+  **Expect:** the Hiring Outcomes section shows offers (made, accepted, declined), joinings, acceptance rate and time to hire. Export includes them.
+- [ ] **22.2** **Dashboard**.
+  **Expect:** the new offer and joining tiles show your test records.
+- [ ] **22.3** Sidebar → **Communications**: filter by the test job and click a row.
+  **Expect:** every email from sections 12–21 is listed; the drawer shows the email as sent.
+- [ ] **22.4** Application page → **Emails** card.
+  **Expect:** only that candidate's emails.
+- [ ] **22.5** Applications → Import → **Historical import**: download the template, add 2 rows with statuses Selected and Joined for a Closed job, upload, check the preview, then Import.
+  **Expect:** imported with those statuses; no emails sent and no portal logins created.
+
+## 23. Email check for the later stages
+
+Email Setup → Recent, and Desk → Error Log.
+
+| Email | Goes to | When |
+|---|---|---|
+| Green Sheet approved: prepare the official notification | Registrar, Communications | Pre-recruitment green sheet approved |
+| Advertisement closed: take the ad down | Communications, Recruiter | Job auto-closes |
+| Colleague tagged on a job | Tagged colleague | Tag and notify |
+| HR assessor assigned (Round 1) | HR assessors | Round 1 scheduled with assessors |
+| Interview files shared | Panellists | Panel files shared |
+| Regret after interview | Candidate | Send regrets (consolidated sheet) |
+| Thank you to panellists | Panellists | Send thank-you to panel |
+| Reference check request / reminder | Referee | Email form link / daily reminder |
+| Reference received | Recruiter who sent it | Referee submits |
+| Green Sheet awaiting approval | Current approver | Each post-interview green sheet step |
+| Appointment order ready for review / for signature / returned for changes | PNCO / Registrar / drafter | Offer workflow |
+| Appointment order | Candidate (PDF attached) | Send to Candidate |
+| Onboarding documents | Candidate | Offer accepted |
+| Joining document needs resubmission | Candidate | Ask again on a document |
+| IT & Facilities intimation | IT Facilities | Joining confirmed or date changed |
+| IT & Facilities ready | Recruiter | IT request completed |
+
+- [ ] **23.1** Email Setup → Recent: every email above that you triggered.
+  **Expect:** status Sent, none Failed.
+- [ ] **23.2** Desk → Error Log: search "Pathways".
+  **Expect:** no new errors from your test run.
+
+---
+
+## Automated tests
+
+Developers can run the automated suite (58 tests across every stage) before a manual run:
+
+```bash
+cd /home/jenifar/pathways
+bench --site pathways.local set-config allow_tests true   # once per site
+bench --site pathways.local run-tests --app pathways
+```
+
+**Expect:** `Ran 58 tests … OK`.
