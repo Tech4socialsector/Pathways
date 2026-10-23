@@ -4,6 +4,14 @@
       <div class="flex min-w-0 items-start gap-3">
         <BackButton v-if="showBack" :fallback="backFallback" class="mt-0.5" />
         <div class="min-w-0">
+          <!-- Where this page sits: [{ label, to? }], the last one being this page. -->
+          <nav v-if="breadcrumbs.length" aria-label="Breadcrumb" class="mb-0.5 flex flex-wrap items-center gap-1 text-xs text-gray-500">
+            <template v-for="(c, i) in breadcrumbs" :key="i">
+              <FeatherIcon v-if="i" name="chevron-right" class="h-3 w-3 text-gray-400" />
+              <RouterLink v-if="c.to" :to="c.to" class="font-medium text-brand-700 hover:underline">{{ c.label }}</RouterLink>
+              <span v-else aria-current="page">{{ c.label }}</span>
+            </template>
+          </nav>
           <h1 class="text-2xl font-semibold text-gray-900">{{ title }}</h1>
           <p v-if="subtitle" class="mt-0.5 text-sm text-gray-500">{{ subtitle }}</p>
           <slot name="meta" />
@@ -18,7 +26,8 @@
 
 <script setup>
 import { computed } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
+import { FeatherIcon } from 'frappe-ui'
 import BackButton from '@/components/common/BackButton.vue'
 
 const props = defineProps({
@@ -26,6 +35,7 @@ const props = defineProps({
   subtitle: { type: String, default: '' },
   // Overrides the back button's fallback (used when there is no history).
   backTo: { type: String, default: '' },
+  breadcrumbs: { type: Array, default: () => [] },
 })
 
 const route = useRoute()

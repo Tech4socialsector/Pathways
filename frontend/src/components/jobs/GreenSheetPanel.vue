@@ -155,24 +155,7 @@
         </div>
       </template>
 
-      <div v-if="logRows.length">
-        <div class="mb-2 text-sm text-gray-500">Approval log</div>
-        <ul class="flex flex-col gap-2 text-sm">
-          <li v-for="(row, idx) in logRows" :key="idx" class="rounded border px-3 py-2">
-            <div class="flex flex-wrap items-center gap-2">
-              <StatusBadge :status="row.action" />
-              <span class="text-gray-900">{{ row.approver_role || row.approver }}</span>
-              <span class="text-xs text-gray-500">
-                {{ row.approver_name || row.approver }} &middot; {{ row.channel }} &middot; {{ formatDate(row.acted_on) }}
-              </span>
-              <span v-if="row.is_override" class="rounded bg-amber-50 px-1.5 py-0.5 text-xs text-amber-700">
-                recorded on behalf
-              </span>
-            </div>
-            <div v-if="row.remarks" class="mt-1 text-gray-600">{{ row.remarks }}</div>
-          </li>
-        </ul>
-      </div>
+      <ApprovalLog :rows="logRows" />
 
       <div v-if="history.length">
         <div class="mb-2 text-sm text-gray-500">Earlier Green Sheets</div>
@@ -290,6 +273,7 @@ import { toast } from '@/utils/notify'
 import dayjs from 'dayjs'
 import { FeatherIcon, FileUploader } from 'frappe-ui'
 import StatusBadge from '@/components/common/StatusBadge.vue'
+import ApprovalLog from '@/components/common/ApprovalLog.vue'
 import SectionCard from '@/components/common/SectionCard.vue'
 import RecruitmentTimeline from '@/components/common/RecruitmentTimeline.vue'
 import { greenSheetService } from '@/services/greenSheets'

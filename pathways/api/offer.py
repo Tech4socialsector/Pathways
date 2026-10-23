@@ -222,6 +222,11 @@ def letter_context(offer):
 LETTER_WRAPPER = """<!DOCTYPE html>
 <html><head><meta charset="utf-8">
 <style>
+/* No page margin of our own (the PDF margins apply) and the signature kept
+   in one piece: otherwise a letter that just fits spills a blank page. */
+html, body { margin: 0; padding: 0; }
+.sign { page-break-inside: avoid; }
+.sign > :last-child { margin-bottom: 0; }
 body { font-family: "Times New Roman", Georgia, serif; font-size: 12pt; color: #111; line-height: 1.45; }
 .head { text-align: center; border-bottom: 2px solid #3a2a6b; padding-bottom: 8px; margin-bottom: 14px; }
 .head .org { font-size: 17pt; font-weight: bold; letter-spacing: .5px; }
@@ -508,6 +513,9 @@ def get_offer(name):
 			"candidate_mobile": candidate.get("mobile_number"),
 			"job_title": frappe.db.get_value("Job Opening", app.job_opening, "job_title"),
 			"green_sheet_required": green_sheet_required(),
+			# What submit_for_review checks, so the form marks the same fields.
+			"required_fields": list(REQUIRED_FOR_REVIEW),
+			"one_of_fields": list(COMPENSATION_FIELDS),
 			"timeline": _timeline(doc),
 			"has_saved_signature": bool(settings.get("registrar_signature_image")),
 			"perms": {
@@ -609,17 +617,21 @@ def return_offer(name, remarks):
 	return get_offer(name)
 
 
+# Raster images only: an SVG could carry script into the letter.
+SIGNATURE_PREFIXES = ("data:image/png;base64,", "data:image/jpeg;base64,", "data:image/jpg;base64,", "data:image/webp;base64,")
+
+
 def _check_signature(signature):
-	if not signature or not isinstance(signature, str) or not signature.startswith("data:image/"):
-		frappe.throw(_("Please draw your signature, or use the saved signature."))
+	if not signature or not isinstance(signature, str) or not signature.startswith(SIGNATURE_PREFIXES):
+		frappe.throw(_("Please draw or upload your signature (PNG or JPG), or use the saved signature."))
 	if len(signature) > MAX_SIGNATURE_BYTES * 4 / 3:
 		frappe.throw(_("The signature image is too large."))
 
 
 @frappe.whitelist(methods=["POST"])
-def sign_offer(name, signature=None, use_saved_signature=0, save_as_default=0):
-	"""Registrar signs (workflow step 27): a drawn signature or the saved
-	signature image from Pathways Settings. The image is embedded in the
+def sign_offer(name, signature=None, use_saved_signature=0, save_as_default=0, uploaded=0):
+	"""Registrar signs (workflow step 27): a drawn or uploaded signature, or
+	the saved signature image from Pathways Settings. The image is embedded in the
 	letter, the signatory and time are stamped and the signed PDF is stored."""
 	doc = _get(name)
 	if doc.status != "Approved for Signature":
@@ -637,7 +649,7 @@ def sign_offer(name, signature=None, use_saved_signature=0, save_as_default=0):
 		doc.signature_source = "Saved Signature"
 	else:
 		_check_signature(signature)
-		doc.signature_source = "Drawn"
+		doc.signature_source = "Uploaded" if cint(uploaded) else "Drawn"
 		if cint(save_as_default):
 			save_signature(signature)
 
@@ -688,30 +700,56 @@ def send_offer(name, acceptance_deadline=None):
 	if doc.status != "Signed by Registrar":
 		frappe.throw(_("Only a signed appointment order can be sent (status: {0}).").format(doc.status))
 	doc.offer_date = today()
-	if acceptance_deadline:
-		if getdate(acceptance_deadline) < getdate(today()):
-			frappe.throw(_("The acceptance deadline cannot be in the past."))
-		doc.acceptance_deadline = acceptance_deadline
-	else:
-		days = cint(frappe.get_cached_doc("Pathways Settings").acceptance_deadline_days) or 7
-		doc.acceptance_deadline = add_days(today(), days)
+	doc.acceptance_deadline = _acceptance_deadline(acceptance_deadline)
 	doc.status = "Sent"
 	doc.sent_by = frappe.session.user
 	doc.sent_on = now_datetime()
 	attach_letter_pdf(doc)
 	_save(doc, _("Sent to candidate"))
 
+	context, candidate = _appointment_email(doc, doc.acceptance_deadline)
+	send_event("appointment_order", DOCTYPE, doc.name, context, candidate=candidate)
+	return get_offer(name)
+
+
+def _acceptance_deadline(value=None):
+	if value:
+		if getdate(value) < getdate(today()):
+			frappe.throw(_("The acceptance deadline cannot be in the past."))
+		return value
+	return add_days(today(), cint(frappe.get_cached_doc("Pathways Settings").acceptance_deadline_days) or 7)
+
+
+def _appointment_email(doc, deadline):
+	"""Context and recipient of the appointment_order email (send and preview)."""
 	context, candidate = candidate_email_context(doc.application)
 	context.update(
 		{
-			"acceptance_deadline": _fmt_date(doc.acceptance_deadline),
+			"acceptance_deadline": _fmt_date(deadline),
 			"designation": doc.designation,
 			"pnc_contacts": "",
 			"portal_link": get_url(f"/pathways/portal/applications/{doc.application}"),
 		}
 	)
-	send_event("appointment_order", DOCTYPE, doc.name, context, candidate=candidate)
-	return get_offer(name)
+	return context, candidate
+
+
+@frappe.whitelist()
+def preview_send_email(name, acceptance_deadline=None):
+	"""The appointment_order email exactly as Send to Candidate would send
+	it (recipient, CC, subject, full body, attachments), without sending."""
+	from pathways.utils.communication import preview_event
+
+	doc = _get(name, "write")
+	if doc.status != "Signed by Registrar":
+		frappe.throw(_("The email can be previewed once the order is signed."))
+	context, candidate = _appointment_email(doc, _acceptance_deadline(acceptance_deadline))
+	letter = f"Appointment Order - {doc.name}.pdf"  # as attach_letter_pdf names it
+	preview = preview_event("appointment_order", DOCTYPE, doc.name, context, candidate=candidate)
+	# Send regenerates the letter; it replaces the stored copy in the list.
+	stored = frappe.db.get_value("File", {"file_url": doc.letter_pdf}, "file_name") if doc.letter_pdf else None
+	preview["attachments"] = [letter, *[f for f in preview["attachments"] if f not in (stored, letter)]]
+	return preview
 
 
 @frappe.whitelist(methods=["POST"])

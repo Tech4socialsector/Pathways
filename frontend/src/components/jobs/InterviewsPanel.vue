@@ -17,7 +17,7 @@
           <Dropdown :options="filesMenu">
             <Button size="sm" variant="outline" icon-left="folder" icon-right="chevron-down">Panel files</Button>
           </Dropdown>
-          <Button v-if="hasFinal" size="sm" variant="outline" icon-left="grid" @click="$router.push(`/panel/sheet/${jobOpening}`)">Score sheet</Button>
+          <Button v-if="hasFinal" size="sm" variant="outline" icon-left="check-circle" @click="$router.push(`/selection/${jobOpening}`)">Selection</Button>
           <Button size="sm" variant="outline" icon-left="phone" :disabled="!selected.length" @click="openSchedule('HR Interaction')">Schedule Round 1 (HR)</Button>
           <Button
             size="sm"

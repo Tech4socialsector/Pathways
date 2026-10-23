@@ -1,6 +1,6 @@
 <template>
   <StaffLayout>
-    <PageHeader :title="doc?.subject || 'Selection Green Sheet'">
+    <PageHeader :title="doc?.subject || 'Selection Green Sheet'" :breadcrumbs="breadcrumbs" :back-to="backTo">
       <template #meta>
         <div v-if="doc" class="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm text-gray-600">
           <span class="rounded-md bg-gray-100 px-2 py-0.5 font-mono text-xs font-medium text-gray-700">{{ doc.name }}</span>
@@ -256,20 +256,7 @@
               <p v-else class="text-gray-500">
                 {{ doc.docstatus === 0 ? `The chain (${doc.approval_chain_template || 'none matched'}) is fixed when the sheet is submitted.` : 'No approval steps.' }}
               </p>
-              <div v-if="logRows.length">
-                <div class="mb-2 text-gray-500">Approval log</div>
-                <ul class="flex flex-col gap-2">
-                  <li v-for="(row, idx) in logRows" :key="idx" class="rounded border px-3 py-2">
-                    <div class="flex flex-wrap items-center gap-2">
-                      <StatusBadge :status="row.action" />
-                      <span class="text-gray-900">{{ row.approver_role || row.approver }}</span>
-                      <span v-if="row.is_override" class="rounded bg-amber-50 px-1.5 py-0.5 text-xs text-amber-700">recorded on behalf</span>
-                    </div>
-                    <div class="mt-0.5 text-xs text-gray-500">{{ row.approver_name || row.approver }} · {{ row.channel }} · {{ formatDateTime(row.acted_on) }}</div>
-                    <div v-if="row.remarks" class="mt-1 text-gray-600">{{ row.remarks }}</div>
-                  </li>
-                </ul>
-              </div>
+              <ApprovalLog :rows="logRows" class="border-t pt-3" />
             </div>
           </SectionCard>
         </div>
@@ -318,6 +305,7 @@ import StaffLayout from '@/layouts/StaffLayout.vue'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import SectionCard from '@/components/common/SectionCard.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
+import ApprovalLog from '@/components/common/ApprovalLog.vue'
 import RecruitmentTimeline from '@/components/common/RecruitmentTimeline.vue'
 import ConfirmActionDialog from '@/components/common/ConfirmActionDialog.vue'
 import { chainTimeline, formatDateTime, lastReturn } from '@/components/selection/approvalTimeline'
@@ -325,9 +313,27 @@ import { POST_GREEN_SHEET_DOCTYPE as DOCTYPE, postGreenSheetService, printUrl } 
 import { approvalService } from '@/services/approvals'
 import { BTN_BRAND, BTN_DARK } from '@/utils/buttonStyles'
 import { toast } from '@/utils/notify'
+import { useSessionStore } from '@/stores/session'
 
 const props = defineProps({ id: { type: String, required: true } })
 const router = useRouter()
+
+// Step 3 of Selection for the recruitment team; approvers who reach it from
+// My Approvals (CFO, Registrar, VC) do not have Selection.
+const session = useSessionStore()
+const inSelection = computed(() => session.hasMenu('selection'))
+const breadcrumbs = computed(() => {
+  const j = job.value
+  if (!j?.name) return []
+  return inSelection.value
+    ? [
+        { label: 'Selection', to: '/selection' },
+        { label: j.job_title || j.name, to: `/selection/${j.name}?tab=green_sheet` },
+        { label: 'Selection green sheet' },
+      ]
+    : [{ label: 'My Approvals', to: '/approvals' }, { label: 'Selection green sheet' }]
+})
+const backTo = computed(() => (inSelection.value && job.value?.name ? `/selection/${job.value.name}?tab=green_sheet` : '/approvals'))
 
 const FIELDS = [
   'subject', 'file_reference', 'selection_note', 'advertisement_published_on', 'advertisement_closed_on',

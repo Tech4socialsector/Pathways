@@ -105,6 +105,12 @@ def get_my_access():
 			"interviews" in menu and doctypes.get("Interview", {}).get("create")
 		):
 			menu.append("panel")
+		# Selection: the recruitment team's post-interview steps (decisions,
+		# regrets and thanks, selection green sheet, offers).
+		from pathways.api.interviews import _can_manage
+
+		if _can_manage():
+			menu.append("selection")
 		pipeline = has_full_access("Application")
 		if pipeline:
 			menu.append("reports")

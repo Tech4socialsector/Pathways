@@ -370,6 +370,37 @@ class TestOffer(IntegrationTestCase):
 		frappe.set_user(self.candidate_user)
 		self.assertRaises(frappe.ValidationError, api.respond_to_offer, name, "Declined")
 
+	def test_sign_with_uploaded_signature(self):
+		"""Step 27: the Registrar can sign with an uploaded PNG/JPG image (recorded as Uploaded);
+		an SVG or other non-raster image is refused so nothing scriptable reaches the letter."""
+		name = self._draft()
+		self._to_signature(name)
+		frappe.set_user(self.registrar)
+		svg = "data:image/svg+xml;base64," + base64.b64encode(b"<svg xmlns='http://www.w3.org/2000/svg'/>").decode()
+		self.assertRaises(frappe.ValidationError, api.sign_offer, name, svg, 0, 0, 1)
+		api.sign_offer(name, signature=SIGNATURE, uploaded=1)
+		offer = frappe.get_doc(DOCTYPE, name)
+		self.assertEqual(offer.status, "Signed by Registrar")
+		self.assertEqual(offer.signature_source, "Uploaded")
+		self.assertEqual(offer.registrar_signature, SIGNATURE)
+
+	def test_preview_send_email_sends_nothing(self):
+		"""Step 28: Preview Email shows the appointment_order email for this candidate (recipient,
+		subject, body, the letter as attachment) without sending it or changing the offer."""
+		name = self._draft()
+		self._to_signature(name)
+		frappe.set_user(self.registrar)
+		api.sign_offer(name, signature=SIGNATURE)
+		frappe.set_user(self.recruiter)
+		sent_before = len(self.events)
+		preview = api.preview_send_email(name)
+		self.assertEqual([r["email"] for r in preview["recipients"]], [self.candidate_user])
+		self.assertTrue(preview["subject"])
+		self.assertIn("Asha", preview["body"])
+		self.assertEqual(preview["attachments"][0], f"Appointment Order - {name}.pdf")
+		self.assertEqual(len(self.events), sent_before)
+		self.assertEqual(frappe.db.get_value(DOCTYPE, name, "status"), "Signed by Registrar")
+
 
 TEST_JOB_TITLE = "Assistant Manager - Test Offers"
 

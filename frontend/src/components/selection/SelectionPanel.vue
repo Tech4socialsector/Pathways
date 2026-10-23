@@ -29,8 +29,8 @@
           <div v-else class="text-gray-500">None</div>
         </div>
       </div>
-      <router-link :to="`/panel/sheet/${job.name}`" class="self-start text-xs font-medium text-brand-700 hover:underline">
-        Open the consolidated score sheet to record or change outcomes
+      <router-link v-if="!inSelection" :to="`/selection/${job.name}`" class="self-start text-xs font-medium text-brand-700 hover:underline">
+        Open Selection to record or change the decisions
       </router-link>
 
       <div
@@ -136,6 +136,8 @@ import { chainTimeline, lastReturn } from './approvalTimeline'
 
 const props = defineProps({
   job: { type: Object, required: true },
+  // Shown inside Selection itself: no link back to it.
+  inSelection: { type: Boolean, default: false },
 })
 
 const router = useRouter()

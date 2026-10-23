@@ -146,18 +146,61 @@ def event_attachments(rule, reference_doctype=None, reference_name=None):
 	return list(dict.fromkeys(files))
 
 
-def _send_event(rule_event=None, reference_doctype=None, reference_name=None, context=None, candidate=None, job_opening=None, approvers=None, extra_cc=None, event=None, extra_recipients=None):
-	event = rule_event or event
-	context = context or {}
+def _event_parts(event, reference_doctype=None, reference_name=None, candidate=None, job_opening=None, approvers=None, extra_cc=None, extra_recipients=None):
+	"""Everything an event's email is built from, shared by sending and
+	preview_event so a preview is exactly what goes out."""
 	rule = frappe.get_doc("Recruitment Email Rule", event)
 	template = frappe.get_doc("Email Template", rule.email_template)
 	cc = [e.strip() for e in (rule.cc or "").split(",") if e.strip()]
 	cc += [e for e in extra_cc or [] if e.lower() not in {c.lower() for c in cc}]
-	attachments = [{"fid": f} for f in event_attachments(rule, reference_doctype, reference_name)]
 	# Replies go to the recruitment team (Email Setup > Reply-to address).
 	reply_to = frappe.get_cached_doc("Pathways Settings").recruitment_contact_email or None
 	recipients = event_recipients(rule, candidate, job_opening, approvers)
 	recipients += [(e, n) for e, n in extra_recipients or [] if e.lower() not in {r[0].lower() for r in recipients}]
+	files = event_attachments(rule, reference_doctype, reference_name)
+	return frappe._dict(rule=rule, template=template, cc=cc, reply_to=reply_to, recipients=recipients, files=files)
+
+
+def _render_event(parts, context, email, name, candidate=None):
+	"""(subject, html) for one recipient."""
+	values = {
+		"contact_email": parts.reply_to or "",
+		**context,
+		"recipient_name": name or (context.get("candidate_name") if candidate and email == candidate.get("email") else "") or "Colleague",
+	}
+	return frappe.render_template(parts.template.subject, values), frappe.render_template(template_body(parts.template), values)
+
+
+def preview_event(event, reference_doctype=None, reference_name=None, context=None, candidate=None, job_opening=None, approvers=None, extra_cc=None, extra_recipients=None, extra_files=None):
+	"""What send_event would send, without sending: recipients, CC, reply-to,
+	subject and body (rendered for the first recipient) and attachment names.
+	extra_files: names of files the send itself will add (e.g. a PDF made
+	at send time)."""
+	if not frappe.db.exists("Recruitment Email Rule", event):
+		frappe.throw(frappe._("No email is set up for this step."))
+	parts = _event_parts(event, reference_doctype, reference_name, candidate, job_opening, approvers, extra_cc, extra_recipients)
+	email, name = parts.recipients[0] if parts.recipients else ("", "")
+	subject, body = _render_event(parts, context or {}, email, name, candidate)
+	files = frappe.get_all("File", filters={"name": ["in", parts.files or [""]]}, fields=["file_name"], pluck="file_name")
+	return {
+		"enabled": bool(parts.rule.enabled),
+		"label": parts.rule.label,
+		"email_template": parts.rule.email_template,
+		"recipients": [{"email": e, "name": n} for e, n in parts.recipients],
+		"cc": parts.cc,
+		"reply_to": parts.reply_to,
+		"subject": subject,
+		"body": body,
+		"attachments": list(dict.fromkeys([*files, *(extra_files or [])])),
+	}
+
+
+def _send_event(rule_event=None, reference_doctype=None, reference_name=None, context=None, candidate=None, job_opening=None, approvers=None, extra_cc=None, event=None, extra_recipients=None):
+	event = rule_event or event
+	context = context or {}
+	parts = _event_parts(event, reference_doctype, reference_name, candidate, job_opening, approvers, extra_cc, extra_recipients)
+	rule, cc, reply_to, recipients = parts.rule, parts.cc, parts.reply_to, parts.recipients
+	attachments = [{"fid": f} for f in parts.files]
 	if not recipients:
 		# Nobody to send to (e.g. no user holds the rule's roles): leave a
 		# trace in the Error Log instead of failing silently.
@@ -170,12 +213,12 @@ def _send_event(rule_event=None, reference_doctype=None, reference_name=None, co
 	for email, name in recipients:
 		status = "Sent"
 		try:
-			values = {"contact_email": reply_to or "", **context, "recipient_name": name or (context.get("candidate_name") if candidate and email == candidate.get("email") else "") or "Colleague"}
+			subject, message = _render_event(parts, context, email, name, candidate)
 			frappe.sendmail(
 				recipients=[email],
 				cc=cc,
-				subject=frappe.render_template(template.subject, values),
-				message=frappe.render_template(template_body(template), values),
+				subject=subject,
+				message=message,
 				reference_doctype=reference_doctype,
 				reference_name=reference_name,
 				attachments=attachments or None,

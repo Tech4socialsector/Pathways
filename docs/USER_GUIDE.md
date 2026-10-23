@@ -116,14 +116,17 @@ The HR outcome appears on the candidate's application page, in the **HR interact
    - Score each criterion, choose a verdict, and add comments and area of specialisation.
    - **Sign** on screen, then **Submit scores**.
 2. **Recruiter** (if a panellist scored on paper): enter the scores on their behalf from the same screen.
-3. **Recruiter** (step 19): **Interview Panel → Consolidated score sheet** for the job.
+3. **Recruiter** (step 19): sidebar → **Selection**. The list shows every job with final interviews, how far it has got, and its **Next step**. Click the job; it opens on the step to do next. The four steps are tabs, with a tick once each is done.
+4. **Selection → ① Scores & decision:**
    - Scores are averaged automatically.
-   - Mark each candidate **Selected / Waitlisted / Not selected**.
-   - **Export** gives an Excel copy. Desk → Interview Assessment → **Print → Interview Assessment** prints a panellist's signed form.
+   - On each candidate's row, click **Decide** and choose **Select / Waitlist / Not selected**, then **Confirm**. The application status follows the decision.
+   - **Download Excel** gives an Excel copy; **Assessment forms (PDF)** prints the panellists' signed forms.
+
+Panellists still see the score sheet, read-only, from **Interview Panel**. Only the recruitment team sees **Selection**.
 
 ### 6. After the interviews: regrets, thanks, honorarium (steps 32–33)
 
-On the consolidated score sheet, in the **After the interviews** card:
+**Selection → ② Regrets & thanks:**
 
 1. **Send regrets** (step 32) emails interviewed candidates who were not selected, once each.
    - Tick *Also send to waitlisted* only when the waitlist is released.
@@ -145,7 +148,7 @@ Candidates never see reference responses.
 
 ### 8. Post-interview green sheet (steps 20, 24–25)
 
-1. **Recruiter:** on the consolidated score sheet, click **Selection Green Sheet** (or, on the job page, **Selection → Raise Selection Green Sheet**). A draft opens, filled in from the selection outcomes and process figures.
+1. **Recruiter:** **Selection → ③ Selection green sheet → Raise Selection Green Sheet** (the same card is on the job page). A draft opens, filled in from the selection outcomes and process figures.
    - Use **Re-draft from outcomes** if the outcomes change.
 2. **Recruiter / PNCO:** complete the sections:
    - appointment details;
@@ -162,7 +165,7 @@ Candidates never see reference responses.
 ### 9. Offer and appointment order (steps 22–23, 26–29)
 
 1. **PNCO** (steps 22–23, *verbal*): agree the salary and joining date with the selected candidate by phone.
-2. **Recruiter / PNCO:** Applications → candidate → **Offer** card → **Create offer** (or **Offers → Create Offer**). This needs the approved post-interview green sheet.
+2. **Recruiter / PNCO:** **Selection → ④ Offers** lists the selected and waitlisted candidates with their offers; click **Create offer** on a row (also on the application's **Offer** card, or **Offers → Create Offer**). This needs the approved post-interview green sheet.
    - Leave the template on *Suggest*, or pick one.
 3. Fill in **Appointment Details**, **Compensation** (with remarks), **Verbal Offer** (date, who discussed it, what was agreed) and **Terms**.
 4. **Save Draft**, then **Preview Letter**, then **Submit for Review**.
@@ -219,7 +222,7 @@ Accepting the offer automatically:
 
 | Role | Main screens |
 |---|---|
-| Pathways Recruiter | Everything in a recruitment except approvals and signing |
+| Pathways Recruiter | Everything in a recruitment except approvals and signing, including **Selection** |
 | Pathways PNCO | Green sheets, final shortlist, offer review, joinings |
 | CFO / Registrar / VC | **My Approvals**. Registrar also signs appointment orders. VC and Registrar calendars are blocked for selection committees |
 | Shortlisting committee member | Only the applications of jobs they are on |

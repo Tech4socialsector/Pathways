@@ -11,6 +11,7 @@
         :icon="item.icon"
         :label="item.label"
         :is-expanded="isExpanded"
+        :force-active="item.to === sectionTo"
       />
     </div>
 
@@ -28,6 +29,7 @@
 
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { useSessionStore } from '@/stores/session'
 import SidebarNavLink from './SidebarNavLink.vue'
 
@@ -69,6 +71,7 @@ const ALL_ITEMS = [
   { key: 'applications', to: '/applications', label: 'Applications', icon: 'file-text' },
   { key: 'interviews', to: '/interviews', label: 'Interviews', icon: 'calendar' },
   { key: 'panel', to: '/panel', label: 'Interview Panel', icon: 'clipboard' },
+  { key: 'selection', to: '/selection', label: 'Selection', icon: 'check-circle' },
   { key: 'approvals', to: '/approvals', label: 'My Approvals', icon: 'check-square' },
   { key: 'offers', to: '/offers', label: 'Offers', icon: 'award' },
   { key: 'documents', to: '/documents', label: 'Documents', icon: 'folder' },
@@ -82,4 +85,12 @@ const ALL_ITEMS = [
 const visibleItems = computed(() =>
   ALL_ITEMS.filter((item) => item.key === 'dashboard' || session.hasMenu(item.key)),
 )
+
+// A page outside its module's path (route meta.sections, e.g. a selection
+// green sheet) lights up the first of its modules this user has.
+const route = useRoute()
+const sectionTo = computed(() => {
+  const sections = route.meta?.sections || []
+  return sections.find((to) => visibleItems.value.some((item) => item.to === to)) || null
+})
 </script>

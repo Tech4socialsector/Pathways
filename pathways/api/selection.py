@@ -133,3 +133,159 @@ def get_post_interview_summary(job_opening):
 
 	_require_manage()
 	return {"regret": post_interview_regret_pending(job_opening), "thanks": panel_thanks_pending(job_opening)}
+
+
+# ------------------------------------------------------------ Selection module
+#
+# The recruitment team's view of everything after the final interviews, per
+# job: scores and decisions, regrets and panel thanks, the Selection (Post-
+# Interview) Green Sheet and the offers. The Interview Panel stays the
+# panellists' area for scoring.
+
+STEPS = ("scores", "regrets", "green_sheet", "offers")
+LIVE_SHEET = ("Draft", "Under Approval", "Returned for Revision", "Approved")
+
+
+def _final_interviews(job_opening=None):
+	filters = {"round_type": "Final", "status": ["!=", "Cancelled"]}
+	rows = frappe.get_all(
+		"Interview",
+		filters=filters,
+		fields=["name", "application", "status", "application.job_opening as job_opening"],
+	)
+	return [r for r in rows if r.job_opening and (not job_opening or r.job_opening == job_opening)]
+
+
+def _job_summary(job, interviews):
+	"""Where one job stands after its final interviews, and which step is next."""
+	from pathways.api.honorarium import panel_thanks_pending
+
+	apps = sorted({iv.application for iv in interviews})
+	committee = frappe.db.get_value("Selection Committee", {"job_opening": job.name}, "name")
+	panel_size = frappe.db.count("Committee Member Row", {"parent": committee, "parenttype": "Selection Committee"}) if committee else 0
+	scored_by = {}
+	for a in frappe.get_all("Interview Assessment", filters={"interview": ["in", [iv.name for iv in interviews] or [""]]}, fields=["interview"]):
+		scored_by[a.interview] = scored_by.get(a.interview, 0) + 1
+	fully_scored = sum(1 for iv in interviews if panel_size and scored_by.get(iv.name, 0) >= panel_size)
+
+	outcomes = {"Selected": 0, "Waitlisted": 0, "Not Selected": 0}
+	for o in frappe.get_all("Application", filters={"name": ["in", apps or [""]]}, pluck="selection_outcome"):
+		if o in outcomes:
+			outcomes[o] += 1
+	undecided = len(apps) - sum(outcomes.values())
+
+	pending = _candidates(job.name)
+	regrets = {
+		"pending": sum(1 for r in pending if r.group == "not_selected"),
+		"waitlisted": sum(1 for r in pending if r.group == "waitlisted"),
+		"sent": frappe.db.count("Application", {"job_opening": job.name, "interview_regret_sent_on": ["is", "set"]}),
+	}
+	thanks = panel_thanks_pending(job.name)
+
+	sheet = frappe.db.get_value(
+		"Post-Interview Green Sheet",
+		{"job_opening": job.name, "docstatus": ["!=", 2]},
+		["name", "status"],
+		as_dict=True,
+		order_by="creation desc",
+	)
+	offers = frappe.get_all(
+		"Offer Appointment Order", filters={"application": ["in", apps or [""]]}, fields=["name", "application", "status"]
+	)
+	offer_counts = {}
+	for o in offers:
+		offer_counts[o.status] = offer_counts.get(o.status, 0) + 1
+
+	done = {
+		"scores": bool(apps) and undecided == 0,
+		"regrets": bool(apps) and undecided == 0 and regrets["pending"] == 0 and (not thanks["committee"] or thanks["pending"] == 0),
+		"green_sheet": bool(sheet) and sheet.status == "Approved",
+		"offers": outcomes["Selected"] > 0 and offer_counts.get("Accepted", 0) >= outcomes["Selected"],
+	}
+	if not outcomes["Selected"]:
+		# Nobody selected: there is no green sheet or offer to prepare.
+		done["green_sheet"] = done["offers"] = done["scores"]
+	next_step = next((s for s in STEPS if not done[s]), None)
+
+	return {
+		"name": job.name,
+		"job_title": job.job_title,
+		"position": job.position,
+		"track": job.track,
+		"employment_type": job.employment_type,
+		"job_status": job.status,
+		"candidates": len(apps),
+		"panel_size": panel_size,
+		"fully_scored": fully_scored,
+		"outcomes": outcomes,
+		"undecided": undecided,
+		"regrets": regrets,
+		"thanks": {"pending": thanks["pending"], "panel_size": thanks["panel_size"], "committee": thanks["committee"]},
+		"green_sheet": sheet,
+		"offers": {"total": len(offers), **offer_counts},
+		"done": done,
+		"next_step": next_step,
+	}
+
+
+def _jobs(names):
+	return frappe.get_all(
+		"Job Opening",
+		filters={"name": ["in", list(names) or [""]]},
+		fields=["name", "job_title", "position", "track", "employment_type", "status", "modified"],
+	)
+
+
+@frappe.whitelist()
+def list_selection_jobs():
+	"""Selection module list: every job with final interviews, with its
+	progress through the post-interview steps."""
+	_require_manage()
+	interviews = _final_interviews()
+	by_job = {}
+	for iv in interviews:
+		by_job.setdefault(iv.job_opening, []).append(iv)
+	rows = [_job_summary(job, by_job[job.name]) for job in _jobs(by_job)]
+	# Unfinished work first, then by job title.
+	rows.sort(key=lambda r: (r["next_step"] is None, r["job_title"] or ""))
+	return rows
+
+
+@frappe.whitelist()
+def get_selection_job(job_opening):
+	"""Selection module job page: the summary, plus the selected and
+	waitlisted candidates with their offers (the Offers step)."""
+	_require_manage()
+	job = _jobs([job_opening])
+	if not job:
+		frappe.throw(_("Job Opening {0} not found.").format(job_opening))
+	interviews = _final_interviews(job_opening)
+	summary = _job_summary(job[0], interviews)
+	apps = frappe.get_all(
+		"Application",
+		filters={"name": ["in", sorted({iv.application for iv in interviews}) or [""]], "selection_outcome": ["in", ["Selected", "Waitlisted"]]},
+		fields=["name", "application_id", "candidate", "selection_outcome", "status"],
+		order_by="selection_outcome asc, application_id asc",
+	)
+	names = dict(frappe.get_all("Candidate", filters={"name": ["in", [a.candidate for a in apps] or [""]]}, fields=["name", "full_name"], as_list=True))
+	offers = {
+		o.application: o
+		for o in frappe.get_all(
+			"Offer Appointment Order",
+			filters={"application": ["in", [a.name for a in apps] or [""]]},
+			fields=["name", "application", "status", "candidate_confirmed_doj"],
+			order_by="creation asc",
+		)
+	}
+	summary["candidates_for_offer"] = [
+		{
+			"application": a.name,
+			"application_id": a.application_id,
+			"candidate_name": names.get(a.candidate) or a.candidate,
+			"outcome": a.selection_outcome,
+			"application_status": a.status,
+			"offer": offers.get(a.name),
+		}
+		for a in apps
+	]
+	return summary

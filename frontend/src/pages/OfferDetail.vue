@@ -23,6 +23,7 @@
             Approve for Signature
           </Button>
           <Button v-if="perms.can_sign" variant="solid" icon-left="edit-3" :class="BTN_BRAND" @click="openSign">Sign</Button>
+          <Button v-if="perms.can_send" variant="outline" icon-left="mail" @click="openEmailPreview">Preview Email</Button>
           <Button v-if="perms.can_send" variant="solid" icon-left="mail" :class="BTN_BRAND" @click="openSend">Send to Candidate</Button>
         </template>
       </template>
@@ -42,9 +43,25 @@
           </div>
 
           <SectionCard v-for="section in SECTIONS" :key="section.title" :title="section.title" :subtitle="section.subtitle" :icon="section.icon">
+            <p
+              v-if="perms.can_edit && section.fields.some((f) => oneOf.includes(f.key))"
+              class="mb-3 text-xs"
+              :class="showMissing && payMissing ? 'font-medium text-red-700' : 'text-gray-500'"
+            >
+              <span class="text-amber-600">*</span> Fill in at least one of Pay Level, Pay Scale, Gross Monthly Salary or Consolidated Fee.
+            </p>
             <div class="grid gap-4 sm:grid-cols-2">
-              <div v-for="f in section.fields" :key="f.key" :class="f.wide && 'sm:col-span-2'">
-                <label class="mb-1 block text-xs font-medium text-gray-600">{{ f.label }}</label>
+              <div
+                v-for="f in section.fields"
+                :key="f.key"
+                :ref="(el) => (fieldEls[f.key] = el)"
+                :class="[f.wide && 'sm:col-span-2', isMissing(f.key) && 'rounded-md ring-2 ring-red-300 ring-offset-2']"
+              >
+                <label class="mb-1 block text-xs font-medium text-gray-600">
+                  {{ f.label }}
+                  <span v-if="required.includes(f.key)" class="text-red-600" aria-label="required">*</span>
+                  <span v-else-if="oneOf.includes(f.key)" class="text-amber-600" aria-label="one of the pay fields is required">*</span>
+                </label>
                 <TextEditor
                   v-if="f.type === 'editor'"
                   :content="form[f.key] || ''"
@@ -69,7 +86,8 @@
                   :disabled="!perms.can_edit"
                   @update:model-value="(v) => (form[f.key] = v === '' ? null : v)"
                 />
-                <p v-if="f.hint" class="mt-1 text-xs text-gray-500">{{ f.hint }}</p>
+                <p v-if="isMissing(f.key)" class="mt-1 text-xs font-medium text-red-700">Required before review.</p>
+                <p v-else-if="f.hint" class="mt-1 text-xs text-gray-500">{{ f.hint }}</p>
               </div>
             </div>
           </SectionCard>
@@ -206,12 +224,30 @@
       <template #body-content>
         <div class="flex flex-col gap-4 text-sm">
           <p class="text-gray-600">Preview the letter before signing. Your signature, name and the time are added to the letter.</p>
-          <div v-if="offer?.has_saved_signature" class="flex flex-wrap gap-4">
-            <label class="flex items-center gap-2"><input v-model="sign.mode" type="radio" value="saved" /> Use the saved signature</label>
-            <label class="flex items-center gap-2"><input v-model="sign.mode" type="radio" value="draw" /> Draw a signature</label>
+          <div class="flex flex-wrap gap-4" role="radiogroup" aria-label="How to sign">
+            <label v-if="offer?.has_saved_signature" class="flex items-center gap-2"><input v-model="sign.mode" type="radio" value="saved" @change="sign.image = ''" /> Use the saved signature</label>
+            <label class="flex items-center gap-2"><input v-model="sign.mode" type="radio" value="draw" @change="sign.image = ''" /> Draw a signature</label>
+            <label class="flex items-center gap-2"><input v-model="sign.mode" type="radio" value="upload" @change="sign.image = ''" /> Upload a signature image</label>
           </div>
-          <template v-if="sign.mode === 'draw'">
-            <SignaturePad v-model="sign.image" label="Registrar's signature" />
+          <SignaturePad v-if="sign.mode === 'draw'" v-model="sign.image" label="Registrar's signature" />
+          <div v-else-if="sign.mode === 'upload'" class="flex flex-col gap-2">
+            <label
+              class="flex cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-gray-300 bg-gray-50 px-4 py-6 text-center hover:border-brand-400"
+            >
+              <img v-if="sign.image" :src="sign.image" alt="Uploaded signature" class="max-h-24 max-w-full object-contain" />
+              <template v-else>
+                <FeatherIcon name="upload" class="h-5 w-5 text-brand-700" />
+                <span class="font-medium text-gray-800">Choose a signature image</span>
+              </template>
+              <span class="text-xs text-gray-500">PNG or JPG, up to 1 MB. A dark signature on a white or transparent background prints best.</span>
+              <input type="file" accept="image/png,image/jpeg,image/webp" class="sr-only" @change="onSignatureFile" />
+            </label>
+            <div v-if="sign.image" class="flex justify-end">
+              <Button size="sm" variant="ghost" icon-left="x" @click="sign.image = ''">Remove</Button>
+            </div>
+            <p v-if="sign.error" class="text-xs text-red-700">{{ sign.error }}</p>
+          </div>
+          <template v-if="sign.mode !== 'saved'">
             <label class="flex items-center gap-2 text-gray-700">
               <input v-model="sign.saveAsDefault" type="checkbox" class="rounded border-gray-300" />
               Save this as the signature for future orders
@@ -223,12 +259,18 @@
         <div class="flex justify-end gap-2">
           <Button @click="previewOpen = true">Preview</Button>
           <Button @click="signOpen = false">Cancel</Button>
-          <Button variant="solid" :class="BTN_BRAND" :loading="busy === 'sign'" :disabled="sign.mode === 'draw' && !sign.image" @click="doSign">
+          <Button variant="solid" :class="BTN_BRAND" :loading="busy === 'sign'" :disabled="sign.mode !== 'saved' && !sign.image" @click="doSign">
             Sign
           </Button>
         </div>
       </template>
     </Dialog>
+
+    <EmailPreviewDialog v-model="emailPreview.open" :preview="emailPreview.data" :loading="emailPreview.loading" :error="emailPreview.error">
+      <template v-if="perms.can_send" #actions>
+        <Button v-if="!sendOpen" variant="solid" icon-left="send" :class="BTN_BRAND" @click="emailPreview.open = false; openSend()">Send to Candidate</Button>
+      </template>
+    </EmailPreviewDialog>
 
     <!-- Send -->
     <Dialog v-model="sendOpen" :options="{ title: 'Send to Candidate' }">
@@ -243,6 +285,7 @@
       </template>
       <template #actions>
         <div class="flex justify-end gap-2">
+          <Button icon-left="eye" @click="openEmailPreview">Preview email</Button>
           <Button @click="sendOpen = false">Cancel</Button>
           <Button variant="solid" :class="BTN_BRAND" :loading="busy === 'send'" @click="doSend">Send</Button>
         </div>
@@ -260,6 +303,7 @@ import StaffLayout from '@/layouts/StaffLayout.vue'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import SectionCard from '@/components/common/SectionCard.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
+import EmailPreviewDialog from '@/components/common/EmailPreviewDialog.vue'
 import RecruitmentTimeline from '@/components/common/RecruitmentTimeline.vue'
 import SignaturePad from '@/components/common/SignaturePad.vue'
 import LetterPreviewDialog from '@/components/offers/LetterPreviewDialog.vue'
@@ -282,7 +326,7 @@ const remarksOpen = ref(false)
 const remarksMode = ref('approve')
 const remarks = ref('')
 const signOpen = ref(false)
-const sign = reactive({ mode: 'draw', image: '', saveAsDefault: false })
+const sign = reactive({ mode: 'draw', image: '', saveAsDefault: false, error: '' })
 const sendOpen = ref(false)
 const sendDeadline = ref('')
 
@@ -406,9 +450,34 @@ async function run(key, fn, message) {
 }
 
 const formData = () => Object.fromEntries(FIELD_KEYS.map((k) => [k, form[k]]))
+
+// Fields submit_for_review insists on (sent by the server): all of
+// `required`, and at least one of `oneOf` (the pay figures).
+const required = computed(() => offer.value?.required_fields || [])
+const oneOf = computed(() => offer.value?.one_of_fields || [])
+const showMissing = ref(false)
+const fieldEls = {}
+const filled = (key) => form[key] !== null && form[key] !== undefined && form[key] !== '' && form[key] !== NONE
+const payMissing = computed(() => oneOf.value.length > 0 && !oneOf.value.some(filled))
+const missingKeys = computed(() => [...required.value.filter((k) => !filled(k)), ...(payMissing.value ? oneOf.value : [])])
+function isMissing(key) {
+  return showMissing.value && perms.value.can_edit && missingKeys.value.includes(key)
+}
+function labelOf(key) {
+  return SECTIONS.flatMap((s) => s.fields).find((f) => f.key === key)?.label || key
+}
 const save = () => run('save', () => offerService.updateOffer(offer.value.name, formData()), 'Draft saved.')
 
 function submitForReview() {
+  // Check here first: mark what is missing instead of a round trip.
+  if (missingKeys.value.length) {
+    showMissing.value = true
+    const names = [...required.value.filter((k) => !filled(k)).map(labelOf), ...(payMissing.value ? ['a pay figure'] : [])]
+    toast({ title: `Fill in before review: ${names.join(', ')}.`, icon: 'alert-triangle', iconClasses: 'text-red-500' })
+    fieldEls[missingKeys.value[0]]?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    return
+  }
+  showMissing.value = false
   // Save what is on screen first, so the reviewer sees the latest draft.
   return run(
     'submit',
@@ -435,8 +504,29 @@ async function confirmRemarks() {
 }
 
 function openSign() {
-  Object.assign(sign, { mode: offer.value?.has_saved_signature ? 'saved' : 'draw', image: '', saveAsDefault: false })
+  Object.assign(sign, { mode: offer.value?.has_saved_signature ? 'saved' : 'draw', image: '', saveAsDefault: false, error: '' })
   signOpen.value = true
+}
+
+// Upload: read the image in the browser; the server accepts PNG/JPG/WebP up to 1 MB.
+const SIGNATURE_TYPES = ['image/png', 'image/jpeg', 'image/webp']
+function onSignatureFile(event) {
+  const file = event.target.files?.[0]
+  event.target.value = ''
+  sign.error = ''
+  if (!file) return
+  if (!SIGNATURE_TYPES.includes(file.type)) {
+    sign.error = 'Please choose a PNG or JPG image.'
+    return
+  }
+  if (file.size > 1024 * 1024) {
+    sign.error = 'The image is larger than 1 MB. Please use a smaller image.'
+    return
+  }
+  const reader = new FileReader()
+  reader.onload = () => (sign.image = String(reader.result || ''))
+  reader.onerror = () => (sign.error = 'The image could not be read.')
+  reader.readAsDataURL(file)
 }
 
 async function doSign() {
@@ -444,13 +534,27 @@ async function doSign() {
     'sign',
     () =>
       offerService.signOffer(offer.value.name, {
-        signature: sign.mode === 'draw' ? sign.image : null,
+        signature: sign.mode === 'saved' ? null : sign.image,
         useSavedSignature: sign.mode === 'saved',
         saveAsDefault: sign.saveAsDefault,
+        uploaded: sign.mode === 'upload',
       }),
     'Signed.',
   )
   if (ok) signOpen.value = false
+}
+
+// The appointment_order email as it will go out (uses the deadline typed in the Send dialog).
+const emailPreview = reactive({ open: false, data: null, loading: false, error: '' })
+async function openEmailPreview() {
+  Object.assign(emailPreview, { open: true, data: null, loading: true, error: '' })
+  try {
+    emailPreview.data = await offerService.previewSendEmail(offer.value.name, sendOpen.value ? sendDeadline.value : null)
+  } catch (e) {
+    emailPreview.error = e?.messages?.[0] || 'Could not build the email preview.'
+  } finally {
+    emailPreview.loading = false
+  }
 }
 
 function openSend() {

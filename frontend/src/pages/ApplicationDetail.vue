@@ -227,9 +227,9 @@
             placeholder="Optional. Recorded in the application's timeline."
           />
           <div v-if="detail?.job_opening" class="rounded border border-brand-100 bg-brand-50/60 p-3 text-xs text-gray-700">
-            After the final interview, record <b>Select / Waitlist / Not selected</b> and send regrets on the
-            <RouterLink :to="`/panel/sheet/${detail.job_opening}`" class="font-medium text-brand-700 underline" @click="showStatusDialog = false">
-              consolidated score sheet</RouterLink>, not here. Use this dialog only to correct a status.
+            After the final interview, record <b>Select / Waitlist / Not selected</b> and send regrets in
+            <RouterLink :to="`/selection/${detail.job_opening}`" class="font-medium text-brand-700 underline" @click="showStatusDialog = false">
+              Selection</RouterLink>, not here. Use this dialog only to correct a status.
           </div>
           <div v-if="statusOptions.unavailable?.length" class="rounded border border-gray-200 bg-gray-50 p-3 text-xs text-gray-600">
             <p class="mb-1 font-medium text-gray-700">Not available here</p>
@@ -325,7 +325,7 @@ const timelineSteps = computed(() => {
 const nextStep = computed(() => {
   if (!status.value) return null
   const job = detail.value?.job_opening
-  const sheet = job ? `/panel/sheet/${job}` : null
+  const sheet = job ? `/selection/${job}` : null
   const jobPage = job ? `/jobs/${job}` : null
   const outcome = detail.value?.selection_outcome
   const finalDone = (status.value.interviews || []).some((iv) => /final/i.test(iv.round || iv.round_type || '') && iv.status === 'Completed')
@@ -336,13 +336,13 @@ const nextStep = computed(() => {
     case 'Shortlisted':
       return { title: 'Schedule the interview', text: 'On the job page, Interviews: tick the candidate and schedule Round 1 (HR) or the Final interview.', to: jobPage, button: 'Open job' }
     case 'Interview Scheduled':
-      return { title: 'Record the decision after the interview', text: 'Once the panel has scored, record Select / Waitlist / Not selected on the consolidated score sheet. Do not use Change Status for this.', to: sheet, button: 'Open score sheet' }
+      return { title: 'Record the decision after the interview', text: 'Once the panel has scored, record Select / Waitlist / Not selected in Selection > Scores & decision. Do not use Change Status for this.', to: sheet, button: 'Open Selection' }
     case 'Interview Completed':
       return outcome === 'Waitlisted'
-        ? { title: 'Waitlisted', text: 'The candidate stays here until the waitlist is released. On the score sheet, either Select them or send regrets with "Also send to waitlisted".', to: sheet, button: 'Open score sheet' }
-        : { title: 'Record the decision', text: 'On the consolidated score sheet choose Select, Waitlist or Not selected. The status moves on its own.', to: sheet, button: 'Open score sheet' }
+        ? { title: 'Waitlisted', text: 'The candidate stays here until the waitlist is released. In Selection, either Select them (Scores & decision) or send regrets with "Also send to waitlisted" (Regrets & thanks).', to: sheet, button: 'Open Selection' }
+        : { title: 'Record the decision', text: 'In Selection > Scores & decision choose Select, Waitlist or Not selected. The status moves on its own.', to: sheet, button: 'Open Selection' }
     case 'Selected':
-      return { title: 'Selection green sheet, then the offer', text: 'On the score sheet click Selection Green Sheet and get it approved. Then use Create offer in the Offer card on this page.', to: sheet, button: 'Open score sheet' }
+      return { title: 'Selection green sheet, then the offer', text: 'In Selection, raise the Selection Green Sheet and get it approved, then create the offer on the Offers step (or with Create offer in the Offer card on this page).', to: sheet && `${sheet}?tab=green_sheet`, button: 'Open Selection' }
     case 'Offer Extended':
       return { title: 'Waiting for the candidate', text: 'The candidate accepts or declines from the portal. The status follows the offer.', to: '/offers', button: 'Open offers' }
     case 'Offer Accepted':
@@ -356,7 +356,7 @@ const nextStep = computed(() => {
       if (finalDone || outcome === 'Not Selected')
         return detail.value?.interview_regret_sent_on
           ? null
-          : { title: 'Send the regret', text: 'Regrets after the interview are sent together from the "After the interviews" card on the score sheet.', to: sheet, button: 'Open score sheet' }
+          : { title: 'Send the regret', text: 'Regrets after the interview are sent together from Selection > Regrets & thanks.', to: sheet && `${sheet}?tab=regrets`, button: 'Open Selection' }
       return detail.value?.regret_sent_on
         ? null
         : { title: 'Send the regret', text: 'Regrets after screening are sent together from the Shortlisting card on the job page.', to: jobPage, button: 'Open job' }

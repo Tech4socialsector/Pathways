@@ -267,3 +267,42 @@ class TestSelectionComms(IntegrationTestCase):
 			source = f.read()
 		self.assertNotIn("submit_interview_assessment", source)
 		self.assertNotIn("consolidate_scores", source)
+
+	# ------------------------------------------------------- Selection module
+
+	def test_selection_list_tracks_progress(self):
+		"""Selection module list: a job with final interviews shows its decisions, regrets still to
+		send and the next step; it moves on once regrets and thanks are done."""
+		selected = self._application("mod-sel", "Selected")
+		self._application("mod-rej", "Not Selected")
+		undecided = self._application("mod-und", None)
+
+		row = next(r for r in selection.list_selection_jobs() if r["name"] == self.job.name)
+		self.assertEqual(row["candidates"], 3)
+		self.assertEqual((row["outcomes"]["Selected"], row["outcomes"]["Not Selected"], row["undecided"]), (1, 1, 1))
+		self.assertEqual(row["regrets"]["pending"], 1)
+		self.assertEqual(row["next_step"], "scores")
+
+		frappe.db.set_value("Application", undecided, {"selection_outcome": "Waitlisted"})
+		with patch("pathways.utils.communication.send_event"):
+			selection.send_post_interview_regrets(self.job.name)
+			honorarium.send_panel_thanks(self.job.name)
+		row = next(r for r in selection.list_selection_jobs() if r["name"] == self.job.name)
+		self.assertTrue(row["done"]["scores"] and row["done"]["regrets"])
+		self.assertEqual(row["next_step"], "green_sheet")
+
+		job = selection.get_selection_job(self.job.name)
+		offers = {c["application"]: c for c in job["candidates_for_offer"]}
+		self.assertEqual(set(offers), {selected, undecided})
+		self.assertEqual(offers[selected]["outcome"], "Selected")
+		self.assertIsNone(offers[selected]["offer"])
+
+	def test_selection_module_is_for_the_recruitment_team(self):
+		"""A panellist (no Interview create right) cannot open the Selection module or see its menu."""
+		self._application("mod-perm", "Selected")
+		frappe.set_user(self.panel[0])
+		self.assertRaises(frappe.PermissionError, selection.list_selection_jobs)
+		self.assertRaises(frappe.PermissionError, selection.get_selection_job, self.job.name)
+		from pathways.api.access import get_my_access
+
+		self.assertNotIn("selection", get_my_access().get("menu", []))

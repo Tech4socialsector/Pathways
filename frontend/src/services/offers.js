@@ -37,13 +37,17 @@ export const offerService = {
   returnOffer(name, remarks) {
     return callMethod(M + 'return_offer', { name, remarks })
   },
-  signOffer(name, { signature = null, useSavedSignature = false, saveAsDefault = false } = {}) {
+  signOffer(name, { signature = null, useSavedSignature = false, saveAsDefault = false, uploaded = false } = {}) {
     return callMethod(M + 'sign_offer', {
       name,
       signature,
       use_saved_signature: useSavedSignature ? 1 : 0,
+      uploaded: uploaded ? 1 : 0,
       save_as_default: saveAsDefault ? 1 : 0,
     })
+  },
+  previewSendEmail(name, acceptanceDeadline) {
+    return callMethod(M + 'preview_send_email', { name, acceptance_deadline: acceptanceDeadline || null })
   },
   sendOffer(name, acceptanceDeadline) {
     return callMethod(M + 'send_offer', { name, acceptance_deadline: acceptanceDeadline || null })

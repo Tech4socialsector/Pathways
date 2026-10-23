@@ -58,7 +58,8 @@ const routes = [
     name: 'PostGreenSheetDetail',
     component: () => import('@/pages/PostGreenSheetDetail.vue'),
     props: true,
-    meta: { requiresStaff: true },
+    // Part of Selection (step 3); approvers without Selection reach it from My Approvals.
+    meta: { requiresStaff: true, sections: ['/selection', '/approvals'] },
   },
   {
     path: '/interviews',
@@ -85,6 +86,25 @@ const routes = [
     meta: { requiresStaff: true },
   },
   {
+    path: '/selection',
+    name: 'Selection',
+    component: () => import('@/pages/Selection.vue'),
+    meta: { requiresStaff: true },
+  },
+  {
+    path: '/selection/:job',
+    name: 'SelectionJob',
+    component: () => import('@/pages/SelectionJob.vue'),
+    props: true,
+    meta: { requiresStaff: true },
+  },
+  {
+    // Panellists' read-only score sheet. The recruitment team decides in
+    // Selection, so their old links land there.
+    beforeEnter(to) {
+      if (useSessionStore().hasMenu('selection')) return { path: `/selection/${to.params.job}` }
+      return true
+    },
     path: '/panel/sheet/:job',
     name: 'ConsolidatedScores',
     component: () => import('@/pages/ConsolidatedScores.vue'),

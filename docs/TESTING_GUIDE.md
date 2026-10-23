@@ -273,20 +273,20 @@ Workflow steps 14–16 · Job page → Interviews and Selection Committee.
 
 ## 15. Panel scoring and decisions
 
-Workflow steps 17–19 · Panellist's login; Interview Panel → Consolidated score sheet.
+Workflow steps 17–19 · Panellist's login (Interview Panel); recruiter: sidebar → Selection → the job → Scores & decision.
 
 - [ ] **15.1** As a panellist: Interview Panel → candidate → Score. Enter scores and a verdict, **draw a signature**, then Submit.
   **Expect:** saved. With "Require signature" on in Settings, submitting without a signature is refused.
 - [ ] **15.2** Repeat for the other panellists.
-  **Expect:** the consolidated sheet shows each panellist's score and the average.
+  **Expect:** Selection → Scores & decision shows each panellist's score and the average. The panellist's own Interview Panel → Score sheet shows the same, read-only, with no Decide buttons.
 - [ ] **15.3** Desk → Interview Assessment → open one → Print → **Interview Assessment**.
   **Expect:** a form with scores, verdict, comments and the drawn signature.
-- [ ] **15.4** Consolidated sheet: mark one candidate Selected, one Waitlisted, the rest Not selected. Click Export.
-  **Expect:** statuses update; the Excel file matches the screen.
+- [ ] **15.4** Selection → Scores & decision: mark one candidate Selected, one Waitlisted, the rest Not selected. Click Download Excel.
+  **Expect:** statuses update; the Excel file matches the screen; the Scores & decision tab shows a tick and the Selection list shows the job's next step as Regrets & thanks.
 
 ## 16. Regrets, thanks and honorarium
 
-Workflow steps 32–33 · Consolidated sheet → "After the interviews" card; Panel Honorarium page.
+Workflow steps 32–33 · Selection → the job → Regrets & thanks; Panel Honorarium page.
 
 - [ ] **16.1** Click **Send regrets** without ticking "Also send to waitlisted".
   **Expect:** the count excludes the waitlisted candidate; Not selected candidates get the Regret After Interview email.
@@ -324,9 +324,9 @@ Workflow step 21 · Applications → the Selected candidate → References panel
 
 ## 18. Post-interview (selection) green sheet
 
-Workflow steps 20, 24, 25 · Consolidated sheet or job page → Selection card.
+Workflow steps 20, 24, 25 · Selection → the job → Selection green sheet (or the job page's Selection card).
 
-- [ ] **18.1** Click **Selection Green Sheet**.
+- [ ] **18.1** Click **Raise Selection Green Sheet**.
   **Expect:** a draft with the selected and waitlisted candidates, process figures (applications, shortlisted, interviewed) and one fee row each.
 - [ ] **18.2** Check the sections for the job's employment type.
   **Expect:** Pay Fixation only for Permanent; Deliverables for Consultant or contract; Funding for Research or grant-funded.
@@ -430,7 +430,7 @@ Email Setup → Recent, and Desk → Error Log.
 | Colleague tagged on a job | Tagged colleague | Tag and notify |
 | HR assessor assigned (Round 1) | HR assessors | Round 1 scheduled with assessors |
 | Interview files shared | Panellists | Panel files shared |
-| Regret after interview | Candidate | Send regrets (consolidated sheet) |
+| Regret after interview | Candidate | Send regrets (Selection → Regrets & thanks) |
 | Thank you to panellists | Panellists | Send thank-you to panel |
 | Reference check request / reminder | Referee | Email form link / daily reminder |
 | Reference received | Recruiter who sent it | Referee submits |

@@ -42,12 +42,16 @@ const props = defineProps({
   label: { type: String, required: true },
   isExpanded: { type: Boolean, default: true },
   as: { type: String, default: 'link' },
+  // Set by the sidebar for pages that sit outside their module's path
+  // (route meta.sections).
+  forceActive: { type: Boolean, default: false },
 })
 
 const route = useRoute()
 
 const isActive = computed(() => {
   if (props.as === 'button') return false
+  if (props.forceActive) return true
   if (props.to === '/') return route.path === '/'
   return route.path === props.to || route.path.startsWith(`${props.to}/`)
 })
