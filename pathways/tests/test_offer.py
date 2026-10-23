@@ -401,6 +401,28 @@ class TestOffer(IntegrationTestCase):
 		self.assertEqual(len(self.events), sent_before)
 		self.assertEqual(frappe.db.get_value(DOCTYPE, name, "status"), "Signed by Registrar")
 
+	def test_staff_record_response_on_behalf(self):
+		"""When the candidate replies by email or phone, staff record the acceptance (with the
+		joining date) on their behalf, even after the deadline; a decline needs a reason; the
+		candidate cannot use this staff action."""
+		name = self._draft()
+		self._to_sent(name)
+		frappe.set_user(self.candidate_user)
+		self.assertRaises(frappe.PermissionError, api.record_candidate_response, name, "Accepted", add_days(today(), 20))
+
+		frappe.set_user("Administrator")
+		frappe.db.set_value(DOCTYPE, name, "acceptance_deadline", add_days(today(), -1))
+		frappe.set_user(self.recruiter)
+		self.assertRaises(frappe.ValidationError, api.record_candidate_response, name, "Declined", None, None, "")
+		self.assertRaises(frappe.ValidationError, api.record_candidate_response, name, "Accepted")  # no joining date
+		doj = add_days(today(), 20)
+		api.record_candidate_response(name, "Accepted", doj)
+		offer = frappe.get_doc(DOCTYPE, name)
+		self.assertEqual(offer.status, "Accepted")
+		self.assertEqual(str(offer.candidate_confirmed_doj), doj)
+		self.assertIn("recorded by", (offer.status_log[-1].action or "").lower())
+		self.assertEqual(frappe.db.get_value("Application", self.app, "status"), "Offer Accepted")
+
 
 TEST_JOB_TITLE = "Assistant Manager - Test Offers"
 

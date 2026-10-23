@@ -23,6 +23,7 @@
             Approve for Signature
           </Button>
           <Button v-if="perms.can_sign" variant="solid" icon-left="edit-3" :class="BTN_BRAND" @click="openSign">Sign</Button>
+          <Button v-if="perms.can_record_response" variant="outline" icon-left="edit-3" @click="openRecord">Record candidate's response</Button>
           <Button v-if="perms.can_send" variant="outline" icon-left="mail" @click="openEmailPreview">Preview Email</Button>
           <Button v-if="perms.can_send" variant="solid" icon-left="mail" :class="BTN_BRAND" @click="openSend">Send to Candidate</Button>
         </template>
@@ -271,6 +272,50 @@
         <Button v-if="!sendOpen" variant="solid" icon-left="send" :class="BTN_BRAND" @click="emailPreview.open = false; openSend()">Send to Candidate</Button>
       </template>
     </EmailPreviewDialog>
+
+    <!-- A reply the candidate sent by email or gave by phone -->
+    <Dialog v-model="record.open" :options="{ title: 'Record the candidate\'s response', size: 'md' }">
+      <template #body-content>
+        <div class="flex flex-col gap-4 text-sm">
+          <p class="text-gray-600">
+            Use this when the candidate replied by email or phone instead of the portal. It is recorded as their response, on their behalf,
+            and accepting starts onboarding as usual.
+          </p>
+          <div class="flex gap-4" role="radiogroup" aria-label="Response">
+            <label class="flex items-center gap-2"><input v-model="record.response" type="radio" value="Accepted" /> Accepted</label>
+            <label class="flex items-center gap-2"><input v-model="record.response" type="radio" value="Declined" /> Declined</label>
+          </div>
+          <template v-if="record.response === 'Accepted'">
+            <FormControl type="date" label="Date of joining the candidate confirmed *" v-model="record.doj" />
+            <div>
+              <div class="mb-1 text-xs font-medium text-gray-600">Signed copy of the letter (optional)</div>
+              <FileUploader file-types=".pdf,.jpg,.jpeg,.png" :upload-args="{ private: true }" @success="(f) => (record.signedCopy = f.file_url)">
+                <template #default="{ openFileSelector, uploading }">
+                  <Button size="sm" icon-left="upload" :loading="uploading" @click="openFileSelector">{{ record.signedCopy ? 'Replace file' : 'Upload signed copy' }}</Button>
+                  <span v-if="record.signedCopy" class="ml-2 text-xs text-gray-600">{{ fileName(record.signedCopy) }}</span>
+                </template>
+              </FileUploader>
+            </div>
+          </template>
+          <FormControl v-else type="textarea" label="Reason the candidate gave *" v-model="record.reason" />
+        </div>
+      </template>
+      <template #actions>
+        <div class="flex justify-end gap-2">
+          <Button @click="record.open = false">Cancel</Button>
+          <Button
+            variant="solid"
+            :theme="record.response === 'Declined' ? 'red' : 'gray'"
+            :class="record.response === 'Accepted' && BTN_BRAND"
+            :loading="busy === 'record'"
+            :disabled="record.response === 'Accepted' ? !record.doj : !record.reason.trim()"
+            @click="doRecord"
+          >
+            Record {{ record.response === 'Accepted' ? 'acceptance' : 'decline' }}
+          </Button>
+        </div>
+      </template>
+    </Dialog>
 
     <!-- Send -->
     <Dialog v-model="sendOpen" :options="{ title: 'Send to Candidate' }">
@@ -555,6 +600,25 @@ async function openEmailPreview() {
   } finally {
     emailPreview.loading = false
   }
+}
+
+const record = reactive({ open: false, response: 'Accepted', doj: '', signedCopy: '', reason: '' })
+function openRecord() {
+  Object.assign(record, { open: true, response: 'Accepted', doj: offer.value?.proposed_doj || '', signedCopy: '', reason: '' })
+}
+async function doRecord() {
+  const ok = await run(
+    'record',
+    () =>
+      offerService.recordCandidateResponse(offer.value.name, {
+        response: record.response,
+        confirmedDoj: record.response === 'Accepted' ? record.doj : null,
+        signedCopy: record.response === 'Accepted' ? record.signedCopy || null : null,
+        declineReason: record.response === 'Declined' ? record.reason : null,
+      }),
+    record.response === 'Accepted' ? 'Acceptance recorded. Onboarding has started.' : 'Decline recorded.',
+  )
+  if (ok) record.open = false
 }
 
 function openSend() {

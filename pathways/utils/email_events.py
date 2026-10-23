@@ -181,10 +181,14 @@ TEMPLATES = {
 		"Appointment Letter - {{ job_title }}",
 		"<p>Dear {{ candidate_name }},</p>"
 		"<p>Greetings from the National Law School of India University, Bangalore!</p>"
-		"<p>Please find attached the Appointment Letter as {{ job_title }} at NLSIU. Request you to confirm your acceptance "
-		"and send a signed scanned copy of the appointment letter with a reply all to this email by "
-		"<b>{{ acceptance_deadline }}</b>.</p>"
-		"<p>Please also indicate your earliest date of joining in the same email.</p>"
+		"<p>Please find attached the Appointment Letter as {{ job_title }} at NLSIU.</p>"
+		"<p><b>Please accept or decline the offer by {{ acceptance_deadline }}</b> on the NLSIU Careers portal"
+		"{% if portal_link %}: <a href=\"{{ portal_link }}\">{{ portal_link }}</a>{% endif %}. "
+		"Log in with the email or Candidate ID you applied with, open this application and, under <b>Appointment order</b>, "
+		"choose your date of joining and click <b>Accept offer</b> (or <b>Decline</b>). Please also upload a signed scanned copy "
+		"of the appointment letter there.</p>"
+		"<p>If you cannot use the portal, reply to this email with your decision, your earliest date of joining and the signed "
+		"copy, and we will record it for you.</p>"
 		"<p>You may get in touch with {{ pnc_contacts or 'the People and Culture team' }}"
 		"{% if pnc_contacts %}, from the People and Culture team,{% endif %} if you need any further clarifications or support.</p>"
 		"<p>Regards,<br>Registrar's Office</p>",

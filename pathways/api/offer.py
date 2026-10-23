@@ -528,6 +528,7 @@ def get_offer(name):
 				"can_send": can_write and doc.status == "Signed by Registrar",
 				"can_upload_scan": can_write and doc.status in CANDIDATE_VISIBLE_STATUSES,
 				"can_upload_signed_copy": can_write and doc.status in ("Sent", "Accepted"),
+				"can_record_response": can_write and doc.status == "Sent",
 				"can_delete": bool(frappe.has_permission(DOCTYPE, "delete", doc)) and is_draft,
 			},
 		}
@@ -848,6 +849,20 @@ def get_my_offer(application_name):
 def respond_to_offer(offer_name, response, confirmed_doj=None, signed_copy_attachment=None, decline_reason=None):
 	_get(offer_name)
 	return _respond_to_offer(offer_name, response, confirmed_doj, signed_copy_attachment, decline_reason)
+
+
+@frappe.whitelist(methods=["POST"])
+def record_candidate_response(name, response, confirmed_doj=None, signed_copy_attachment=None, decline_reason=None):
+	"""Staff record a reply the candidate sent by email or gave by phone,
+	exactly as if they had answered on the portal (onboarding starts on
+	acceptance). Logged as recorded on the candidate's behalf."""
+	doc = _get(name, "write")
+	if doc.status != "Sent":
+		frappe.throw(_("A response can only be recorded for a sent offer (status: {0}).").format(doc.status))
+	if response == "Declined" and not (decline_reason or "").strip():
+		frappe.throw(_("Please note the reason the candidate gave for declining."))
+	_respond_to_offer(name, response, confirmed_doj, signed_copy_attachment, decline_reason, on_behalf=True)
+	return get_offer(name)
 
 
 @frappe.whitelist(methods=["POST"])

@@ -119,9 +119,13 @@ class OfferAppointmentOrder(Document):
 
 
 @frappe.whitelist()
-def respond_to_offer(offer_name, response, confirmed_doj=None, signed_copy_attachment=None, decline_reason=None):
+def respond_to_offer(offer_name, response, confirmed_doj=None, signed_copy_attachment=None, decline_reason=None, on_behalf=False):
 	"""Candidate-facing accept/decline action (portal). Validates the
-	candidate is responding to their own Offer and that it's still open."""
+	candidate is responding to their own Offer and that it's still open.
+
+	on_behalf: staff recording a reply the candidate sent by email or gave
+	by phone (the caller checks their permission). The deadline is not
+	enforced then: the reply may have come in time and be recorded later."""
 	if response not in ("Accepted", "Declined"):
 		frappe.throw(_("Invalid response."))
 
@@ -129,21 +133,27 @@ def respond_to_offer(offer_name, response, confirmed_doj=None, signed_copy_attac
 
 	application = frappe.get_doc("Application", offer.application)
 	candidate_email = frappe.db.get_value("Candidate", application.candidate, "email")
-	if frappe.session.user != "Administrator" and candidate_email != frappe.session.user:
+	if not on_behalf and frappe.session.user != "Administrator" and candidate_email != frappe.session.user:
 		frappe.throw(_("You are not authorised to respond to this offer."), frappe.PermissionError)
 
 	if offer.status != "Sent":
 		frappe.throw(_("This offer is not currently open for a response (status: {0}).").format(offer.status))
 
-	if offer.acceptance_deadline and getdate(offer.acceptance_deadline) < getdate(today()):
+	if not on_behalf and offer.acceptance_deadline and getdate(offer.acceptance_deadline) < getdate(today()):
 		frappe.throw(_("The acceptance deadline for this offer has passed."))
 
 	offer.status = response
 	offer.responded_on = now_datetime()
-	offer.flags.offer_action = _("Accepted by candidate") if response == "Accepted" else _("Declined by candidate")
+	if on_behalf:
+		who = frappe.utils.get_fullname(frappe.session.user)
+		offer.flags.offer_action = (
+			_("Accepted by candidate (recorded by {0})") if response == "Accepted" else _("Declined by candidate (recorded by {0})")
+		).format(who)
+	else:
+		offer.flags.offer_action = _("Accepted by candidate") if response == "Accepted" else _("Declined by candidate")
 	if response == "Accepted":
 		if not confirmed_doj:
-			frappe.throw(_("Please confirm your date of joining."))
+			frappe.throw(_("Please give the date of joining.") if on_behalf else _("Please confirm your date of joining."))
 		if getdate(confirmed_doj) < getdate(today()):
 			frappe.throw(_("The date of joining cannot be in the past."))
 		offer.candidate_confirmed_doj = confirmed_doj

@@ -78,6 +78,15 @@ export const offerService = {
       decline_reason: declineReason,
     })
   },
+  recordCandidateResponse(name, { response, confirmedDoj = null, signedCopy = null, declineReason = null }) {
+    return callMethod(M + 'record_candidate_response', {
+      name,
+      response,
+      confirmed_doj: confirmedDoj,
+      signed_copy_attachment: signedCopy,
+      decline_reason: declineReason,
+    })
+  },
   uploadSignedCopy(name, fileUrl) {
     return callMethod(M + 'upload_signed_copy', { name, file_url: fileUrl })
   },
