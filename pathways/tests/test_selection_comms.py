@@ -93,6 +93,10 @@ class TestSelectionComms(IntegrationTestCase):
 	# ------------------------------------------------------------ regrets
 
 	def test_regret_pending_and_sent_once(self):
+		"""Step 32: regrets go only to interviewed, not-selected candidates; waitlisted candidates are
+		held back and selected or not-yet-interviewed ones are skipped. The screening regret field
+		is untouched, and a second run sends nothing.
+		"""
 		rejected = self._application("rejected", "Not Selected")
 		waitlisted = self._application("waitlisted", "Waitlisted")
 		selected = self._application("selected", "Selected")
@@ -122,6 +126,7 @@ class TestSelectionComms(IntegrationTestCase):
 		send.assert_not_called()
 
 	def test_waitlisted_included_on_request(self):
+		"""Step 32: ticking 'include waitlisted' sends them a regret and marks them Not Selected."""
 		waitlisted = self._application("wl", "Waitlisted")
 		with patch("pathways.utils.communication.send_event") as send:
 			result = selection.send_post_interview_regrets(self.job.name, include_waitlisted=1)
@@ -133,6 +138,7 @@ class TestSelectionComms(IntegrationTestCase):
 		self.assertTrue(app.interview_regret_sent_on)
 
 	def test_waitlist_released_when_job_filled(self):
+		"""Step 32: once the job is Filled, the waitlist is released and included automatically."""
 		waitlisted = self._application("wl2", "Waitlisted")
 		frappe.db.set_value("Job Opening", self.job.name, "status", "Filled")
 		self.assertTrue(selection.post_interview_regret_pending(self.job.name)["waitlist_released"])
@@ -141,6 +147,7 @@ class TestSelectionComms(IntegrationTestCase):
 		self.assertEqual(result["applications"], [waitlisted])
 
 	def test_regret_rule_is_automatic_with_own_template(self):
+		"""The post-interview regret email rule is automatic and uses its own template."""
 		rule = frappe.db.get_value("Recruitment Email Rule", "regret_after_interview", ["is_automatic", "email_template"], as_dict=True)
 		self.assertEqual(rule.is_automatic, 1)
 		self.assertEqual(rule.email_template, "Regret After Interview")
@@ -148,6 +155,10 @@ class TestSelectionComms(IntegrationTestCase):
 	# ------------------------------------------------------------ thanks + honorarium
 
 	def test_thanks_sent_once_and_honorarium_rows(self):
+		"""Step 33: the thank-you goes to each panellist once and creates one honorarium row each.
+		With 'external experts only', internal panellists are Not applicable and external ones get
+		the default amount. A second run sends and creates nothing.
+		"""
 		settings = frappe.get_single("Pathways Settings")
 		settings.honorarium_internal_amount = 1000
 		settings.honorarium_external_amount = 5000
@@ -185,6 +196,9 @@ class TestSelectionComms(IntegrationTestCase):
 		self.assertEqual(frappe.db.count("Panel Honorarium", {"job_opening": self.job.name}), 3)
 
 	def test_honorarium_approve_then_paid(self):
+		"""Step 33: an honorarium cannot be marked paid before approval. Approval records the approver
+		and normalises the PAN; once Paid it records the reference and can no longer be edited.
+		"""
 		with patch("pathways.utils.communication.send_event"):
 			honorarium.send_panel_thanks(self.job.name)
 		name = frappe.db.get_value("Panel Honorarium", {"job_opening": self.job.name, "panellist": self.panel[1]}, "name")
@@ -204,6 +218,7 @@ class TestSelectionComms(IntegrationTestCase):
 		self.assertRaises(frappe.ValidationError, honorarium.update_honorarium, name, amount=1)
 
 	def test_menu_item_registered(self):
+		"""The Panel Honorarium page is in the app menu."""
 		from pathways.api.access import MENU_ITEMS
 
 		self.assertIn("honorarium", [m["key"] for m in MENU_ITEMS])
@@ -211,6 +226,9 @@ class TestSelectionComms(IntegrationTestCase):
 	# ------------------------------------------------------------ print format + legacy
 
 	def test_print_format_renders(self):
+		"""Step 18: the standard Interview Assessment print format renders the scores, comments and the
+		'confirmed on the platform' line when there is no drawn signature.
+		"""
 		self.assertTrue(frappe.db.exists("Print Format", {"name": "Interview Assessment", "doc_type": "Interview Assessment", "standard": "Yes"}))
 		app = self._application("print", "Not Selected")
 		interview = frappe.db.get_value("Interview", {"application": app}, "name")
@@ -238,6 +256,9 @@ class TestSelectionComms(IntegrationTestCase):
 		self.assertIn("Confirmed on the recruitment platform", html)
 
 	def test_legacy_endpoints_removed(self):
+		"""The old interview-scoring endpoints are gone from both the backend and the frontend
+		service, so only the validated panel endpoints are used.
+		"""
 		from pathways.api import scoring
 
 		self.assertFalse(hasattr(scoring, "submit_interview_assessment"))

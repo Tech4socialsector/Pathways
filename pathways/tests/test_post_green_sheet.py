@@ -97,6 +97,9 @@ class TestPostGreenSheet(IntegrationTestCase):
 	# ------------------------------------------------------------- seeding
 
 	def test_chain_seeded_once_per_track(self):
+		"""Setup: the default Recruiter > PNCO > CFO > Registrar > VC chain is seeded once per track
+		and seeding again adds nothing.
+		"""
 		template = frappe.get_all(
 			"Approval Chain Template",
 			filters={"track": self.track, "applies_to": DOCTYPE},
@@ -113,6 +116,9 @@ class TestPostGreenSheet(IntegrationTestCase):
 	# ---------------------------------------------------------- drafting
 
 	def test_draft_prefilled_from_outcomes(self):
+		"""Step 24: raising the sheet pre-fills the selected and waitlisted candidates, subject,
+		selection note and a fee row from the panel outcomes; raising again returns the same draft.
+		"""
 		sheet = self._raise()
 		self.assertEqual(sheet.docstatus, 0)
 		self.assertEqual(sheet.recommended_application, self.selected)
@@ -133,12 +139,18 @@ class TestPostGreenSheet(IntegrationTestCase):
 		self.assertEqual(pgs.create_from_outcomes(self.job.name), sheet.name)
 
 	def test_cannot_raise_without_selected_candidate(self):
+		"""Step 24: the sheet cannot be raised until the panel has selected someone."""
 		frappe.db.set_value("Application", self.selected, "selection_outcome", "Not Selected")
 		self.assertRaises(frappe.ValidationError, pgs.create_from_outcomes, self.job.name)
 
 	# ------------------------------------------------------ approval walk
 
 	def test_full_approval_walk(self):
+		"""Step 25: submitting freezes the chain and emails the first approver with a link to the
+		sheet; a later approver cannot act out of turn. After every step approves, the sheet is
+		Approved, unlocks offers for the selected and waitlisted candidates, and both print
+		formats render.
+		"""
 		sheet = self._raise()
 		pgs.save_sheet(sheet.name, {"date_of_appointment": "Tentatively in May", "compensation_table": [
 			{"application": self.selected, "candidate_name": "Rajalekshmi L S", "recommended_salary": 60000, "position_offered": "Graphic Designer", "medical_insurance": 1, "leave_applicable": 1}
@@ -182,6 +194,9 @@ class TestPostGreenSheet(IntegrationTestCase):
 	# ----------------------------------------------------- return / revise
 
 	def test_return_and_revise(self):
+		"""Step 25: returning needs a reason and blocks offers. Revising cancels the sheet and opens
+		an amended draft with the same content; it can be resubmitted and withdrawn.
+		"""
 		sheet = self._raise()
 		with patch("pathways.utils.communication.send_event"):
 			pgs.submit_sheet(sheet.name)
@@ -216,6 +231,7 @@ class TestPostGreenSheet(IntegrationTestCase):
 		self.assertEqual(revised.docstatus, 2)
 
 	def test_delete_draft(self):
+		"""An unsubmitted draft can be deleted."""
 		sheet = self._raise()
 		pgs.delete_draft(sheet.name)
 		self.assertFalse(frappe.db.exists(DOCTYPE, sheet.name))
@@ -223,6 +239,9 @@ class TestPostGreenSheet(IntegrationTestCase):
 	# ----------------------------------------------------------- signed copy
 
 	def test_signed_copy(self):
+		"""Step 25: the signed copy can be uploaded only after submission and only by someone who can
+		raise sheets; approvers cannot. It can also be removed.
+		"""
 		sheet = self._raise()
 		self.assertRaises(frappe.ValidationError, pgs.attach_signed_copy, sheet.name, "/private/files/signed.pdf")
 		with patch("pathways.utils.communication.send_event"):
@@ -236,6 +255,7 @@ class TestPostGreenSheet(IntegrationTestCase):
 		self.assertIsNone(pgs.attach_signed_copy(sheet.name, None))
 
 	def test_permanent_sheet_prints_pay_fixation(self):
+		"""Permanent posts show and print the pay fixation and probation details."""
 		self.job.db_set("employment_type", "Permanent")
 		sheet = self._raise()
 		self.assertEqual(sheet.employment_type, "Permanent")
@@ -248,6 +268,9 @@ class TestPostGreenSheet(IntegrationTestCase):
 		self.assertTrue(pgs.get_sheet(sheet.name)["is_permanent"])
 
 	def test_job_selection_card(self):
+		"""The job page's Selection card shows the selected candidates, the current sheet and whether
+		an approval chain exists.
+		"""
 		sheet = self._raise()
 		data = pgs.get_job_selection(self.job.name)
 		self.assertEqual([s["application"] for s in data["outcomes"]["selected"]], [self.selected])

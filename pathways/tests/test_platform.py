@@ -91,6 +91,9 @@ class TestPlatform(IntegrationTestCase):
 	# ------------------------------------------------------------ step 3
 
 	def test_approval_requests_official_notification_once(self):
+		"""Step 3: approving the pre-recruitment green sheet approves the job and asks the
+		Registrar/Communications for the official notification, once only.
+		"""
 		job = self._job()
 		sheet = frappe._dict(name="PWY-PREGS-TEST", job_opening=job.name, docstatus=1, status="Approved")
 		with patch("pathways.utils.communication.send_event") as send:
@@ -106,6 +109,9 @@ class TestPlatform(IntegrationTestCase):
 		self.assertTrue(frappe.db.exists("Recruitment Email Rule", "notification_requested"))
 
 	def test_publishing_tracker_by_communications(self):
+		"""Step 3: Communications can record where the ad is published (records who did it), and
+		links that are not full URLs are rejected.
+		"""
 		from pathways.api import job_notice
 
 		job = self._job(status="Advertised")
@@ -120,6 +126,9 @@ class TestPlatform(IntegrationTestCase):
 	# ------------------------------------------------------------ step 6
 
 	def test_auto_close_syncs_notification_and_emails_once(self):
+		"""Step 6: the hourly job closes an advertised job past its deadline, removes the public link,
+		closes its notification and emails 'ad closed' once, even if it runs again.
+		"""
 		from pathways.tasks import close_expired_job_openings
 
 		job = self._job(status="Advertised", deadline_days=-1)
@@ -142,6 +151,9 @@ class TestPlatform(IntegrationTestCase):
 	# ------------------------------------------------------------ feeds
 
 	def test_feeds_list_only_open_advertised_jobs(self):
+		"""The Indeed XML and website JSON feeds list only open, advertised jobs with the required
+		tags, and expose only public fields.
+		"""
 		open_job = self._job("Feed Open", status="Advertised")
 		draft_job = self._job("Feed Draft", status="Draft")
 		expired = self._job("Feed Expired", status="Advertised", deadline_days=-1)
@@ -173,6 +185,10 @@ class TestPlatform(IntegrationTestCase):
 	# ------------------------------------------------------------ step 7
 
 	def test_tagged_colleague_reads_only_tagged_job(self):
+		"""Step 7: tagging a colleague emails them once and grants read-only access to that job and its
+		applications only. Holding the role without a tag gives nothing, and untagging removes
+		the role.
+		"""
 		job = self._job("Tagged Job")
 		other = self._job("Untagged Job")
 		app = self._application(job.name)
@@ -210,6 +226,9 @@ class TestPlatform(IntegrationTestCase):
 		self.assertNotIn(TAGGED_ROLE, frappe.get_roles(colleague))
 
 	def test_job_folder_created_idempotently(self):
+		"""Step 7: each job gets a file folder under Home/Pathways, and asking again returns the same
+		folder instead of creating another.
+		"""
 		from pathways.utils.folders import ensure_job_folder
 
 		job = self._job("Folder Job")
@@ -221,6 +240,9 @@ class TestPlatform(IntegrationTestCase):
 	# ------------------------------------------------------------ step 8
 
 	def test_update_committee_emails_only_new_members(self):
+		"""Step 8: editing the shortlisting committee updates members, office order and deadline, and
+		emails only the newly added member.
+		"""
 		job = self._job("Committee Job")
 		a, b, c = (_user(f"plat-member-{i}@example.com", f"Member {i}") for i in "abc")
 		with patch("pathways.utils.communication.send_event"):
@@ -249,6 +271,10 @@ class TestPlatform(IntegrationTestCase):
 		return "data:text/csv;base64," + base64.b64encode("\n".join(lines).encode()).decode()
 
 	def test_historical_import_statuses_and_no_emails(self):
+		"""Historical import accepts past statuses (with aliases such as Not Shortlisted), rejects
+		unknown ones, and never creates portal logins or sends acknowledgements; a normal import
+		refuses past statuses.
+		"""
 		job = self._job("Past Cycle", status="Closed")
 		content = self._csv(job.name, ["Joined", "Not Shortlisted", "Interview Completed", "Bogus"])
 

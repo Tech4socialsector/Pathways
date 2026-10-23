@@ -125,6 +125,10 @@ class TestOnboarding(IntegrationTestCase):
 	# -------------------------------------------------------------- tests
 
 	def test_offer_accepted_starts_onboarding_once(self):
+		"""Step 34: accepting an offer creates the document checklist and a draft joining with the
+		candidate's date, and sends one onboarding email with the portal link. Saving the offer
+		again or restarting onboarding creates nothing twice.
+		"""
 		_candidate, app, offer, joining = self._accepted("accept")
 		collection = frappe.get_doc("Document Collection", {"application": app.name})
 		self.assertTrue(collection.checklist)
@@ -147,6 +151,10 @@ class TestOnboarding(IntegrationTestCase):
 		self.assertEqual(frappe.db.count("Document Collection", {"application": app.name}), 1)
 
 	def test_confirm_creates_it_request_and_reschedule_updates_it(self):
+		"""Step 31 / IT intimation: confirming a joining creates the IT & Facilities request and
+		emails IT. Changing the date records the reschedule, updates the request and sends IT an
+		'updated' email.
+		"""
 		_candidate, _app, _offer, joining = self._accepted("confirm")
 		self.assertFalse(joining.it_facilities_request)
 		joining_api.set_status(joining.name, "Confirmed", {"reporting_manager": "Dr. Manager"})
@@ -171,6 +179,10 @@ class TestOnboarding(IntegrationTestCase):
 		self.assertTrue(calls[1].kwargs["context"]["updated"])
 
 	def test_joined_sets_application_status_and_employee(self):
+		"""Step 31: a joiner cannot be marked Joined before the date of joining. Marking Joined sets
+		the application status and history; the Employee record is created only once all
+		mandatory documents are verified.
+		"""
 		_candidate, app, _offer, joining = self._accepted("joined", doj=add_days(today(), 3))
 		joining_api.set_status(joining.name, "Confirmed")
 		# Not before the date of joining.
@@ -202,6 +214,9 @@ class TestOnboarding(IntegrationTestCase):
 		self.assertEqual(frappe.db.get_value("Application", app.name, "status"), "Joined")
 
 	def test_upload_and_resubmission(self):
+		"""Step 34: a candidate's upload is attached to their checklist row. Asking for resubmission
+		needs a reason, which is emailed to the candidate. A candidate can never verify documents.
+		"""
 		candidate, app, _offer, _joining = self._accepted("upload")
 		collection = frappe.get_doc("Document Collection", {"application": app.name})
 		row = next(r for r in collection.checklist if r.requirement == "Mandatory")
@@ -234,6 +249,9 @@ class TestOnboarding(IntegrationTestCase):
 		self.assertRaises(frappe.PermissionError, documents_api.verify_document, collection.name, row.document_type, True)
 
 	def test_it_request_completion_notifies(self):
+		"""IT intimation: an IT request cannot be completed until the laptop and official email are
+		done; completing it emails the recruitment team once and locks the request.
+		"""
 		_candidate, _app, _offer, joining = self._accepted("it")
 		joining_api.set_status(joining.name, "Confirmed")
 		request = frappe.db.get_value("Joining", joining.name, "it_facilities_request")
@@ -246,6 +264,9 @@ class TestOnboarding(IntegrationTestCase):
 		self.assertRaises(frappe.ValidationError, it_api.save_request, request, {"remarks": "again"})
 
 	def test_permissions(self):
+		"""Row-level access: a candidate sees only their own joining and document checklist, never
+		IT requests or another candidate's records; IT staff see IT requests but not joinings.
+		"""
 		cand_a, app_a, _offer_a, joining_a = self._accepted("perm-a")
 		_cand_b, app_b, _offer_b, joining_b = self._accepted("perm-b")
 		joining_api.set_status(joining_a.name, "Confirmed")

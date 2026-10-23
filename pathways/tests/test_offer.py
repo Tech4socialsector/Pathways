@@ -157,6 +157,10 @@ class TestOffer(IntegrationTestCase):
 	# -------------------------------------------------------------- tests
 
 	def test_green_sheet_gate(self):
+		"""Steps 24-26: an offer cannot be created until an approved post-interview green sheet names
+		the candidate (recommended or waitlisted). The new offer starts in Draft with a template,
+		links the sheet, and a second offer for the same application is refused.
+		"""
 		frappe.set_user(self.recruiter)
 		self.assertRaises(frappe.ValidationError, api.create_offer, self.app)
 
@@ -174,6 +178,9 @@ class TestOffer(IntegrationTestCase):
 		self.assertRaises(frappe.ValidationError, api.create_offer, self.app)
 
 	def test_green_sheet_requirement_can_be_relaxed(self):
+		"""Turning off 'offer requires green sheet' in Pathways Settings lets an offer be created
+		without one.
+		"""
 		frappe.db.set_single_value("Pathways Settings", "offer_requires_green_sheet", 0)
 		frappe.clear_document_cache("Pathways Settings", "Pathways Settings")
 		try:
@@ -186,6 +193,10 @@ class TestOffer(IntegrationTestCase):
 			frappe.clear_document_cache("Pathways Settings", "Pathways Settings")
 
 	def test_review_return_and_approve(self):
+		"""Step 26: an incomplete offer cannot go for review. Under review it is locked for the
+		drafter; the reviewer must give remarks to return it, which emails the drafter, and
+		approving emails the Registrar to sign. The signatory can also return it to Draft.
+		"""
 		self._approved_sheet(recommended=self.app)
 		frappe.set_user(self.recruiter)
 		name = api.create_offer(self.app, {"appointment_order_template": self.template})
@@ -228,6 +239,10 @@ class TestOffer(IntegrationTestCase):
 		self.assertTrue(any("signing" in (a or "") for a in actions))
 
 	def test_sign_with_drawn_and_saved_signature(self):
+		"""Step 27: only the signatory role can sign, and only with a real image. Signing stamps
+		who and when, generates the letter PDF with the signature and can save it as the default;
+		a second offer can then be signed with the saved signature.
+		"""
 		name = self._draft()
 		self._to_signature(name)
 		frappe.set_user(self.reviewer)
@@ -262,6 +277,10 @@ class TestOffer(IntegrationTestCase):
 		self.assertTrue(offer2.registrar_signature.startswith("data:image/"))
 
 	def test_send_and_candidate_accepts(self):
+		"""Steps 28-29: sending emails the candidate with the PDF attached and moves the application
+		to Offer Extended. Only that candidate can view the letter; accepting needs a joining date
+		and records the signed copy. Staff can then upload the Registrar-signed scan.
+		"""
 		name = self._draft()
 		self._to_sent(name)
 		offer = frappe.get_doc(DOCTYPE, name)
@@ -312,6 +331,9 @@ class TestOffer(IntegrationTestCase):
 		self.assertEqual(frappe.db.get_value(DOCTYPE, name, "registrar_signed_scan"), scan.file_url)
 
 	def test_candidate_declines(self):
+		"""A candidate can decline with a reason; the application becomes Offer Declined and the
+		offer can no longer be accepted.
+		"""
 		name = self._draft()
 		self._to_sent(name)
 		frappe.set_user(self.candidate_user)
@@ -323,6 +345,7 @@ class TestOffer(IntegrationTestCase):
 		self.assertRaises(frappe.ValidationError, api.respond_to_offer, name, "Accepted", today())
 
 	def test_candidate_does_not_see_internal_drafts(self):
+		"""A candidate cannot see or open their offer while it is still an internal draft."""
 		name = self._draft()
 		frappe.set_user(self.candidate_user)
 		self.assertIsNone(api.get_my_offer(self.app))
@@ -330,6 +353,9 @@ class TestOffer(IntegrationTestCase):
 		self.assertRaises(frappe.PermissionError, api.get_offer, name)
 
 	def test_expiry(self):
+		"""The daily job expires a sent offer past its acceptance deadline, logs it, marks the
+		application Not Selected, and the candidate can no longer respond.
+		"""
 		from pathways.tasks import expire_overdue_offers
 
 		name = self._draft()

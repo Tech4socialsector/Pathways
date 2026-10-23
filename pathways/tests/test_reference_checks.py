@@ -96,6 +96,9 @@ class TestReferenceChecks(IntegrationTestCase):
 	# ------------------------------------------------------------ prefill
 
 	def test_prefill_from_application_referees(self):
+		"""Step 21: starting checks creates one per referee the candidate gave, using the track's
+		template with {position} filled in. Starting again is refused; an extra referee can be added.
+		"""
 		names = self._create()
 		self.assertEqual(len(names), 2)
 		check = frappe.get_doc("Reference Check", names[0])
@@ -119,6 +122,10 @@ class TestReferenceChecks(IntegrationTestCase):
 	# ------------------------------------------------------------ token
 
 	def test_token_issue_validate_and_one_time_submit(self):
+		"""Step 21 (referee form): sending emails the referee a link whose token is stored only as a
+		hash. A guest can open it, required answers are enforced, submitting emails the recruiter,
+		and the link works only once. Staff cannot overwrite the referee's answers.
+		"""
 		name = self._create()[0]
 		token, send = self._send(name)
 		send.assert_called_once()
@@ -160,6 +167,9 @@ class TestReferenceChecks(IntegrationTestCase):
 		self.assertRaises(frappe.ValidationError, rc.record_responses, name, {}, None, 1)
 
 	def test_token_expiry_and_resend(self):
+		"""An expired link cannot be opened or submitted. Resending issues a new link and the old one
+		stops working.
+		"""
 		name = self._create()[0]
 		token, _send = self._send(name)
 		frappe.db.set_value("Reference Check", name, "token_expires_on", add_days(now_datetime(), -1))
@@ -176,6 +186,9 @@ class TestReferenceChecks(IntegrationTestCase):
 		self.assertEqual(rc.get_referee_form(new_token)["state"], "open")
 
 	def test_reminder_keeps_previous_link_working(self):
+		"""The daily reminder is sent once after the configured days, and both the original and the
+		reminder links stay valid.
+		"""
 		frappe.db.set_single_value("Pathways Settings", "reference_reminder_after_days", 3)
 		name = self._create()[0]
 		token, _send = self._send(name)
@@ -193,6 +206,9 @@ class TestReferenceChecks(IntegrationTestCase):
 	# ------------------------------------------------------------ recruiter
 
 	def test_recruiter_records_answers(self):
+		"""Step 21 (by phone): the recruiter can save partial answers as a draft, then complete with a
+		summary. The per-application summary counts completed and pending checks.
+		"""
 		name = self._create()[1]
 		check = frappe.get_doc("Reference Check", name)
 		answers = {r.name: {"answer_text": "Said on the phone"} for r in check.responses}
@@ -210,6 +226,7 @@ class TestReferenceChecks(IntegrationTestCase):
 		self.assertEqual(summary[self.app.name], {"total": 2, "completed": 1, "in_progress": 0, "pending": 1})
 
 	def test_rating_validated(self):
+		"""Rating answers must be within 1-5."""
 		tpl = frappe.get_doc("Reference Check Template", "Research Reference Check")
 		self.assertTrue(any(q.answer_type == "Rating 1-5" for q in tpl.questions))
 		name = self._create()[0]
@@ -221,6 +238,7 @@ class TestReferenceChecks(IntegrationTestCase):
 	# ------------------------------------------------------------ candidate
 
 	def test_candidate_cannot_read_reference_checks(self):
+		"""A candidate can never see, list, send or record their reference checks."""
 		name = self._create()[0]
 		user = frappe.get_doc(
 			{
@@ -244,6 +262,9 @@ class TestReferenceChecks(IntegrationTestCase):
 	# ------------------------------------------------------------ email + print
 
 	def test_request_email_goes_to_referee_and_prints(self):
+		"""The request email is actually delivered to the referee's address (logged), and the
+		Reference Check print format renders.
+		"""
 		from pathways.utils.communication import _send_event
 
 		name = self._create()[0]
@@ -266,6 +287,9 @@ class TestRefereeEndpointsOverHTTP(IntegrationTestCase):
 	"""The referee endpoints are reachable as Guest and rate-limited."""
 
 	def test_guest_access_and_rate_limit(self):
+		"""Over HTTP, guests can call the referee endpoints without logging in; a bad token is refused,
+		and repeated submissions are rate-limited (HTTP 429).
+		"""
 		from frappe.tests.test_api import FrappeAPITestCase
 
 		client = FrappeAPITestCase()

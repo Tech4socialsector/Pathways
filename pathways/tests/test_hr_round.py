@@ -95,6 +95,10 @@ class TestHRRound(IntegrationTestCase):
 	# ---------------------------------------------------- HR assessors (13)
 
 	def test_hr_assessors_get_access_and_email(self):
+		"""Step 13: scheduling an HR round saves the assessors, emails them once and gives them the
+		Selection Committee role. They can read (not edit) only their own candidate's application
+		and CV, and see the interview on their panel; an outsider sees neither.
+		"""
 		iv, send = self._schedule_hr()
 		doc = frappe.get_doc("Interview", iv)
 		self.assertEqual(doc.hr_assessor_list(), [self.hr1, self.hr2])
@@ -117,6 +121,9 @@ class TestHRRound(IntegrationTestCase):
 		self.assertNotIn(iv, [r.name for r in panel.get_my_panel()["interviews"]])
 
 	def test_hr_assessor_limit_and_reassign(self):
+		"""Step 13: more assessors than the Settings limit is refused. When assessors are changed
+		on an existing interview, only the newly added assessor is emailed.
+		"""
 		frappe.set_user("Administrator")
 		third = _user("hr-assessor-3@example.com", "HR Three")
 		with self.assertRaises(frappe.ValidationError):
@@ -132,6 +139,10 @@ class TestHRRound(IntegrationTestCase):
 	# ---------------------------------------------------- HR scoring
 
 	def test_hr_assessment_and_outcome(self):
+		"""Step 13: an HR assessor scores the HR rubric and must choose an outcome. The outcome,
+		note, salary expectation and notice period reach the panel brief and the application's
+		HR card. Someone who is not an assessor cannot submit.
+		"""
 		iv, _send = self._schedule_hr()
 		frappe.set_user(self.hr1)
 		form = panel.get_assessment_form(iv)
@@ -163,6 +174,10 @@ class TestHRRound(IntegrationTestCase):
 	# ---------------------------------------------------- final shortlist (14)
 
 	def test_final_shortlist_and_note(self):
+		"""Step 14: adding candidates to the final shortlist is idempotent, records them on the job's
+		Shortlisting Note and makes their next round Final without changing the application status.
+		The note can be edited and printed as a PDF, and removing a candidate takes them off it.
+		"""
 		frappe.set_user("Administrator")
 		other = self._application("two")
 		result = interviews.set_final_shortlist(self.job.name, [self.app], 1, remarks="Strong Round 1")
@@ -195,6 +210,10 @@ class TestHRRound(IntegrationTestCase):
 	# ---------------------------------------------------- calendar block (15)
 
 	def test_committee_calendar_block_is_idempotent(self):
+		"""Step 15: saving the selection committee date creates one calendar event shared with the
+		panel and the VC/Registrar roles. Rescheduling moves the same event (no duplicates) and
+		clearing the date cancels it.
+		"""
 		registrar = _user("hr-registrar@example.com", "Registrar", roles=("Pathways Registrar",))
 		settings = frappe.get_single("Pathways Settings")
 		if "Pathways Registrar" not in [r.role for r in settings.calendar_block_roles]:
@@ -223,6 +242,9 @@ class TestHRRound(IntegrationTestCase):
 	# ---------------------------------------------------- panel files (16)
 
 	def test_job_files_shared_with_panel(self):
+		"""Step 16: job-level files (panel details, blank forms, shortlisting note) can be shared per
+		panellist, which emails them. A panellist can download only the files shared with them.
+		"""
 		self._committee(scheduled_date=str(add_days(now_datetime().date(), 10)), scheduled_time="10:00:00")
 		interviews.set_final_shortlist(self.job.name, [self.app], 1)
 		labels = [f["label"] for f in panel_documents.job_files(self.job.name)]
@@ -242,6 +264,9 @@ class TestHRRound(IntegrationTestCase):
 			panel_documents.download_job_file(self.job.name, panel_documents.HR_NOTES)
 
 	def test_interview_schedule_export(self):
+		"""Step 16: the interview schedule export lists the scheduled candidates with their login
+		time and the panel, and the Excel download is a valid xlsx file.
+		"""
 		self._schedule_hr()
 		data = interviews.schedule_data(self.job.name, "HR Interaction")
 		self.assertEqual(len(data["rows"]), 1)
@@ -252,6 +277,10 @@ class TestHRRound(IntegrationTestCase):
 	# ---------------------------------------------------- signature (18)
 
 	def test_signature_required_when_switched_on(self):
+		"""Step 18: with 'require signature' on, a panellist cannot submit without a drawn signature
+		and a non-image value is rejected. The signature is kept on later edits. Staff entering a
+		paper form on a panellist's behalf are not asked to draw one.
+		"""
 		iv, _send = self._schedule_hr()
 		_set_settings(require_assessment_signature=1)
 		frappe.set_user(self.hr1)
@@ -276,6 +305,9 @@ class TestHRRound(IntegrationTestCase):
 		panel.submit_assessment(iv, scores, hr_outcome="Hold", panelist=self.hr2)
 
 	def test_signature_on_printed_final_form(self):
+		"""Step 18: a final-round panellist's drawn signature appears on their printed assessment
+		form, and the blank assessment form carries no signature.
+		"""
 		committee = self._committee(scheduled_date=str(add_days(now_datetime().date(), 10)), scheduled_time="10:00:00")
 		with patch("pathways.utils.communication.send_event"):
 			iv = interviews.schedule_interviews(self.job.name, [self.app], "Final", str(self.start), meeting_link="https://zoom.us/j/2", send_invite=0)["interviews"][0]
