@@ -136,25 +136,25 @@ const routes = [
     name: 'Documents',
     component: () => import('@/pages/Documents.vue'),
     meta: { requiresStaff: true },
+    // Onboarding verification moved to the Onboarding module.
+    beforeEnter: (to) => (to.query.tab === 'onboarding' ? '/onboarding/verification' : true),
   },
+  // Onboarding: verification, joinings and IT requests as tabs of one module.
   {
-    path: '/joinings',
-    name: 'Joinings',
-    component: () => import('@/pages/Joinings.vue'),
+    path: '/onboarding/:tab?',
+    name: 'Onboarding',
+    component: () => import('@/pages/Onboarding.vue'),
     meta: { requiresStaff: true },
   },
+  // The lists' old addresses (also in emails already sent).
+  { path: '/joinings', redirect: '/onboarding/joinings' },
+  { path: '/it-requests', redirect: '/onboarding/it-requests' },
   {
     path: '/joinings/:id',
     name: 'JoiningDetail',
     component: () => import('@/pages/JoiningDetail.vue'),
     props: true,
-    meta: { requiresStaff: true },
-  },
-  {
-    path: '/it-requests',
-    name: 'ITRequests',
-    component: () => import('@/pages/ITRequests.vue'),
-    meta: { requiresStaff: true },
+    meta: { requiresStaff: true, sections: ['/onboarding'] },
   },
   {
     path: '/master-setup',

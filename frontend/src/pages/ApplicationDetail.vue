@@ -351,7 +351,7 @@ const nextStep = computed(() => {
         ? { title: 'Joining documents', text: 'The candidate uploads documents in the portal; verify them on the Documents page, then confirm the joining date on Joinings.', to: '/documents', button: 'Open documents' }
         : { title: 'Status set by hand', text: 'There is no offer behind this status. Use Change Status to set it back to Selected, then follow the selection steps.', to: null }
     case 'Documents Verified':
-      return { title: 'Confirm the joining', text: 'Confirm the date of joining (IT & Facilities are emailed), then mark the joiner as joined.', to: '/joinings', button: 'Open joinings' }
+      return { title: 'Confirm the joining', text: 'Confirm the date of joining (IT & Facilities are emailed), then mark the joiner as joined.', to: '/onboarding/joinings', button: 'Open joinings' }
     case 'Not Selected':
       if (finalDone || outcome === 'Not Selected')
         return detail.value?.interview_regret_sent_on

@@ -177,7 +177,7 @@ def notify_it_facilities(joining, request, updated=False):
 	context.update(
 		{
 			"job_title": joining.designation or context.get("job_title"),
-			"request_link": get_url("/pathways/it-requests"),
+			"request_link": get_url("/pathways/onboarding/it-requests"),
 			"updated": updated,
 		}
 	)

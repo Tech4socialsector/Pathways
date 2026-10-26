@@ -75,15 +75,15 @@ const ALL_ITEMS = [
   { key: 'approvals', to: '/approvals', label: 'My Approvals', icon: 'check-square' },
   { key: 'offers', to: '/offers', label: 'Offers', icon: 'award' },
   { key: 'documents', to: '/documents', label: 'Documents', icon: 'folder' },
-  { key: 'joinings', to: '/joinings', label: 'Joinings', icon: 'user-check' },
-  { key: 'it_requests', to: '/it-requests', label: 'IT Requests', icon: 'monitor' },
+  // One module for three lists: shown to whoever has any of them (its tabs).
+  { key: 'onboarding', to: '/onboarding', label: 'Onboarding', icon: 'user-check', anyOf: ['documents', 'joinings', 'it_requests'] },
   { key: 'honorarium', to: '/honorarium', label: 'Panel Honorarium', icon: 'gift' },
   { key: 'communications', to: '/communications', label: 'Communications', icon: 'mail' },
   { key: 'reports', to: '/reports', label: 'Reports', icon: 'bar-chart-2' },
 ]
 
 const visibleItems = computed(() =>
-  ALL_ITEMS.filter((item) => item.key === 'dashboard' || session.hasMenu(item.key)),
+  ALL_ITEMS.filter((item) => item.key === 'dashboard' || (item.anyOf || [item.key]).some((key) => session.hasMenu(key))),
 )
 
 // A page outside its module's path (route meta.sections, e.g. a selection

@@ -1,6 +1,6 @@
 <template>
   <StaffLayout>
-    <PageHeader :title="doc ? doc.candidate_name || doc.name : 'Joining'" :subtitle="doc ? `${doc.designation || doc.job_title || ''} · ${doc.application_id || ''}` : ''" back-to="/joinings" />
+    <PageHeader :title="doc ? doc.candidate_name || doc.name : 'Joining'" :subtitle="doc ? `${doc.designation || doc.job_title || ''} · ${doc.application_id || ''}` : ''" back-to="/onboarding/joinings" />
     <div class="flex-1 overflow-y-auto p-6">
       <div v-if="loading && !doc" class="h-64 animate-pulse rounded-xl border bg-white" />
       <div v-else-if="error" class="rounded-xl border bg-white p-8 text-center text-sm text-gray-600">{{ error }}</div>
@@ -102,7 +102,7 @@
             <template v-if="doc.document_collection">
               <div class="flex items-center justify-between">
                 <StatusBadge :status="doc.document_collection.overall_status" />
-                <router-link to="/documents?tab=onboarding" class="text-sm text-brand-700 hover:underline">Verify documents</router-link>
+                <router-link to="/onboarding/verification" class="text-sm text-brand-700 hover:underline">Verify documents</router-link>
               </div>
               <p v-if="doc.document_collection.onboarding_email_sent_on" class="mt-2 text-xs text-gray-500">
                 Onboarding email sent {{ formatDateTime(doc.document_collection.onboarding_email_sent_on) }}

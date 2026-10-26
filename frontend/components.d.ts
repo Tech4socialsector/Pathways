@@ -39,7 +39,9 @@ declare module 'vue' {
     HrInteractionCard: typeof import('./src/components/jobs/HrInteractionCard.vue')['default']
     ImportApplicationsDialog: typeof import('./src/components/applications/ImportApplicationsDialog.vue')['default']
     InterviewsPanel: typeof import('./src/components/jobs/InterviewsPanel.vue')['default']
+    ITRequestsTab: typeof import('./src/components/onboarding/ITRequestsTab.vue')['default']
     JobOpeningForm: typeof import('./src/components/jobs/JobOpeningForm.vue')['default']
+    JoiningsTab: typeof import('./src/components/onboarding/JoiningsTab.vue')['default']
     LetterPreviewDialog: typeof import('./src/components/offers/LetterPreviewDialog.vue')['default']
     LinkField: typeof import('./src/components/master/LinkField.vue')['default']
     MasterField: typeof import('./src/components/master/MasterField.vue')['default']
@@ -80,6 +82,7 @@ declare module 'vue' {
     TopBar: typeof import('./src/components/layout/TopBar.vue')['default']
     UploadField: typeof import('./src/components/candidate/UploadField.vue')['default']
     UserPicker: typeof import('./src/components/common/UserPicker.vue')['default']
+    VerificationTab: typeof import('./src/components/onboarding/VerificationTab.vue')['default']
     VerifyChecklistDialog: typeof import('./src/components/onboarding/VerifyChecklistDialog.vue')['default']
   }
 }
