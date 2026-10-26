@@ -208,7 +208,7 @@ class TestOnboarding(IntegrationTestCase):
 		self.assertEqual(collection.overall_status, "Complete")
 		joining.reload()
 		self.assertTrue(joining.employee)
-		employee = frappe.get_doc("Employee", joining.employee)
+		employee = frappe.get_doc("Pathways Employee", joining.employee)
 		self.assertEqual(employee.source_application, app.name)
 		# Joined is not stepped back to Documents Verified.
 		self.assertEqual(frappe.db.get_value("Application", app.name, "status"), "Joined")

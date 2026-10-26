@@ -24,7 +24,7 @@ SIGNATURE = "data:image/png;base64," + base64.b64encode(
 	)
 ).decode()
 LETTER_FIELDS = {
-	"designation": "Assistant Manager",
+	"designation": "Assistant Manager - People and Culture",  # a seeded Pathways Designation
 	"proposed_doj": add_days(today(), 30),
 	"pay_level": "Level 10, VII CPC",
 	"gross_monthly_salary": 95000,
@@ -329,6 +329,32 @@ class TestOffer(IntegrationTestCase):
 		frappe.set_user(self.recruiter)
 		api.upload_registrar_scan(name, scan.file_url)
 		self.assertEqual(frappe.db.get_value(DOCTYPE, name, "registrar_signed_scan"), scan.file_url)
+
+	def test_send_with_cc_and_bcc(self):
+		"""Step 28: extra CC / BCC addresses typed on Send go on the appointment_order email and
+		are noted in the offer's history; the preview shows them too. An invalid address is
+		refused before anything changes, so the offer is not left half-sent."""
+		name = self._draft()
+		self._to_signature(name)
+		frappe.set_user(self.registrar)
+		api.sign_offer(name, signature=SIGNATURE)
+		frappe.set_user(self.recruiter)
+
+		preview = api.preview_send_email(name, cc='["dean@example.com"]', bcc="audit@example.com, dean@example.com")
+		self.assertIn("dean@example.com", preview["cc"])
+		self.assertEqual(preview["bcc"], ["audit@example.com"])  # already in CC: not blind-copied again
+
+		self.assertRaises(frappe.ValidationError, api.send_offer, name, None, "not-an-email")
+		self.assertEqual(frappe.db.get_value(DOCTYPE, name, "status"), "Signed by Registrar")
+
+		api.send_offer(name, cc=["dean@example.com"], bcc=["audit@example.com"])
+		event, kwargs = self.events[-1]
+		self.assertEqual(event, "appointment_order")
+		self.assertEqual(kwargs["cc"], ["dean@example.com"])
+		self.assertEqual(kwargs["bcc"], ["audit@example.com"])
+		log = frappe.get_doc(DOCTYPE, name).status_log[-1]
+		self.assertEqual(log.to_status, "Sent")
+		self.assertIn("BCC: audit@example.com", log.remarks)
 
 	def test_candidate_declines(self):
 		"""A candidate can decline with a reason; the application becomes Offer Declined and the

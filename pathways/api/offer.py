@@ -32,7 +32,7 @@ from pathways.pathways.doctype.offer_appointment_order.offer_appointment_order i
 	respond_to_offer as _respond_to_offer,
 )
 from pathways.permissions import has_duty, has_full_access
-from pathways.utils.communication import candidate_email_context, send_event
+from pathways.utils.communication import candidate_email_context, parse_emails, send_event
 from pathways.utils.letterhead import letterhead_html
 
 DOCTYPE = "Offer Appointment Order"
@@ -693,23 +693,27 @@ def save_signature(signature):
 
 
 @frappe.whitelist(methods=["POST"])
-def send_offer(name, acceptance_deadline=None):
+def send_offer(name, acceptance_deadline=None, cc=None, bcc=None):
 	"""Send the signed order to the candidate (workflow step 28): the letter
 	is regenerated with today's date and attached to the appointment_order
-	email; the candidate can then respond from the portal."""
+	email; the candidate can then respond from the portal. cc / bcc: extra
+	addresses copied on this email (a list or a comma-separated string)."""
 	doc = _get(name, "write")
 	if doc.status != "Signed by Registrar":
 		frappe.throw(_("Only a signed appointment order can be sent (status: {0}).").format(doc.status))
+	# Checked before anything changes: a typo must not leave a half-sent offer.
+	cc, bcc = parse_emails(cc), parse_emails(bcc)
 	doc.offer_date = today()
 	doc.acceptance_deadline = _acceptance_deadline(acceptance_deadline)
 	doc.status = "Sent"
 	doc.sent_by = frappe.session.user
 	doc.sent_on = now_datetime()
 	attach_letter_pdf(doc)
-	_save(doc, _("Sent to candidate"))
+	copied = "; ".join(f"{label}: {', '.join(emails)}" for label, emails in (("CC", cc), ("BCC", bcc)) if emails)
+	_save(doc, _("Sent to candidate"), copied or None)
 
 	context, candidate = _appointment_email(doc, doc.acceptance_deadline)
-	send_event("appointment_order", DOCTYPE, doc.name, context, candidate=candidate)
+	send_event("appointment_order", DOCTYPE, doc.name, context, candidate=candidate, cc=cc, bcc=bcc)
 	return get_offer(name)
 
 
@@ -736,9 +740,9 @@ def _appointment_email(doc, deadline):
 
 
 @frappe.whitelist()
-def preview_send_email(name, acceptance_deadline=None):
+def preview_send_email(name, acceptance_deadline=None, cc=None, bcc=None):
 	"""The appointment_order email exactly as Send to Candidate would send
-	it (recipient, CC, subject, full body, attachments), without sending."""
+	it (recipient, CC, BCC, subject, full body, attachments), without sending."""
 	from pathways.utils.communication import preview_event
 
 	doc = _get(name, "write")
@@ -746,7 +750,9 @@ def preview_send_email(name, acceptance_deadline=None):
 		frappe.throw(_("The email can be previewed once the order is signed."))
 	context, candidate = _appointment_email(doc, _acceptance_deadline(acceptance_deadline))
 	letter = f"Appointment Order - {doc.name}.pdf"  # as attach_letter_pdf names it
-	preview = preview_event("appointment_order", DOCTYPE, doc.name, context, candidate=candidate)
+	preview = preview_event(
+		"appointment_order", DOCTYPE, doc.name, context, candidate=candidate, extra_cc=parse_emails(cc), extra_bcc=parse_emails(bcc)
+	)
 	# Send regenerates the letter; it replaces the stored copy in the list.
 	stored = frappe.db.get_value("File", {"file_url": doc.letter_pdf}, "file_name") if doc.letter_pdf else None
 	preview["attachments"] = [letter, *[f for f in preview["attachments"] if f not in (stored, letter)]]

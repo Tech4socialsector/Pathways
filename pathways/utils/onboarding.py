@@ -252,7 +252,7 @@ def ensure_employee(joining):
 	verifying the last document then creates it."""
 	if joining.status != "Joined":
 		return None
-	existing = joining.employee or frappe.db.get_value("Employee", {"source_application": joining.application}, "name")
+	existing = joining.employee or frappe.db.get_value("Pathways Employee", {"source_application": joining.application}, "name")
 	if existing:
 		if joining.employee != existing:
 			joining.db_set("employee", existing, update_modified=False)
@@ -265,7 +265,7 @@ def ensure_employee(joining):
 	job = frappe.db.get_value(
 		"Job Opening", app.job_opening, ["designation", "department", "employment_type"], as_dict=True
 	) or {}
-	employee = frappe.new_doc("Employee")
+	employee = frappe.new_doc("Pathways Employee")
 	employee.employee_name = candidate.get("full_name") or joining.candidate_name
 	employee.designation = job.get("designation")
 	employee.department = job.get("department")

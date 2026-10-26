@@ -326,6 +326,9 @@
             the Careers portal.
           </p>
           <FormControl type="date" label="Acceptance deadline (blank = default from Settings)" v-model="sendDeadline" />
+          <EmailAddressInput ref="ccInput" v-model="sendCc" label="CC (optional)" />
+          <EmailAddressInput ref="bccInput" v-model="sendBcc" label="BCC (optional)" :exclude="sendCc" />
+          <p class="-mt-1 text-xs text-gray-500">Added to this email only, on top of the CC set in Email Setup. BCC recipients are hidden from everyone else.</p>
         </div>
       </template>
       <template #actions>
@@ -349,6 +352,7 @@ import PageHeader from '@/components/layout/PageHeader.vue'
 import SectionCard from '@/components/common/SectionCard.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
 import EmailPreviewDialog from '@/components/common/EmailPreviewDialog.vue'
+import EmailAddressInput from '@/components/common/EmailAddressInput.vue'
 import RecruitmentTimeline from '@/components/common/RecruitmentTimeline.vue'
 import SignaturePad from '@/components/common/SignaturePad.vue'
 import LetterPreviewDialog from '@/components/offers/LetterPreviewDialog.vue'
@@ -374,6 +378,17 @@ const signOpen = ref(false)
 const sign = reactive({ mode: 'draw', image: '', saveAsDefault: false, error: '' })
 const sendOpen = ref(false)
 const sendDeadline = ref('')
+const sendCc = ref([])
+const sendBcc = ref([])
+const ccInput = ref(null)
+const bccInput = ref(null)
+// CC / BCC for this send, including an address typed but not yet added
+// with Enter; null if one of them is not a valid address.
+function sendCopies() {
+  const cc = ccInput.value?.addDraft() ?? { emails: sendCc.value, valid: true }
+  const bcc = bccInput.value?.addDraft() ?? { emails: sendBcc.value, valid: true }
+  return cc.valid && bcc.valid ? { cc: cc.emails, bcc: bcc.emails } : null
+}
 
 const perms = computed(() => offer.value?.perms || {})
 
@@ -594,7 +609,9 @@ const emailPreview = reactive({ open: false, data: null, loading: false, error: 
 async function openEmailPreview() {
   Object.assign(emailPreview, { open: true, data: null, loading: true, error: '' })
   try {
-    emailPreview.data = await offerService.previewSendEmail(offer.value.name, sendOpen.value ? sendDeadline.value : null)
+    const copies = sendOpen.value ? sendCopies() : {}
+    if (!copies) throw { messages: ['Correct the CC / BCC addresses first.'] }
+    emailPreview.data = await offerService.previewSendEmail(offer.value.name, sendOpen.value ? sendDeadline.value : null, copies)
   } catch (e) {
     emailPreview.error = e?.messages?.[0] || 'Could not build the email preview.'
   } finally {
@@ -623,11 +640,15 @@ async function doRecord() {
 
 function openSend() {
   sendDeadline.value = ''
+  sendCc.value = []
+  sendBcc.value = []
   sendOpen.value = true
 }
 
 async function doSend() {
-  if (await run('send', () => offerService.sendOffer(offer.value.name, sendDeadline.value), 'Sent to the candidate.')) sendOpen.value = false
+  const copies = sendCopies()
+  if (!copies) return
+  if (await run('send', () => offerService.sendOffer(offer.value.name, sendDeadline.value, copies), 'Sent to the candidate.')) sendOpen.value = false
 }
 
 async function download() {

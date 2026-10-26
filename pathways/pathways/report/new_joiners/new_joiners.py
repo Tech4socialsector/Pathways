@@ -34,7 +34,7 @@ def get_columns():
 		{"label": _("Mobile"), "fieldname": "mobile", "fieldtype": "Data", "width": 120},
 		{"label": _("Documents"), "fieldname": "document_status", "fieldtype": "Data", "width": 140},
 		{"label": _("IT & Facilities"), "fieldname": "it_status", "fieldtype": "Data", "width": 110},
-		{"label": _("Employee"), "fieldname": "employee", "fieldtype": "Link", "options": "Employee", "width": 140},
+		{"label": _("Employee"), "fieldname": "employee", "fieldtype": "Link", "options": "Pathways Employee", "width": 140},
 	]
 
 

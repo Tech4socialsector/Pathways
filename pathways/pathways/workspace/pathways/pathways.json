@@ -199,7 +199,7 @@
    "is_query_report": 0,
    "label": "Employee",
    "link_count": 0,
-   "link_to": "Employee",
+   "link_to": "Pathways Employee",
    "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
@@ -331,7 +331,7 @@
    "type": "Link"
   }
  ],
- "modified": "2026-10-26 12:00:00.000000",
+ "modified": "2026-10-26 13:00:00.000000",
  "modified_by": "Administrator",
  "module": "Pathways",
  "name": "Pathways",

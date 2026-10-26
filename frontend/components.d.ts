@@ -27,6 +27,7 @@ declare module 'vue' {
     DrilldownDialog: typeof import('./src/components/common/DrilldownDialog.vue')['default']
     EChart: typeof import('./src/components/reports/EChart.vue')['default']
     EditInterviewDialog: typeof import('./src/components/jobs/EditInterviewDialog.vue')['default']
+    EmailAddressInput: typeof import('./src/components/common/EmailAddressInput.vue')['default']
     EmailDrawer: typeof import('./src/components/common/EmailDrawer.vue')['default']
     EmailPreviewDialog: typeof import('./src/components/common/EmailPreviewDialog.vue')['default']
     EmailRecipients: typeof import('./src/components/jobs/EmailRecipients.vue')['default']

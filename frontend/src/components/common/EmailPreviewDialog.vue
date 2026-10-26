@@ -1,5 +1,6 @@
 <template>
   <!-- An email exactly as it will be sent (pathways.utils.communication.preview_event). -->
+  <!-- The title is also its stacking hook in index.css (above the dialog it opens from). -->
   <Dialog v-model="open" :options="{ title: 'Email preview', size: '3xl' }">
     <template #body-content>
       <div v-if="loading && !preview" class="h-72 animate-pulse rounded-lg bg-gray-100" />
@@ -19,6 +20,10 @@
           <template v-if="preview.cc?.length">
             <dt class="text-gray-500">CC</dt>
             <dd class="text-gray-900">{{ preview.cc.join(', ') }}</dd>
+          </template>
+          <template v-if="preview.bcc?.length">
+            <dt class="text-gray-500">BCC</dt>
+            <dd class="text-gray-900">{{ preview.bcc.join(', ') }}</dd>
           </template>
           <template v-if="preview.reply_to">
             <dt class="text-gray-500">Reply-to</dt>

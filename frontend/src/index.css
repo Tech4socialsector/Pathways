@@ -47,12 +47,21 @@ h3 {
 /* Layering. frappe-ui dialogs have no z-index of their own, so anything on
    the page with one (raised links, sticky headers, the master form's Save
    bar) painted through the open dialog. Order, bottom to top:
-   page content (z-40 at most) < dialogs (50) < document viewer (55)
+   page content (z-40 at most) < dialogs (50) < previews opened from a
+   dialog (52) < document viewer (55)
    < popovers, menus, tooltips (60) < toasts (frappe-ui, max).
    Popovers must sit above dialogs, since pickers open inside them; reka-ui
    copies the content's z-index onto this wrapper inline, hence !important. */
 .dialog-overlay {
   z-index: 50;
+}
+/* Email and letter previews open from inside the Send and Sign dialogs.
+   Equal z-index would leave whichever reka-ui mounted later on top, which
+   put the preview behind the dialog it was opened from. Matched by title
+   (see EmailPreviewDialog.vue and LetterPreviewDialog.vue). */
+.dialog-overlay[data-dialog='Email preview'],
+.dialog-overlay[data-dialog='Appointment Order'] {
+  z-index: 52;
 }
 /* frappe-ui centres dialogs vertically, so a dialog whose content changes
    height (the schedule dialog switching Mode or Platform, a validation

@@ -551,8 +551,9 @@ def validate_submission(job, data, user, email=None):
 		if q.answer_type == "Yes/No" and answer not in YES_NO:
 			errors.add(_("Answer Yes or No: {0}").format(q.question), key)
 		elif q.answer_type == "Single Choice":
-			options = [o.strip() for o in (q.options or "").splitlines() if o.strip()]
-			if answer not in options:
+			# Not "options": that is the form's dropdown lists, used below.
+			choices = [o.strip() for o in (q.options or "").splitlines() if o.strip()]
+			if answer not in choices:
 				errors.add(_("Choose one of the listed options: {0}").format(q.question), key)
 		elif q.answer_type == "Number":
 			try:

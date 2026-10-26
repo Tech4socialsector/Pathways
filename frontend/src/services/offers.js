@@ -46,11 +46,11 @@ export const offerService = {
       save_as_default: saveAsDefault ? 1 : 0,
     })
   },
-  previewSendEmail(name, acceptanceDeadline) {
-    return callMethod(M + 'preview_send_email', { name, acceptance_deadline: acceptanceDeadline || null })
+  previewSendEmail(name, acceptanceDeadline, { cc = [], bcc = [] } = {}) {
+    return callMethod(M + 'preview_send_email', { name, acceptance_deadline: acceptanceDeadline || null, cc: JSON.stringify(cc), bcc: JSON.stringify(bcc) })
   },
-  sendOffer(name, acceptanceDeadline) {
-    return callMethod(M + 'send_offer', { name, acceptance_deadline: acceptanceDeadline || null })
+  sendOffer(name, acceptanceDeadline, { cc = [], bcc = [] } = {}) {
+    return callMethod(M + 'send_offer', { name, acceptance_deadline: acceptanceDeadline || null, cc: JSON.stringify(cc), bcc: JSON.stringify(bcc) })
   },
   uploadRegistrarScan(name, fileUrl) {
     return callMethod(M + 'upload_registrar_scan', { name, file_url: fileUrl })

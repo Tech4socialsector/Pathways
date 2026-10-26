@@ -1,4 +1,5 @@
 <template>
+  <!-- The title is also its stacking hook in index.css (above the dialog it opens from). -->
   <Dialog v-model="open" :options="{ title: 'Appointment Order', size: '4xl' }">
     <template #body-content>
       <div v-if="loading" class="py-10 text-center text-sm text-gray-500">Preparing the letter...</div>

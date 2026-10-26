@@ -3,6 +3,7 @@
 # Read docs to understand patches: https://frappeframework.com/docs/v14/user/en/database-migrations
 pathways.patches.v1_0.rename_department_doctype
 pathways.patches.v1_0.rename_designation_doctype
+pathways.patches.v1_0.rename_employee_doctype
 
 [post_model_sync]
 # Patches added in this section will be executed after doctypes are migrated
@@ -31,6 +32,7 @@ pathways.patches.v1_0.candidate_mobile_login
 pathways.patches.v1_0.seed_email_events #panel-documents-shared
 pathways.patches.v1_0.copy_shared_departments
 pathways.patches.v1_0.copy_shared_designations
+pathways.patches.v1_0.copy_shared_employees
 pathways.patches.v1_0.ist_in_email_times
 pathways.patches.v1_0.seed_email_events #post-interview-regret-and-panel-thanks
 pathways.patches.v1_0.post_interview_comms
@@ -48,3 +50,4 @@ pathways.patches.v1_0.onboarding_setup
 pathways.patches.v1_0.seed_email_events #onboarding-joining-it
 pathways.patches.v1_0.nlsiu_letter_head
 pathways.patches.v1_0.appointment_email_portal
+pathways.patches.v1_0.faculty_shortlisting_guidance

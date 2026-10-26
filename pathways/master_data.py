@@ -789,6 +789,14 @@ APPROVAL_CHAINS = [
 
 # ---------------------------------------------------------- scoring rubrics
 
+# Workflow folder "4. Shortlisting / Faculty / Eligibility Check & Scoring".
+FACULTY_SHORTLISTING_GUIDANCE = {
+	"Education (excluding PhD)": "UG and PG: institution score + CAS score, as in the Eligibility Check & Scoring sheet. PhD is not counted here.",
+	"Publications": "Peer-reviewed / UGC-listed journal publications, books and book chapters.",
+	"Teaching Experience": "Points per year of teaching experience (all teaching posts), up to 5.",
+	"Administrative Experience": "Points per administrative / institutional post held, up to 5.",
+}
+
 DOMAIN_KNOWLEDGE = "Does the candidate demonstrate knowledge of their {0}? Does the candidate organise their ideas and arguments well?"
 RESPONSES = "Does the candidate listen carefully and understand questions posed? Does the candidate respond adequately to the questions posed?"
 SUITABILITY_STAFF = "Is the candidate likely to contribute to NLSIU? Is the candidate's attitude suitable for the role and for NLSIU?"
@@ -830,10 +838,10 @@ SCORING_RUBRICS = [
 		"stage": "Shortlisting",
 		"scoring_mode": "Weighted Score",
 		"criteria": [
-			("Education (excluding PhD)", 50, None),
-			("Publications", 10, None),
-			("Teaching Experience", 5, None),
-			("Administrative Experience", 5, None),
+			("Education (excluding PhD)", 50, FACULTY_SHORTLISTING_GUIDANCE["Education (excluding PhD)"]),
+			("Publications", 10, FACULTY_SHORTLISTING_GUIDANCE["Publications"]),
+			("Teaching Experience", 5, FACULTY_SHORTLISTING_GUIDANCE["Teaching Experience"]),
+			("Administrative Experience", 5, FACULTY_SHORTLISTING_GUIDANCE["Administrative Experience"]),
 		],
 	},
 	{

@@ -33,7 +33,7 @@ def _offer_pay_fields():
 
 def get_columns(pay_fields):
 	columns = [
-		{"label": _("Employee ID"), "fieldname": "employee", "fieldtype": "Link", "options": "Employee", "width": 140},
+		{"label": _("Employee ID"), "fieldname": "employee", "fieldtype": "Link", "options": "Pathways Employee", "width": 140},
 		{"label": _("Employee Name"), "fieldname": "employee_name", "fieldtype": "Data", "width": 180},
 		{"label": _("Gender"), "fieldname": "gender", "fieldtype": "Data", "width": 80},
 		{"label": _("Date of Birth"), "fieldname": "date_of_birth", "fieldtype": "Date", "width": 100},
@@ -82,7 +82,7 @@ def get_data(filters, pay_fields):
 			"Candidate", app.get("candidate"), ["full_name", "email", "mobile_number", "gender", "date_of_birth", "category", "address"], as_dict=True
 		) or {}
 		job = frappe.db.get_value("Job Opening", app.get("job_opening"), ["employment_type", "pay_level"], as_dict=True) or {}
-		employee = frappe.db.get_value("Employee", j.employee, ["employee_name", "employment_type"], as_dict=True) if j.employee else None
+		employee = frappe.db.get_value("Pathways Employee", j.employee, ["employee_name", "employment_type"], as_dict=True) if j.employee else None
 		offer = {}
 		if j.offer and pay_fields:
 			offer = frappe.db.get_value("Offer Appointment Order", j.offer, [f[0] for f in pay_fields], as_dict=True) or {}
