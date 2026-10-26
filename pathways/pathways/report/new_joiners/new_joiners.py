@@ -20,7 +20,7 @@ def get_columns():
 		{"label": _("Joining"), "fieldname": "name", "fieldtype": "Link", "options": "Joining", "width": 150},
 		{"label": _("Name"), "fieldname": "candidate_name", "fieldtype": "Data", "width": 180},
 		{"label": _("Application ID"), "fieldname": "application_id", "fieldtype": "Data", "width": 140},
-		{"label": _("Designation"), "fieldname": "designation", "fieldtype": "Link", "options": "Designation", "width": 170},
+		{"label": _("Designation"), "fieldname": "designation", "fieldtype": "Link", "options": "Pathways Designation", "width": 170},
 		{"label": _("Department"), "fieldname": "department", "fieldtype": "Link", "options": "Pathways Department", "width": 170},
 		{"label": _("Track"), "fieldname": "track", "fieldtype": "Data", "width": 90},
 		{"label": _("Employment Type"), "fieldname": "employment_type", "fieldtype": "Data", "width": 120},

@@ -43,8 +43,9 @@ MASTER_SETUP = [
 				"keywords": ["centre", "school", "unit", "office"],
 			},
 			{
-				"doctype": "Designation",
+				"doctype": "Pathways Designation",
 				"label": "Designations",
+				"singular": "Designation",
 				"description": "Manage job designations.",
 				"icon": "user",
 				"keywords": ["post", "pay level", "employment type"],
@@ -170,7 +171,7 @@ INACTIVE_LINK_GUARDS = {
 	"Position": ["track", "department", "designation", "reports_to"],
 	"Application": ["source"],
 	"Pathways Department": ["parent_department"],
-	"Designation": ["track"],
+	"Pathways Designation": ["track"],
 	"Document Type Master": ["track"],
 	"Scoring Rubric Template": ["track"],
 	"Approval Chain Template": ["track"],
@@ -277,14 +278,15 @@ def on_trash(doc, method=None):
 	if not master:
 		return
 
-	from frappe.model.delete_doc import get_linked_docs
+	from frappe.desk.form.linked_with import get_linked_docs, get_linked_doctypes
 
-	links = get_linked_docs(doc)
-	if not links:
+	links = get_linked_docs(doc.doctype, doc.name, get_linked_doctypes(doc.doctype))
+	first = next(((dt, rows[0]) for dt, rows in links.items() if rows), None)
+	if not first:
 		return
 
-	first = links[0]
-	example = f"{_(first['reference_doctype'])} {first['reference_docname']}"
+	reference_doctype, row = first
+	example = f"{_(reference_doctype)} {row.get('name')}"
 	message = _("This {0} is currently used by existing recruitment records (for example, {1}) and cannot be deleted.").format(
 		_(_singular(master)), example
 	)

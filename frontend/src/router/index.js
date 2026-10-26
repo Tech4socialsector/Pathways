@@ -162,6 +162,15 @@ const routes = [
     component: () => import('@/pages/MasterSetup.vue'),
     meta: { requiresStaff: true },
   },
+  // Department and Designation were renamed to "Pathways …" (ERPNext owns the
+  // bare names); keep old bookmarks working.
+  ...['department', 'designation'].flatMap((old) => [
+    { path: `/master-setup/${old}`, redirect: `/master-setup/pathways-${old}` },
+    {
+      path: `/master-setup/${old}/:mode(new|edit)/:name?`,
+      redirect: (to) => ({ name: 'MasterForm', params: { ...to.params, slug: `pathways-${old}` } }),
+    },
+  ]),
   {
     path: '/master-setup/:slug',
     name: 'MasterList',

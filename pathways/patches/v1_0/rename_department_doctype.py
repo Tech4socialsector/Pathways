@@ -50,7 +50,7 @@ def execute():
 	move_list_view_settings()
 
 
-def move_list_view_settings():
+def move_list_view_settings(old=OLD, new=NEW):
 	"""rename_doc leaves users' saved list settings (columns, filters)
 	under the old name; carry them over unless the user already has some."""
 	frappe.db.sql(
@@ -58,5 +58,5 @@ def move_list_view_settings():
 		left join `__UserSettings` new_s on new_s.user = old_s.user and new_s.doctype = %(new)s
 		set old_s.doctype = %(new)s
 		where old_s.doctype = %(old)s and new_s.user is null""",
-		{"old": OLD, "new": NEW},
+		{"old": old, "new": new},
 	)

@@ -934,12 +934,12 @@ def seed_departments():
 
 def seed_designations():
 	for name, track, employment_type, pay_level, superannuation_age in DESIGNATIONS:
-		if frappe.db.exists("Designation", name):
+		if frappe.db.exists("Pathways Designation", name):
 			# A designation already on the site (made by hand or by another
 			# app) gets the recruitment details it is missing; values that
 			# are already set are left alone.
 			current = frappe.db.get_value(
-				"Designation", name, ["track", "employment_type", "pay_level_range", "superannuation_age"], as_dict=True
+				"Pathways Designation", name, ["track", "employment_type", "pay_level_range", "superannuation_age"], as_dict=True
 			) or {}
 			missing = {
 				field: value
@@ -950,11 +950,11 @@ def seed_designations():
 				if not current.get(field) and value
 			}
 			if missing:
-				frappe.db.set_value("Designation", name, missing, update_modified=False)
+				frappe.db.set_value("Pathways Designation", name, missing, update_modified=False)
 			continue
 		_insert(
 			{
-				"doctype": "Designation",
+				"doctype": "Pathways Designation",
 				"designation_name": name,
 				"track": track,
 				"employment_type": employment_type,
@@ -1024,7 +1024,7 @@ def seed_positions():
 		if frappe.db.exists("Position", position["job_code"]):
 			continue
 		designation = frappe.db.get_value(
-			"Designation", position["designation"], ["employment_type", "pay_level_range"], as_dict=True
+			"Pathways Designation", position["designation"], ["employment_type", "pay_level_range"], as_dict=True
 		) or frappe._dict()
 		# Fall back to the seeded defaults when the site's designation lacks them.
 		default = next((d for d in DESIGNATIONS if d[0] == position["designation"]), None)

@@ -35,7 +35,7 @@ export function useDepartmentOptions() {
 }
 
 export function useDesignationOptions() {
-  return useActiveRecordOptions('Designation', 'designation_name')
+  return useActiveRecordOptions('Pathways Designation', 'designation_name')
 }
 
 export function usePositionOptions() {

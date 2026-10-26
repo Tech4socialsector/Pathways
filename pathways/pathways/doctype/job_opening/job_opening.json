@@ -107,7 +107,7 @@
    "fieldname": "designation",
    "fieldtype": "Link",
    "label": "Designation",
-   "options": "Designation"
+   "options": "Pathways Designation"
   },
   {
    "fieldname": "column_break_1",

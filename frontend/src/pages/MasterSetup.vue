@@ -196,7 +196,7 @@ const STAGES = [
     masters: [
       { doctype: 'Recruitment Track', needs: [] },
       { doctype: 'Pathways Department', needs: [] },
-      { doctype: 'Designation', needs: ['Recruitment Tracks'] },
+      { doctype: 'Pathways Designation', needs: ['Recruitment Tracks'] },
     ],
   },
   {

@@ -554,7 +554,7 @@ def get_form_options():
 	_require_staff()
 	return {
 		"templates": get_templates(),
-		"designations": frappe.get_all("Designation", filters={"is_active": 1}, pluck="name", order_by="name asc"),
+		"designations": frappe.get_all("Pathways Designation", filters={"is_active": 1}, pluck="name", order_by="name asc"),
 		"departments": frappe.get_all("Pathways Department", filters={"is_active": 1}, pluck="name", order_by="name asc"),
 	}
 

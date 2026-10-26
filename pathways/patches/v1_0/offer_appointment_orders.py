@@ -224,7 +224,7 @@ def seed_appointment_order_templates():
 		if doc.track and not frappe.db.exists("Recruitment Track", doc.track):
 			doc.track = None
 		for designation in template.get("designations") or []:
-			if frappe.db.exists("Designation", designation):
+			if frappe.db.exists("Pathways Designation", designation):
 				doc.append("designations", {"designation": designation})
 		doc.is_active = 1
 		doc.insert(ignore_permissions=True)
