@@ -207,6 +207,19 @@ TEMPLATES = {
 		"<p>You will be asked to set your own password the first time you log in. "
 		"Please do not share these details with anyone.</p>" + SIGN_OFF,
 	),
+	"Candidate Portal Login (Existing Account)": (
+		"Your NLSIU Careers login: track your application",
+		"<p>Dear {{ candidate_name }},</p>"
+		"<p>Thank you for applying. An account already exists for <b>{{ login_email }}</b> on this site, so you can use it to "
+		"log in to the NLSIU Careers portal, track the status of your application(s) and view what you submitted.</p>"
+		"<table style=\"border-collapse:collapse;margin:12px 0\">"
+		"<tr><td style=\"padding:4px 16px 4px 0;color:#555\">Login page</td><td><a href=\"{{ login_link }}\">{{ login_link }}</a></td></tr>"
+		"<tr><td style=\"padding:4px 16px 4px 0;color:#555\">Log in with</td><td>your email address <b>{{ login_email }}</b> and your existing password</td></tr>"
+		"<tr><td style=\"padding:4px 16px 4px 0;color:#555\">Candidate ID</td><td><b>{{ candidate_id }}</b></td></tr>"
+		"</table>"
+		"<p>If you do not remember your password, use <a href=\"{{ reset_link }}\">Forgot password</a> on the login page "
+		"to set a new one. Please do not share your login details with anyone.</p>" + SIGN_OFF,
+	),
 	"Green Sheet Approval Request": (
 		"Approval needed: Green Sheet for {{ job_title }}",
 		"<p>Dear {{ recipient_name }},</p>"
@@ -491,6 +504,10 @@ EVENTS = [
 	("Applications", "candidate_portal_access", "Candidate portal login (to candidate)",
 		"A candidate's first application: their portal account is created and how to log in (email, mobile number or Candidate ID) and a temporary password are emailed.",
 		"Candidate Portal Login", {"send_to_candidate": 1}, True, True, "candidate_name, candidate_id, username, login_mobile, temporary_password, login_link, contact_email"),
+	("Applications", "candidate_portal_existing_account", "Candidate portal login: existing account (to candidate)",
+		"A candidate applies without logging in, with an email that already has a login on this site (e.g. an SLCM account): "
+		"that login can now open the Careers portal, and they are told to sign in with their existing password (sent once).",
+		"Candidate Portal Login (Existing Account)", {"send_to_candidate": 1}, True, True, "candidate_name, candidate_id, login_email, login_link, reset_link, contact_email"),
 	("Screening & Shortlisting", "committee_assigned", "Shortlisting committee invitation", "A job's Shortlisting Committee is set up (one email per member).",
 		"Shortlisting Committee Invitation", {"send_to_committee": 1}, True, True, JOB_VARS + ", application_count, ratio"),
 	("Screening & Shortlisting", "candidate_not_eligible", "Regret: not eligible (to candidate)", "A candidate is marked not eligible. Off by default: regrets are usually sent together later.",

@@ -51,3 +51,4 @@ pathways.patches.v1_0.seed_email_events #onboarding-joining-it
 pathways.patches.v1_0.nlsiu_letter_head
 pathways.patches.v1_0.appointment_email_portal
 pathways.patches.v1_0.faculty_shortlisting_guidance
+pathways.patches.v1_0.seed_email_events #candidate-portal-existing-account

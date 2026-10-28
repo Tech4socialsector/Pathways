@@ -243,9 +243,13 @@ def submit_application(job_opening, data):
 	# First application from this email: a portal login is created and emailed.
 	new_account = user == "Guest" and not frappe.db.exists("User", email)
 	if not new_account:
-		from pathways.utils.candidate_account import claim_records
+		from pathways.utils.candidate_account import claim_records, queue_existing_account
 
 		claim_records(candidate.name, email)
+		if user == "Guest":
+			# Their email already has a login (e.g. from SLCM): make it a
+			# candidate login and say how to sign in.
+			queue_existing_account(candidate.name)
 	if new_account:
 		from pathways.utils.candidate_account import queue_portal_account
 

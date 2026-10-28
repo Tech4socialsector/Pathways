@@ -172,6 +172,55 @@ def create_portal_account(candidate):
 	return True
 
 
+def link_existing_account(candidate):
+	"""Background job after a guest application whose email already has a
+	login (e.g. an SLCM student or parent account on the same site): give
+	that login the Candidate role so the portal shows the application, and
+	the first time, tell them to log in with their existing password. The
+	password itself is never changed or sent. Returns True if it emailed."""
+	cand = frappe.db.get_value("Candidate", candidate, ["name", "full_name", "email"], as_dict=True)
+	if not cand or not cand.email:
+		return False
+	user = frappe.db.get_value("User", cand.email, ["name", "user_type", "enabled", "username"], as_dict=True)
+	# Staff cannot apply (refused at submit); a disabled login is left alone.
+	if not user or user.user_type != "Website User" or not user.enabled:
+		return False
+	if frappe.db.exists("Has Role", {"parenttype": "User", "parent": user.name, "role": CANDIDATE_ROLE}):
+		return False  # already a candidate: they know how to log in
+
+	doc = frappe.get_doc("User", user.name)
+	# roles is permlevel 1: without this the role change is silently dropped.
+	doc.flags.ignore_permissions = True
+	doc.add_roles(CANDIDATE_ROLE)
+	claim_records(cand.name, cand.email)
+	commit()
+
+	from pathways.utils.communication import _send_event
+
+	_send_event(
+		rule_event="candidate_portal_existing_account",
+		reference_doctype="Candidate",
+		reference_name=cand.name,
+		context={
+			"candidate_name": cand.full_name,
+			"candidate_id": cand.name,
+			"login_email": cand.email,
+			"login_link": frappe.utils.get_url(f"/login?redirect-to={PORTAL_PATH}"),
+			"reset_link": frappe.utils.get_url("/login#forgot"),
+		},
+		candidate={"email": cand.email, "name": cand.full_name},
+	)
+	return True
+
+
+def queue_existing_account(candidate):
+	frappe.enqueue(
+		"pathways.utils.candidate_account.link_existing_account",
+		candidate=candidate,
+		enqueue_after_commit=True,
+	)
+
+
 def queue_portal_account(candidate):
 	if not frappe.db.get_value("Recruitment Email Rule", "candidate_portal_access", "enabled"):
 		return
