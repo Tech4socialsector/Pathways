@@ -397,6 +397,7 @@
    "fieldname": "files_folder",
    "fieldtype": "Data",
    "label": "Files Folder",
+   "length": 255,
    "read_only": 1,
    "no_copy": 1,
    "description": "Frappe File folder for this job: Home/Pathways/<Department>/<Job title - ID>."
