@@ -106,8 +106,7 @@ def _criteria(job):
 	from pathways.api.scoring import get_rubric_for_job_opening
 
 	rubric = get_rubric_for_job_opening(job.name, "Shortlisting") or {}
-	scored = rubric.get("scoring_mode") != "Pass/Fail Only"
-	return [c for c in rubric.get("criteria") or []] if scored else []
+	return list(rubric.get("criteria") or [])
 
 
 def _criterion_header(c):

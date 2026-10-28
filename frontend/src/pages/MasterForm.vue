@@ -41,7 +41,10 @@
         </EmptyState>
       </div>
 
-      <form v-else-if="form && doc" class="mx-auto flex max-w-5xl flex-col gap-5 p-4 md:p-6" novalidate @submit.prevent="save">
+      <!-- Enter in a field must not save: browsers submit a form on Enter
+           (e.g. after typing a name or picking a Link option), which created
+           records the user never confirmed. Only Save / Ctrl+S save. -->
+      <form v-else-if="form && doc" class="mx-auto flex max-w-5xl flex-col gap-5 p-4 md:p-6" novalidate @submit.prevent>
         <div v-if="saveError" class="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3" role="alert">
           <FeatherIcon name="alert-octagon" class="mt-0.5 h-4 w-4 shrink-0 text-red-600" />
           <div class="min-w-0 flex-1">
@@ -114,7 +117,7 @@
           <span class="text-sm text-gray-600">{{ isNew ? `New ${form.singular.toLowerCase()} — not saved yet` : 'You have unsaved changes' }}</span>
           <div class="flex gap-2">
             <Button @click="discard">{{ isNew ? 'Cancel' : 'Discard' }}</Button>
-            <Button type="submit" variant="solid" :class="BTN_BRAND" :loading="saving" :disabled="!isNew && !dirty">
+            <Button variant="solid" :class="BTN_BRAND" :loading="saving" :disabled="!isNew && !dirty" @click="save">
               {{ isNew ? `Create ${form.singular}` : 'Save' }}
             </Button>
           </div>

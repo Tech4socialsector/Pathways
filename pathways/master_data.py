@@ -818,7 +818,7 @@ SCORING_RUBRICS = [
 		"rubric_name": "Admin - Shortlisting",
 		"track": "Admin",
 		"stage": "Shortlisting",
-		"scoring_mode": "Pass/Fail Only",
+		"scoring_mode": "Weighted Score",
 		"criteria": [],
 	},
 	{

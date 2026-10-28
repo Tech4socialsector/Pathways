@@ -1084,7 +1084,7 @@ class Demo:
 		for rank, app in enumerate(pool):
 			shortlist = rank < take
 			criteria = []
-			if rubric and rubric["criteria"] and rubric["scoring_mode"] != "Pass/Fail Only":
+			if rubric and rubric["criteria"]:
 				for c in rubric["criteria"]:
 					top = float(c["max_score"])
 					criteria.append({"criterion_label": c["criterion_label"], "max_score": top, "score_given": round(min(top, max(0, top * (0.35 + 0.6 * app.who.strength + self.rng.uniform(-0.08, 0.08)))) * 2) / 2})

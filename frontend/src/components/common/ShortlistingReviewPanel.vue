@@ -299,7 +299,7 @@ function overMax(c) {
 }
 
 // A rubric with no criteria (e.g. Admin) is a decision with remarks, no score.
-const scored = computed(() => (props.rubric?.criteria || []).length > 0 && props.rubric?.scoring_mode !== 'Pass/Fail Only')
+const scored = computed(() => (props.rubric?.criteria || []).length > 0)
 
 const totalScore = computed(() => form.criteria.reduce((sum, c) => sum + (Number(c.score_given) || 0), 0))
 const maxScore = computed(() => form.criteria.reduce((sum, c) => sum + (Number(c.max_score) || 0), 0))

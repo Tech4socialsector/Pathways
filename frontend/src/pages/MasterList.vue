@@ -96,6 +96,7 @@
                   <th v-for="c in columns" :key="c.fieldname" class="px-5 py-3 font-medium">{{ c.label }}</th>
                   <th v-if="form?.active_field" class="px-5 py-3 font-medium">Status</th>
                   <th class="px-5 py-3 text-right font-medium">Last updated</th>
+                  <th class="w-12 px-3 py-3"><span class="sr-only">Actions</span></th>
                 </tr>
               </thead>
               <tbody class="divide-y">
@@ -122,6 +123,17 @@
                     </span>
                   </td>
                   <td class="whitespace-nowrap px-5 py-3 text-right text-gray-500">{{ dayjs(r.modified).format('DD MMM YYYY') }}</td>
+                  <td class="px-3 py-2 text-right">
+                    <RouterLink
+                      :to="editRoute(form.doctype, r.name)"
+                      class="inline-flex h-8 w-8 items-center justify-center rounded-md text-gray-500 transition hover:bg-brand-50 hover:text-brand-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+                      :aria-label="`${form?.can_write ? 'Edit' : 'View'} ${r.title}`"
+                      :title="form?.can_write ? 'Edit' : 'View'"
+                      @click.stop
+                    >
+                      <FeatherIcon :name="form?.can_write ? 'edit-2' : 'eye'" class="h-4 w-4" />
+                    </RouterLink>
+                  </td>
                 </tr>
               </tbody>
             </table>

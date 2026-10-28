@@ -7,8 +7,10 @@ from frappe.model.document import Document
 
 class ScoringRubricTemplate(Document):
 	def validate(self):
-		if self.scoring_mode == "Weighted Score" and not self.criteria:
-			frappe.throw("At least one Scoring Criterion is required when Scoring Mode is 'Weighted Score'.")
+		# A Shortlisting rubric without criteria is a shortlist / reject
+		# decision with remarks (e.g. Admin); interview rounds are scored.
+		if not self.criteria and self.stage != "Shortlisting":
+			frappe.throw("At least one Scoring Criterion is required for the {0} stage.".format(self.stage))
 
 	@property
 	def max_total_score(self):

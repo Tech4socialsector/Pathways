@@ -52,12 +52,12 @@
    "fieldname": "scoring_mode",
    "fieldtype": "Select",
    "label": "Scoring Mode",
-   "options": "Weighted Score\nPass/Fail Only",
+   "options": "Weighted Score",
    "reqd": 1
   },
   {
    "default": "50",
-   "depends_on": "eval:doc.scoring_mode=='Weighted Score'",
+   "depends_on": "eval:(doc.criteria || []).length",
    "fieldname": "pass_threshold_percent",
    "fieldtype": "Percent",
    "label": "Pass Threshold %"
@@ -70,7 +70,6 @@
    "label": "Is Active"
   },
   {
-   "depends_on": "eval:doc.scoring_mode=='Weighted Score'",
    "fieldname": "criteria_section",
    "fieldtype": "Section Break",
    "label": "Scoring Criteria"
@@ -84,7 +83,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-10-23 12:00:00.000000",
+ "modified": "2026-10-28 13:00:00.000000",
  "modified_by": "Administrator",
  "module": "Pathways",
  "name": "Scoring Rubric Template",

@@ -9,7 +9,19 @@
         :disabled="disabled"
         @update:query="onQuery"
         @update:model-value="(opt) => emit('update:modelValue', opt?.value ?? null)"
-      />
+      >
+        <template v-if="createTarget" #footer="{ togglePopover }">
+          <button
+            type="button"
+            class="flex w-full items-center gap-2 rounded px-2.5 py-1.5 text-left text-base font-medium text-brand-700 hover:bg-gray-100 focus:bg-gray-100 focus:outline-none"
+            @click.stop="createNew(togglePopover)"
+          >
+            <FeatherIcon name="plus" class="h-4 w-4 shrink-0" />
+            <span class="truncate">Create new {{ createTarget.singular }}</span>
+            <FeatherIcon name="external-link" class="ml-auto h-3.5 w-3.5 shrink-0 text-gray-400" />
+          </button>
+        </template>
+      </Autocomplete>
     </div>
     <Button
       v-if="modelValue && !disabled"
@@ -24,8 +36,10 @@
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { Autocomplete, Button } from 'frappe-ui'
-import { searchLink as search } from '@/utils/masterForm'
+import { useRouter } from 'vue-router'
+import { Autocomplete, Button, FeatherIcon } from 'frappe-ui'
+import { useSessionStore } from '@/stores/session'
+import { clearLinkCache, newRoute, resolveMaster, searchLink as search, slugOf } from '@/utils/masterForm'
 
 const props = defineProps({
   doctype: { type: String, required: true },
@@ -60,8 +74,44 @@ function onQuery(txt) {
   timer = setTimeout(() => load((txt || '').trim()), 250)
 }
 
-onMounted(() => load(''))
-onBeforeUnmount(() => clearTimeout(timer))
+// "Create new" at the end of the dropdown, for System Managers, when the
+// linked DocType is itself a master they can create. It opens the full form
+// in a new tab so this form's unsaved changes stay put; coming back to this
+// tab refreshes the options, so the new record can be picked straight away.
+const router = useRouter()
+const session = useSessionStore()
+const target = ref(null)
+const createTarget = computed(() => (session.hasRole('System Manager') && target.value?.can_create ? target.value : null))
+let awaitingCreate = false
+
+function createNew(togglePopover) {
+  togglePopover()
+  awaitingCreate = true
+  window.open(router.resolve(newRoute(props.doctype)).href, '_blank', 'noopener')
+}
+
+function onReturn() {
+  if (!awaitingCreate || document.visibilityState !== 'visible') return
+  awaitingCreate = false
+  clearLinkCache()
+  load('')
+}
+
+onMounted(() => {
+  load('')
+  resolveMaster(slugOf(props.doctype))
+    .then((m) => (target.value = m))
+    .catch(() => {
+      // No "Create new" without the registry; picking still works.
+    })
+  window.addEventListener('focus', onReturn)
+  document.addEventListener('visibilitychange', onReturn)
+})
+onBeforeUnmount(() => {
+  clearTimeout(timer)
+  window.removeEventListener('focus', onReturn)
+  document.removeEventListener('visibilitychange', onReturn)
+})
 
 // The dropdown filters on label and value only, so the server's description
 // (e.g. a user's full name) goes into the label to stay searchable. The
