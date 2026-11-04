@@ -1,8 +1,7 @@
 {
  "actions": [],
- "allow_rename": 0,
  "autoname": "field:job_code",
- "creation": "2026-10-06 19:00:00.000000",
+ "creation": "2026-10-06 19:00:00",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
@@ -44,40 +43,40 @@
  ],
  "fields": [
   {
+   "description": "Unique code for the post, e.g. ADM-FIN-CFO (Track-Department-Post)",
    "fieldname": "job_code",
    "fieldtype": "Data",
+   "in_list_view": 1,
    "label": "Job Code",
    "reqd": 1,
-   "unique": 1,
-   "in_list_view": 1,
-   "description": "Unique code for the post, e.g. ADM-FIN-CFO (Track-Department-Post)",
-   "set_only_once": 1
+   "set_only_once": 1,
+   "unique": 1
   },
   {
+   "description": "Used as the default Job Title of new Job Openings",
    "fieldname": "position_title",
    "fieldtype": "Data",
-   "label": "Position Title",
-   "reqd": 1,
    "in_list_view": 1,
-   "description": "Used as the default Job Title of new Job Openings"
+   "label": "Position Title",
+   "reqd": 1
   },
   {
    "fieldname": "track",
    "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Recruitment Track",
    "options": "Recruitment Track",
-   "reqd": 1,
-   "in_list_view": 1,
-   "in_standard_filter": 1
+   "reqd": 1
   },
   {
    "fieldname": "department",
    "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Department",
    "options": "Pathways Department",
-   "reqd": 1,
-   "in_list_view": 1,
-   "in_standard_filter": 1
+   "reqd": 1
   },
   {
    "fieldname": "designation",
@@ -91,20 +90,20 @@
    "fieldtype": "Column Break"
   },
   {
+   "fetch_from": "designation.employment_type",
+   "fetch_if_empty": 1,
    "fieldname": "employment_type",
    "fieldtype": "Select",
    "label": "Employment Type",
-   "options": "\nPermanent\nConsultant\nGrant-funded\nContract",
-   "reqd": 1,
-   "fetch_from": "designation.employment_type",
-   "fetch_if_empty": 1
+   "options": "\nPermanent\nConsultant\nContract",
+   "reqd": 1
   },
   {
+   "fetch_from": "designation.pay_level_range",
+   "fetch_if_empty": 1,
    "fieldname": "pay_level",
    "fieldtype": "Data",
-   "label": "Pay Level",
-   "fetch_from": "designation.pay_level_range",
-   "fetch_if_empty": 1
+   "label": "Pay Level"
   },
   {
    "fieldname": "tenure_description",
@@ -112,11 +111,11 @@
    "label": "Tenure Description"
   },
   {
+   "default": "1",
    "fieldname": "is_active",
    "fieldtype": "Check",
-   "label": "Is Active",
-   "default": "1",
-   "in_list_view": 1
+   "in_list_view": 1,
+   "label": "Is Active"
   },
   {
    "fieldname": "reporting_section",
@@ -134,104 +133,104 @@
    "fieldtype": "Column Break"
   },
   {
+   "description": "Role that owns hiring for this post",
    "fieldname": "hiring_manager_role",
    "fieldtype": "Link",
    "hidden": 1,
    "label": "Hiring Manager Role",
-   "options": "Role",
-   "description": "Role that owns hiring for this post"
+   "options": "Role"
   },
   {
+   "description": "Copied into each new Job Opening for this position; HR can still change them on the Job Opening.",
    "fieldname": "application_form_section",
    "fieldtype": "Section Break",
-   "label": "Application Form Defaults",
-   "description": "Copied into each new Job Opening for this position; HR can still change them on the Job Opening."
+   "label": "Application Form Defaults"
   },
   {
+   "default": "0",
    "fieldname": "require_postgraduate",
    "fieldtype": "Check",
-   "label": "Postgraduate Degree Mandatory",
-   "default": "0"
+   "label": "Postgraduate Degree Mandatory"
   },
   {
+   "default": "Free Text",
+   "description": "Which Institution Master list candidates pick their college / university from",
    "fieldname": "institution_list",
    "fieldtype": "Select",
    "label": "Institution Dropdown",
-   "options": "Free Text\nLaw\nSocial Science",
-   "default": "Free Text",
-   "description": "Which Institution Master list candidates pick their college / university from"
+   "options": "Free Text\nLaw\nSocial Science"
   },
   {
    "fieldname": "column_break_3",
    "fieldtype": "Column Break"
   },
   {
+   "default": "0",
    "fieldname": "ask_specialization",
    "fieldtype": "Check",
-   "label": "Ask Area of Specialization",
-   "default": "0"
+   "label": "Ask Area of Specialization"
   },
   {
+   "depends_on": "eval:doc.ask_specialization",
    "fieldname": "specialization_discipline",
    "fieldtype": "Select",
    "label": "Specialization Discipline",
-   "options": "\nLaw\nSocial Science",
-   "depends_on": "eval:doc.ask_specialization",
-   "mandatory_depends_on": "eval:doc.ask_specialization"
+   "mandatory_depends_on": "eval:doc.ask_specialization",
+   "options": "\nLaw\nSocial Science"
   },
   {
+   "default": "0",
    "fieldname": "ask_category_disability",
    "fieldtype": "Check",
-   "label": "Ask Category & Disability",
-   "default": "0"
+   "label": "Ask Category & Disability"
   },
   {
+   "default": "0",
    "fieldname": "ask_phd",
    "fieldtype": "Check",
-   "label": "Ask PhD Details",
-   "default": "0"
+   "label": "Ask PhD Details"
   },
   {
+   "default": "0",
    "fieldname": "ask_net",
    "fieldtype": "Check",
-   "label": "Ask NET / SLET / SET Details",
-   "default": "0"
+   "label": "Ask NET / SLET / SET Details"
   },
   {
    "fieldname": "column_break_4",
    "fieldtype": "Column Break"
   },
   {
+   "default": "0",
    "fieldname": "ask_experience_months",
    "fieldtype": "Check",
-   "label": "Ask Teaching / Research Experience in Months",
-   "default": "0"
+   "label": "Ask Teaching / Research Experience in Months"
   },
   {
+   "default": "0",
    "fieldname": "ask_admin_responsibilities",
    "fieldtype": "Check",
-   "label": "Ask Administrative Responsibilities",
-   "default": "0"
+   "label": "Ask Administrative Responsibilities"
   },
   {
+   "default": "0",
    "fieldname": "ask_publications",
    "fieldtype": "Check",
-   "label": "Ask Publications",
-   "default": "0"
+   "label": "Ask Publications"
   },
   {
+   "default": "1",
+   "depends_on": "eval:doc.ask_publications",
    "fieldname": "min_publications",
    "fieldtype": "Int",
-   "label": "Minimum Publications",
-   "default": "1",
-   "depends_on": "eval:doc.ask_publications"
+   "label": "Minimum Publications"
   },
   {
+   "default": "3",
+   "depends_on": "eval:doc.ask_publications",
    "fieldname": "max_publications",
    "fieldtype": "Int",
-   "label": "Maximum Publications",
-   "default": "3",
-   "depends_on": "eval:doc.ask_publications"
+   "label": "Maximum Publications"
   },
   {
    "fieldname": "instructions_section",
@@ -239,10 +238,10 @@
    "label": "Post-specific Instructions"
   },
   {
+   "description": "Shown with the general instructions on this post's application form; copied to new Job Openings.",
    "fieldname": "application_instructions",
    "fieldtype": "Text Editor",
-   "label": "Application Instructions",
-   "description": "Shown with the general instructions on this post's application form; copied to new Job Openings."
+   "label": "Application Instructions"
   },
   {
    "fieldname": "screening_section",
@@ -261,21 +260,20 @@
    "label": "Required Documents"
   },
   {
+   "description": "Resume, SOP, degree certificates and transcripts are always asked on the form and are not listed here.",
    "fieldname": "required_documents",
    "fieldtype": "Table",
    "label": "Required Documents",
-   "options": "Job Required Document",
-   "description": "Resume, SOP, degree certificates and transcripts are always asked on the form and are not listed here."
+   "options": "Job Required Document"
   }
  ],
- "index_web_pages_for_search": 0,
  "links": [
   {
    "link_doctype": "Job Opening",
    "link_fieldname": "position"
   }
  ],
- "modified": "2026-10-28 12:45:00.000000",
+ "modified": "2026-11-04 16:51:33.065623",
  "modified_by": "Administrator",
  "module": "Pathways",
  "name": "Position",
@@ -290,9 +288,9 @@
    "print": 1,
    "read": 1,
    "report": 1,
+   "role": "System Manager",
    "share": 1,
-   "write": 1,
-   "role": "System Manager"
+   "write": 1
   },
   {
    "create": 1,
@@ -302,9 +300,9 @@
    "print": 1,
    "read": 1,
    "report": 1,
+   "role": "Pathways Admin",
    "share": 1,
-   "write": 1,
-   "role": "Pathways Admin"
+   "write": 1
   },
   {
    "read": 1,
@@ -315,11 +313,12 @@
    "role": "Pathways PNCO"
   }
  ],
+ "row_format": "Dynamic",
  "search_fields": "position_title,department",
  "show_title_field_in_link": 1,
- "title_field": "position_title",
  "sort_field": "job_code",
  "sort_order": "ASC",
  "states": [],
+ "title_field": "position_title",
  "track_changes": 1
 }
