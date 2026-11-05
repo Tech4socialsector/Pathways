@@ -52,6 +52,9 @@
               <span class="block text-xs text-gray-600">
                 Adds the interview to Google Calendar and invites the candidate{{ form.round === 'Final' ? ' and the panel' : ' and the HR assessors' }}. The link goes into the invite email.
               </span>
+              <span class="mt-1 flex items-center gap-1 text-xs font-medium text-brand-800">
+                <FeatherIcon name="eye-off" class="h-3.5 w-3.5" />Guest list hidden: the candidate does not see who else is invited.
+              </span>
             </span>
           </label>
           <p v-else-if="form.platform === 'Google Meet' && meet.checked" class="text-xs text-gray-500">

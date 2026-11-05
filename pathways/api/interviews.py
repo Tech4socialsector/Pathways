@@ -452,6 +452,9 @@ def _sync_meet_event(iv, app, minutes, committee=None):
 	)
 	if iv.get("calendar_event") and frappe.db.exists("Event", iv.calendar_event):
 		ev = frappe.get_doc("Event", iv.calendar_event)
+		# Events made before the guest list was hidden: hide it first, so the
+		# update Google sends now does not list the panel either.
+		_hide_guest_list(ev)
 		ev.update({"subject": subject, "starts_on": start, "ends_on": end, "status": "Open", "google_calendar_id": calendar_id})
 		ev.set("event_participants", participants)
 		ev.save(ignore_permissions=True)
@@ -465,7 +468,9 @@ def _sync_meet_event(iv, app, minutes, committee=None):
 				"starts_on": start,
 				"ends_on": end,
 				"description": _("NLSIU recruitment interview for {0} ({1}).").format(job_title, app.application_id),
-				"sync_with_google_calendar": 1,
+				# Pushed to Google below, not by Frappe's sync, so the guest list
+				# is hidden in the very first invite (Frappe's sync cannot set it).
+				"sync_with_google_calendar": 0,
 				"google_calendar": calendar,
 				# Desk fills this from the Google Calendar; a script must set it.
 				"google_calendar_id": calendar_id,
@@ -475,11 +480,71 @@ def _sync_meet_event(iv, app, minutes, committee=None):
 				"reference_docname": iv.name,
 			}
 		).insert(ignore_permissions=True)
+		_insert_google_event(ev)
 	link = frappe.db.get_value("Event", ev.name, "google_meet_link")
 	if not link:
 		frappe.throw(_("Google Calendar did not return a Meet link for {0}. Check the calendar connection.").format(app.application_id))
 	iv.db_set({"calendar_event": ev.name, "meeting_link": link, "meeting_platform": "Google Meet"}, update_modified=False)
 	iv.reload()
+
+
+# Candidates must not see who is on the panel: the Google event hides its
+# guest list ("Hide guest list" in Google Calendar), in the invite email and
+# in the calendar. Frappe's later updates keep it (they edit the event as
+# Google returns it).
+HIDDEN_GUESTS = {"guestsCanSeeOtherGuests": False}
+
+
+def _insert_google_event(ev):
+	"""Create the Event in Google Calendar with a Meet link and the guest
+	list hidden, then hand it to Frappe's sync for later changes."""
+	from googleapiclient.errors import HttpError
+
+	from frappe.integrations.doctype.google_calendar.google_calendar import (
+		format_date_according_to_google_calendar,
+		get_attendees,
+		get_conference_data,
+		get_google_calendar_object,
+	)
+
+	google_calendar, account = get_google_calendar_object(ev.google_calendar)
+	body = {
+		"summary": ev.subject,
+		"description": ev.description,
+		"attendees": get_attendees(ev),
+		"conferenceData": get_conference_data(ev),
+		**HIDDEN_GUESTS,
+		**format_date_according_to_google_calendar(0, get_datetime(ev.starts_on), get_datetime(ev.ends_on)),
+	}
+	try:
+		created = (
+			google_calendar.events()
+			.insert(calendarId=ev.google_calendar_id, body=body, conferenceDataVersion=1, sendUpdates="all")
+			.execute()
+		)
+	except HttpError as err:
+		frappe.throw(_("Google Calendar could not create the interview event (error {0}). Check the calendar connection.").format(err.resp.status))
+	ev.db_set(
+		{"sync_with_google_calendar": 1, "google_calendar_event_id": created.get("id"), "google_meet_link": created.get("hangoutLink")},
+		update_modified=False,
+	)
+
+
+def _hide_guest_list(ev):
+	"""Hide the guest list of an existing Google event, without emailing anyone."""
+	if not (ev.get("google_calendar") and ev.get("google_calendar_event_id")):
+		return
+	from googleapiclient.errors import HttpError
+
+	from frappe.integrations.doctype.google_calendar.google_calendar import get_google_calendar_object
+
+	google_calendar, _account = get_google_calendar_object(ev.google_calendar)
+	try:
+		google_calendar.events().patch(
+			calendarId=ev.google_calendar_id, eventId=ev.google_calendar_event_id, body=HIDDEN_GUESTS, sendUpdates="none"
+		).execute()
+	except HttpError as err:
+		frappe.throw(_("Google Calendar could not hide the guest list (error {0}). Check the calendar connection.").format(err.resp.status))
 
 
 def _google_calendar_id(calendar):

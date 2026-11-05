@@ -47,11 +47,14 @@
         <FormControl v-if="inPerson" label="Location" v-model="form.location" placeholder="e.g. Training Centre, Ground Floor, Room 004, NLSIU Bengaluru" />
         <template v-else>
           <p v-if="interview.calendar_event && form.platform === 'Google Meet'" class="rounded-lg border border-brand-200 bg-brand-50 px-3 py-2 text-xs text-gray-700">
-            This interview has a Google Calendar event. Its time is updated and the Meet link stays the same.
+            This interview has a Google Calendar event. Its time is updated and the Meet link stays the same. Its guest list is hidden, so the candidate does not see the panel.
           </p>
           <label v-else-if="form.platform === 'Google Meet' && meet.ready" class="flex items-start gap-2.5 rounded-lg border border-brand-200 bg-brand-50 px-3 py-2.5">
             <input v-model="form.createMeet" type="checkbox" class="mt-0.5 rounded border-gray-300 text-brand-700 focus:ring-brand-700" />
-            <span class="font-medium text-gray-900">Create a Google Meet link</span>
+            <span>
+              <span class="font-medium text-gray-900">Create a Google Meet link</span>
+              <span class="block text-xs text-gray-600">Guest list hidden: the candidate does not see who else is invited.</span>
+            </span>
           </label>
           <FormControl v-if="!usesMeetEvent" label="Meeting link" v-model="form.link" placeholder="https://…" />
         </template>
