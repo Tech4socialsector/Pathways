@@ -153,8 +153,50 @@
         </template>
       </DataTable>
 
+      <template v-else>
+      <!-- Final interview: candidates whose Round 1 is done wait here first,
+           then their scheduled final interviews are listed below. -->
+      <section v-if="tab === 'final'" class="mb-6">
+        <div class="mb-2 flex flex-wrap items-baseline justify-between gap-2">
+          <h2 class="text-sm font-semibold text-gray-900">
+            Waiting for a final interview
+            <span class="ml-1 rounded-full bg-brand-50 px-1.5 text-xs font-semibold text-brand-700">{{ finalWaitingRows.length }}</span>
+          </h2>
+          <p class="text-xs text-gray-500">Round 1 is done. Schedule the final interview with the job's Selection Committee.</p>
+        </div>
+        <DataTable
+          export-name="interviews-final-waiting"
+          :columns="finalWaitingColumns"
+          :rows="finalWaitingRows"
+          :loading="loading"
+          empty-title="Nobody is waiting for a final interview"
+          search-placeholder="Search candidate, job or application…"
+        >
+          <template #cell-application_id="{ row }">
+            <router-link :to="`/applications/${row.name}`" class="font-mono text-xs text-gray-700 hover:text-brand-700 hover:underline">{{ row.application_id }}</router-link>
+          </template>
+          <template #cell-candidate_name="{ row }">
+            <span class="font-medium text-gray-900">{{ row.candidate_name }}</span>
+            <div v-if="row.interview_history" class="text-xs text-gray-500">{{ row.interview_history }}</div>
+          </template>
+          <template #cell-committee="{ row }">
+            <span class="rounded-full px-2 py-0.5 text-xs font-medium" :class="row.has_committee ? 'bg-green-50 text-green-700' : 'bg-orange-50 text-orange-700'">
+              {{ row.has_committee ? 'Set up' : 'Not set up' }}
+            </span>
+          </template>
+          <template #bulk-actions="{ rows: chosen, clear }">
+            <Button size="sm" variant="solid" icon-left="calendar" :class="BTN_BRAND" @click="openSchedule(chosen, clear)">Schedule final interview</Button>
+          </template>
+          <template #actions="{ row }">
+            <Button size="sm" variant="solid" icon-left="calendar" :class="BTN_BRAND" @click="openSchedule([row])">Schedule final</Button>
+          </template>
+        </DataTable>
+        <h2 class="mb-2 mt-6 text-sm font-semibold text-gray-900">
+          Scheduled final interviews
+          <span class="ml-1 rounded-full bg-gray-100 px-1.5 text-xs font-semibold text-gray-600">{{ finalRows.length }}</span>
+        </h2>
+      </section>
       <DataTable
-        v-else
         :key="tab"
         :export-name="LIST[tab].exportName"
         :columns="LIST[tab].columns"
@@ -226,6 +268,7 @@
           </div>
         </template>
       </DataTable>
+      </template>
     </div>
 
     <EditInterviewDialog v-model:open="editDialog.open" :interview="editDialog.interview" :assessor-limit="assessorLimit" @saved="load" />
@@ -281,6 +324,16 @@ const requestRows = computed(() =>
     .filter((r) => r.rsvp_label === 'Reschedule Requested' && isOpen(r))
     .sort((a, b) => String(a.rsvp_responded_on || '').localeCompare(String(b.rsvp_responded_on || ''))),
 )
+// Final interview tab, top: Round 1 done, final not yet scheduled (they are
+// on To schedule too).
+const finalWaitingRows = computed(() => toScheduleRows.value.filter((r) => r.next_round === 'Final'))
+const finalWaitingColumns = [
+  { key: 'application_id', label: 'Candidate ID' },
+  { key: 'candidate_name', label: 'Candidate Name' },
+  { key: 'job_title', label: 'Job Opening' },
+  { key: 'track', label: 'Track' },
+  { key: 'committee', label: 'Selection Committee' },
+]
 // Final interview: the Selection Committee round only (also on Scheduled).
 const finalRows = computed(() => activeRows.value.filter((r) => r.round_type === 'Final'))
 // Rescheduled / edited: open or completed interviews changed after they were
@@ -295,7 +348,7 @@ const changedRows = computed(() =>
 const tabCount = computed(() => ({
   requests: requestRows.value.length,
   scheduled: activeRows.value.length,
-  final: finalRows.value.length,
+  final: finalWaitingRows.value.length + finalRows.value.length,
   changed: changedRows.value.length,
   to_schedule: toScheduleCount.value,
   cancelled: cancelledRows.value.length,
