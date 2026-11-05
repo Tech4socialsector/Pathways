@@ -33,6 +33,16 @@ export const interviewService = {
       cancelled: cancelled ? 1 : 0,
     })
   },
+  // Interviews > Reschedule requests. decision: Accept | Decline
+  decideRescheduleRequest(interview, decision, { preferredTime = null, note = '', sendInvite = true } = {}) {
+    return callMethod('pathways.api.interviews.decide_reschedule_request', {
+      interview,
+      decision,
+      preferred_time: preferredTime,
+      note,
+      send_invite: sendInvite ? 1 : 0,
+    })
+  },
   updateInterview(params) {
     return callMethod('pathways.api.interviews.update_interview', params)
   },

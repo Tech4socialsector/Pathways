@@ -271,6 +271,15 @@ TEMPLATES = {
 		"{% if response == 'Withdrawn' %}<p>You may want to cancel the interview and offer the slot to another candidate.</p>{% endif %}"
 		"<p><a href=\"{{ application_link }}\">Open the application</a></p>" + SIGN_OFF,
 	),
+	"Reschedule Request Declined": (
+		"About your request to reschedule: {{ job_title }}",
+		"<p>Dear {{ candidate_name }},</p>"
+		"<p>Thank you for letting us know. We are sorry, but we are not able to move your {{ interview_round }} for "
+		"<b>{{ job_title }}</b>. It stays on <b>{{ interview_date_time }}</b>.</p>"
+		"{% if note %}<p><b>From the recruitment team:</b> {{ note }}</p>{% endif %}"
+		"<p>Please confirm whether you will attend, or withdraw, on the candidate portal:</p>"
+		"<p><a href=\"{{ rsvp_link }}\">Reply on the portal</a></p>" + SIGN_OFF,
+	),
 	"Green Sheet Approval Request": (
 		"Approval needed: Green Sheet for {{ job_title }}",
 		"<p>Dear {{ recipient_name }},</p>"
@@ -591,6 +600,10 @@ EVENTS = [
 		"A candidate confirms, asks to reschedule (with a reason and preferred times) or withdraws from an interview on the portal.",
 		"Interview Reply", {"roles": ["Pathways Recruiter"]}, True, True,
 		CANDIDATE_VARS + ", response, response_label, interview_round, interview_date_time, reason, preferred_times, application_link"),
+	("Interviews", "reschedule_request_declined", "Reschedule request declined (to candidate)",
+		"The recruitment team declines a candidate's request for another interview time (Interviews > Reschedule requests). The interview keeps its time.",
+		"Reschedule Request Declined", {"send_to_candidate": 1}, True, True,
+		CANDIDATE_VARS + ", interview_round, interview_date_time, note, rsvp_link"),
 	("Interviews", "interview_cancelled", "Interview cancelled (to candidate)",
 		"An interview is cancelled and 'Email the candidate' is ticked.",
 		"Interview Cancelled", {"send_to_candidate": 1}, True, True, CANDIDATE_VARS + ", interview_round, interview_date_time, reason"),

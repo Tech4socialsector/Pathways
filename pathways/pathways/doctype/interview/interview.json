@@ -29,6 +29,10 @@
   "rsvp_responded_on",
   "rsvp_reason",
   "reschedule_preferences",
+  "reschedule_outcome",
+  "reschedule_outcome_note",
+  "reschedule_decided_by",
+  "reschedule_decided_on",
   "changes_section",
   "change_type",
   "previous_datetime",
@@ -201,6 +205,33 @@
    "description": "One per line, as YYYY-MM-DD HH:MM (IST)."
   },
   {
+   "fieldname": "reschedule_outcome",
+   "fieldtype": "Select",
+   "label": "Reschedule Request Outcome",
+   "options": "\nAccepted\nDeclined",
+   "read_only": 1
+  },
+  {
+   "fieldname": "reschedule_outcome_note",
+   "fieldtype": "Small Text",
+   "label": "Note to the Candidate",
+   "read_only": 1,
+   "description": "Why the request was declined (shown to the candidate)."
+  },
+  {
+   "fieldname": "reschedule_decided_by",
+   "fieldtype": "Link",
+   "label": "Decided By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "reschedule_decided_on",
+   "fieldtype": "Datetime",
+   "label": "Decided On",
+   "read_only": 1
+  },
+  {
    "collapsible": 1,
    "fieldname": "changes_section",
    "fieldtype": "Section Break",
@@ -254,7 +285,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-11-05 15:00:00.000000",
+ "modified": "2026-11-05 16:00:00.000000",
  "modified_by": "Administrator",
  "module": "Pathways",
  "name": "Interview",

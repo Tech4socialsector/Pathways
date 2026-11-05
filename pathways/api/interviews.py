@@ -335,6 +335,10 @@ def schedule_interviews(
 				"rsvp_responded_on": None,
 				"rsvp_reason": None,
 				"reschedule_preferences": None,
+				"reschedule_outcome": None,
+				"reschedule_outcome_note": None,
+				"reschedule_decided_by": None,
+				"reschedule_decided_on": None,
 			}
 		)
 		new_assessors = _set_hr_assessors(iv, assessors) if assessors is not None else []
@@ -693,11 +697,22 @@ def update_interview(
 		}
 	)
 	if time_changed:
-		iv.status = "Rescheduled"
-		iv.rsvp_status = "Pending"
-		iv.rsvp_responded_on = None
-		iv.rsvp_reason = None
-		iv.reschedule_preferences = None
+		# A new time answers a pending reschedule request (Accepted), and
+		# clears an earlier decision on the old slot.
+		answered = iv.rsvp_status == RSVP_RESCHEDULE
+		iv.update(
+			{
+				"status": "Rescheduled",
+				"rsvp_status": "Pending",
+				"rsvp_responded_on": None,
+				"rsvp_reason": None,
+				"reschedule_preferences": None,
+				"reschedule_outcome": "Accepted" if answered else None,
+				"reschedule_outcome_note": None,
+				"reschedule_decided_by": frappe.session.user if answered else None,
+				"reschedule_decided_on": frappe.utils.now_datetime() if answered else None,
+			}
+		)
 	assessors = _parse_users(hr_assessors) if iv.round_type == "HR Interaction" else None
 	new_assessors = _set_hr_assessors(iv, assessors) if assessors is not None else []
 	iv.save(ignore_permissions=True)
@@ -857,6 +872,8 @@ def respond_rsvp(interview, response, reason=None, preferred_slots=None):
 		frappe.throw(_("You have already sent this reply."))
 	if response == RSVP_RESCHEDULE and current == RSVP_RESCHEDULE:
 		frappe.throw(_("You have already asked to reschedule. The recruitment team will email you a new time."))
+	if response == RSVP_RESCHEDULE and iv.get("reschedule_outcome") == "Declined":
+		frappe.throw(_("Your request for another time was declined for this interview. Please confirm the time or withdraw."))
 
 	reason = " ".join((reason or "").split())
 	if len(reason) > MAX_REASON_LENGTH:
@@ -879,6 +896,85 @@ def respond_rsvp(interview, response, reason=None, preferred_slots=None):
 	}
 
 
+@frappe.whitelist(methods=["POST"])
+def decide_reschedule_request(interview, decision, preferred_time=None, note=None, send_invite=1, cc=None, bcc=None):
+	"""Interviews > Reschedule requests: the recruitment team answers a
+	candidate's request for another time.
+
+	Accept: move the interview to one of the candidate's preferred times
+	(update_interview; the candidate gets the updated invite).
+	Decline: keep the time; the candidate is emailed the reason (note,
+	required) and asked to confirm or withdraw, and cannot ask again for
+	this slot. To offer some other time, use Reschedule (update_interview)."""
+	_require_manage()
+	if decision not in ("Accept", "Decline"):
+		frappe.throw(_("Choose Accept or Decline."))
+	iv = frappe.get_doc("Interview", interview)
+	if iv.status not in ("Scheduled", "Rescheduled"):
+		frappe.throw(_("Only scheduled interviews can be changed (this one is {0}).").format(iv.status))
+	if iv.rsvp_status != RSVP_RESCHEDULE:
+		frappe.throw(_("This candidate has no open reschedule request (it may have been answered already)."))
+	note = " ".join((note or "").split())
+	if len(note) > MAX_REASON_LENGTH:
+		frappe.throw(_("Please keep the note under {0} characters.").format(MAX_REASON_LENGTH))
+
+	if decision == "Accept":
+		offered = {p.strip() for p in (iv.reschedule_preferences or "").splitlines() if p.strip()}
+		when = get_datetime(preferred_time).replace(second=0, microsecond=0) if preferred_time else None
+		if not when or when.strftime("%Y-%m-%d %H:%M") not in offered:
+			frappe.throw(_("Choose one of the times the candidate suggested."))
+		if when <= frappe.utils.now_datetime():
+			frappe.throw(_("That time has already passed. Use Reschedule to choose another time."))
+		# Only the time changes: pass the rest as it is (update_interview
+		# clears a venue or link that is not passed).
+		update_interview(
+			interview, start=when.strftime("%Y-%m-%d %H:%M:%S"), mode=iv.mode, location=iv.get("location"),
+			meeting_platform=iv.get("meeting_platform"), meeting_link=iv.get("meeting_link"),
+			send_invite=send_invite, cc=cc, bcc=bcc,
+			note=note or _("As you requested, the interview has been moved to {0}.").format(_slot_label(when)),
+		)
+		frappe.get_doc("Application", iv.application).add_comment(
+			"Info", _("Reschedule request accepted by {0}: moved to {1}.").format(frappe.utils.get_fullname(frappe.session.user), _slot_label(when))
+		)
+		return {"outcome": "Accepted", "scheduled_datetime": when}
+
+	if len(note) < MIN_REASON_LENGTH:
+		frappe.throw(_("Tell the candidate why the request cannot be met (at least {0} characters).").format(MIN_REASON_LENGTH))
+	cc, bcc = _copies(cc, bcc) if cint(send_invite) else ([], [])
+	iv.db_set(
+		{
+			"rsvp_status": "Pending",
+			"rsvp_responded_on": None,
+			"rsvp_reason": None,
+			"reschedule_preferences": None,
+			"reschedule_outcome": "Declined",
+			"reschedule_outcome_note": note,
+			"reschedule_decided_by": frappe.session.user,
+			"reschedule_decided_on": frappe.utils.now_datetime(),
+		}
+	)
+	app = frappe.get_doc("Application", iv.application)
+	app.add_comment(
+		"Info", _("Reschedule request declined by {0}; the interview stays on {1}. Note: {2}").format(
+			frappe.utils.get_fullname(frappe.session.user), _slot_label(iv.scheduled_datetime), frappe.utils.escape_html(note)
+		),
+	)
+	if cint(send_invite):
+		from pathways.utils.communication import candidate_email_context, send_event
+
+		context, candidate = candidate_email_context(app)
+		context.update(
+			{
+				"interview_round": _("Round 1 (HR interaction)") if iv.round_type == "HR Interaction" else _("final interview"),
+				"interview_date_time": _slot_label(iv.scheduled_datetime),
+				"note": note,
+				"rsvp_link": portal_rsvp_link(app.name, iv.name),
+			}
+		)
+		send_event("reschedule_request_declined", "Interview", iv.name, context, candidate=candidate, cc=cc, bcc=bcc)
+	return {"outcome": "Declined"}
+
+
 # ----------------------------------------------------------- all interviews
 
 
@@ -890,6 +986,7 @@ def list_interviews():
 		fields=[
 			"name", "application", "round_type", "status", "scheduled_datetime", "mode", "meeting_platform", "meeting_link", "location", "rsvp_status", "calendar_event", "modified",
 			"rsvp_reason", "reschedule_preferences", "rsvp_responded_on",
+			"reschedule_outcome", "reschedule_outcome_note", "reschedule_decided_by", "reschedule_decided_on",
 			"change_type", "previous_datetime", "change_count", "last_changed_on", "last_changed_by", "change_note",
 			"application.application_id as application_id", "application.job_opening as job_opening",
 		],
@@ -913,6 +1010,7 @@ def list_interviews():
 	limit = cint(frappe.get_cached_doc("Pathways Settings").get("hr_assessors_per_interview")) or 2
 	for r in rows:
 		r.hr_assessor_limit = limit
+		r.reschedule_decided_by_name = frappe.utils.get_fullname(r.reschedule_decided_by) if r.reschedule_decided_by else ""
 		a = apps.get(r.application) or {}
 		r.candidate_name = a.get("candidate_name")
 		r.job_title = a.get("job_title")

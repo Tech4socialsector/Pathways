@@ -55,3 +55,4 @@ pathways.patches.v1_0.seed_email_events #candidate-portal-existing-account
 pathways.patches.v1_0.drop_pass_fail_scoring_mode
 pathways.patches.v1_0.seed_email_events #staff-welcome
 pathways.patches.v1_0.seed_email_events #interview-reply
+pathways.patches.v1_0.seed_email_events #reschedule-request-declined

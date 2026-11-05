@@ -42,11 +42,21 @@
       <!-- The reply -->
       <div class="flex flex-col gap-2 md:w-72">
         <template v-if="state === 'Pending'">
+          <!-- The team's answer to an earlier reschedule request -->
+          <div v-if="declined" class="rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-xs text-red-900">
+            <div class="font-semibold">Your request for another time could not be met</div>
+            <p v-if="interview.reschedule_outcome_note" class="mt-1">“{{ interview.reschedule_outcome_note }}”</p>
+            <p class="mt-1">The interview stays at this time. Please confirm, or withdraw if you cannot attend.</p>
+          </div>
+          <div v-else-if="interview.reschedule_outcome === 'Accepted'" class="rounded-lg border border-green-200 bg-green-50 px-3 py-2.5 text-xs text-green-900">
+            <div class="font-semibold">Moved to this time at your request</div>
+            <p class="mt-1">Please confirm that you will attend.</p>
+          </div>
           <span class="text-sm font-medium text-gray-700">Will you attend this interview?</span>
           <template v-if="canReply">
             <Button size="md" variant="solid" icon-left="check" :class="BTN_BRAND" @click="openReply('Confirmed')">Confirm attendance</Button>
-            <Button size="md" variant="outline" icon-left="calendar" @click="openReply('Reschedule Requested')">Request reschedule</Button>
-            <button type="button" class="mt-0.5 text-sm font-medium text-red-700 hover:underline" @click="openReply('Withdrawn')">Withdraw from interview</button>
+            <Button v-if="!declined" size="md" variant="outline" icon-left="calendar" @click="openReply('Reschedule Requested')">Request reschedule</Button>
+            <Button size="md" variant="outline" theme="red" icon-left="x-circle" @click="openReply('Withdrawn')">Withdraw from interview</Button>
           </template>
         </template>
 
@@ -55,9 +65,9 @@
             <FeatherIcon name="check-circle" class="h-5 w-5" />You confirmed. See you then.
           </p>
           <p v-if="interview.rsvp_responded_on" class="text-xs text-gray-500">Replied {{ fmt(interview.rsvp_responded_on) }}</p>
-          <div v-if="canReply" class="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-sm">
-            <button type="button" class="font-medium text-brand-700 hover:underline" @click="openReply('Reschedule Requested')">Need another time?</button>
-            <button type="button" class="font-medium text-red-700 hover:underline" @click="openReply('Withdrawn')">Withdraw</button>
+          <div v-if="canReply" class="mt-1 grid gap-2" :class="declined ? 'grid-cols-1' : 'grid-cols-2'">
+            <Button v-if="!declined" size="sm" variant="outline" icon-left="calendar" @click="openReply('Reschedule Requested')">Reschedule</Button>
+            <Button size="sm" variant="outline" theme="red" icon-left="x-circle" @click="openReply('Withdrawn')">Withdraw</Button>
           </div>
         </template>
 
@@ -72,7 +82,7 @@
               <li v-for="p in preferences" :key="p">{{ p }}</li>
             </ul>
           </div>
-          <button v-if="canReply" type="button" class="self-start text-sm font-medium text-red-700 hover:underline" @click="openReply('Withdrawn')">Withdraw instead</button>
+          <Button v-if="canReply" size="sm" variant="outline" theme="red" icon-left="x-circle" @click="openReply('Withdrawn')">Withdraw instead</Button>
         </template>
 
         <template v-else>
@@ -118,28 +128,39 @@
                 class="block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500"
                 placeholder="e.g. I have a university examination at that time."
               />
-              <div class="mt-1 flex justify-between text-xs" :class="reasonTooShort ? 'text-red-600' : 'text-gray-500'">
-                <span>{{ reasonTooShort ? `At least ${MIN_REASON} characters.` : '' }}</span>
+              <div class="mt-1 flex justify-between text-xs" :class="reasonError ? 'text-red-600' : 'text-gray-500'">
+                <span>{{ reasonError }}</span>
                 <span>{{ reply.reason.length }}/{{ MAX_REASON }}</span>
               </div>
             </div>
             <div>
               <div class="mb-1 text-xs font-medium text-gray-700">Times that suit you (IST) <span class="text-red-600">*</span></div>
-              <div v-for="(slot, i) in reply.slots" :key="i" class="mb-2 flex items-center gap-2">
-                <span class="w-5 shrink-0 text-right text-xs tabular-nums text-gray-500">{{ i + 1 }}.</span>
-                <input
-                  v-model="reply.slots[i]"
-                  type="datetime-local"
-                  :min="minSlot"
-                  :max="maxSlot"
-                  class="block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500"
-                  :class="slotErrors[i] && 'border-red-500 ring-1 ring-red-500'"
-                  :aria-label="`Preferred time ${i + 1}`"
-                />
-                <Button v-if="reply.slots.length > 1" variant="ghost" icon="x" :aria-label="`Remove time ${i + 1}`" @click="reply.slots.splice(i, 1)" />
+              <div v-for="(slot, i) in reply.slots" :key="i" class="mb-2">
+                <div class="flex items-center gap-2">
+                  <span class="w-5 shrink-0 text-right text-xs tabular-nums text-gray-500">{{ i + 1 }}.</span>
+                  <input
+                    v-model="slot.date"
+                    type="date"
+                    :min="minDate"
+                    :max="maxDate"
+                    class="block min-w-0 flex-[3] rounded-md border-gray-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500"
+                    :class="showSlotError(i) && 'border-red-500 ring-1 ring-red-500'"
+                    :aria-label="`Preferred date ${i + 1}`"
+                  />
+                  <input
+                    v-model="slot.time"
+                    type="time"
+                    step="900"
+                    class="block min-w-0 flex-[2] rounded-md border-gray-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500"
+                    :class="showSlotError(i) && 'border-red-500 ring-1 ring-red-500'"
+                    :aria-label="`Preferred time ${i + 1}`"
+                  />
+                  <Button v-if="reply.slots.length > 1" variant="ghost" icon="x" :aria-label="`Remove time ${i + 1}`" @click="reply.slots.splice(i, 1)" />
+                </div>
+                <p v-if="showSlotError(i)" class="mt-1 pl-7 text-xs text-red-600">{{ slotErrors[i] }}</p>
               </div>
-              <p v-for="(e, i) in slotErrors" v-show="e" :key="'e' + i" class="-mt-1 mb-1 pl-7 text-xs text-red-600">{{ e }}</p>
-              <Button v-if="reply.slots.length < MAX_SLOTS" size="sm" variant="ghost" icon-left="plus" @click="reply.slots.push('')">Add another time</Button>
+              <p v-if="reply.attempted && noSlot" class="mb-1 pl-7 text-xs text-red-600">Give at least one date and time.</p>
+              <Button v-if="reply.slots.length < MAX_SLOTS" size="sm" variant="ghost" icon-left="plus" @click="reply.slots.push({ date: '', time: '' })">Add another time</Button>
             </div>
           </template>
 
@@ -174,7 +195,6 @@
             :theme="reply.response === 'Withdrawn' ? 'red' : 'gray'"
             :class="reply.response === 'Withdrawn' ? '' : BTN_BRAND"
             :loading="reply.sending"
-            :disabled="!canSend"
             @click="send"
           >
             {{ DIALOG[reply.response].action }}
@@ -186,7 +206,7 @@
 </template>
 
 <script setup>
-import { computed, reactive } from 'vue'
+import { computed, reactive, watch } from 'vue'
 import { Button, Dialog, FeatherIcon } from 'frappe-ui'
 import dayjs from 'dayjs'
 import { interviewService } from '@/services/interviews'
@@ -225,30 +245,43 @@ const state = computed(() => {
   return s === 'Declined' ? 'Withdrawn' : STATE[s] ? s : 'Pending'
 })
 const at = computed(() => dayjs(props.interview.scheduled_datetime))
+// The team declined a request for this slot: no second request.
+const declined = computed(() => props.interview.reschedule_outcome === 'Declined')
 const roundLabel = computed(() => (props.interview.round_type === 'HR Interaction' ? 'Round 1 · HR interaction' : 'Final interview'))
 const preferences = computed(() =>
   (props.interview.reschedule_preferences || '').split('\n').filter(Boolean).map((p) => dayjs(p).format('ddd, DD MMM YYYY, h:mm A [IST]')),
 )
 const fmt = (v) => dayjs(v).format('DD MMM YYYY, h:mm A')
 
-const reply = reactive({ open: false, response: 'Confirmed', reason: '', slots: [''], sending: false, error: '' })
+// slots: [{ date: 'YYYY-MM-DD', time: 'HH:mm' }]. attempted: Send was
+// pressed, so every problem is shown, not only those already typed into.
+const reply = reactive({ open: false, response: 'Confirmed', reason: '', slots: [], sending: false, error: '', attempted: false })
 function openReply(response) {
-  Object.assign(reply, { open: true, response, reason: '', slots: [''], sending: false, error: '' })
+  Object.assign(reply, { open: true, response, reason: '', slots: [{ date: '', time: '' }], sending: false, error: '', attempted: false })
 }
 defineExpose({ openReply })
 
-const minSlot = computed(() => dayjs().add(1, 'hour').startOf('hour').format('YYYY-MM-DDTHH:mm'))
-const maxSlot = computed(() => dayjs().add(WINDOW_DAYS, 'day').format('YYYY-MM-DDTHH:mm'))
-const reasonTooShort = computed(() => reply.reason.trim().length > 0 && reply.reason.trim().length < MIN_REASON)
-// One message per filled slot that the server would refuse.
+const minDate = computed(() => dayjs().format('YYYY-MM-DD'))
+const maxDate = computed(() => dayjs().add(WINDOW_DAYS, 'day').format('YYYY-MM-DD'))
+const reasonError = computed(() => {
+  const n = reply.reason.trim().length
+  if (n >= MIN_REASON) return ''
+  if (n || reply.attempted) return n ? `At least ${MIN_REASON} characters (${MIN_REASON - n} more).` : 'Tell us why you need another time.'
+  return ''
+})
+const filledSlots = computed(() => reply.slots.filter((s) => s.date || s.time))
+const noSlot = computed(() => !filledSlots.value.length)
+// One message per slot that the server would refuse ('' when fine or empty).
 const slotErrors = computed(() => {
   const now = dayjs()
   const seen = new Set()
   return reply.slots.map((s) => {
-    if (!s) return ''
-    const t = dayjs(s)
+    if (!s.date && !s.time) return ''
+    if (!s.date) return 'Choose a date as well.'
+    if (!s.time) return 'Choose a time as well.'
+    const t = dayjs(`${s.date} ${s.time}`)
     if (!t.isValid()) return 'Not a valid date and time.'
-    if (!t.isAfter(now)) return 'This time is in the past.'
+    if (!t.isAfter(now)) return 'This time has already passed.'
     if (t.isAfter(now.add(WINDOW_DAYS, 'day'))) return `Choose a time within the next ${WINDOW_DAYS} days.`
     if (t.isSame(at.value, 'minute')) return 'This is the time already scheduled.'
     const key = t.format('YYYY-MM-DD HH:mm')
@@ -257,19 +290,28 @@ const slotErrors = computed(() => {
     return ''
   })
 })
+// A half-filled slot shows its message at once; others once Send is pressed.
+const showSlotError = (i) => !!slotErrors.value[i] && (reply.attempted || !!(reply.slots[i].date && reply.slots[i].time))
 const canSend = computed(() => {
   if (reply.response !== 'Reschedule Requested') return true
-  return reply.reason.trim().length >= MIN_REASON && reply.slots.some(Boolean) && !slotErrors.value.some(Boolean)
+  return !reasonError.value && reply.reason.trim().length >= MIN_REASON && !noSlot.value && !slotErrors.value.some(Boolean)
 })
 
+const FIX_FIELDS = 'Please fix the highlighted fields.'
+watch(canSend, (ok) => ok && reply.error === FIX_FIELDS && (reply.error = ''))
+
 async function send() {
-  if (!canSend.value) return
+  reply.attempted = true
+  if (!canSend.value) {
+    reply.error = FIX_FIELDS
+    return
+  }
   reply.sending = true
   reply.error = ''
   try {
     const result = await interviewService.respondRsvp(props.interview.name, reply.response, {
       reason: reply.reason.trim(),
-      preferredSlots: reply.response === 'Reschedule Requested' ? reply.slots.filter(Boolean).map((s) => dayjs(s).format('YYYY-MM-DD HH:mm:00')) : [],
+      preferredSlots: reply.response === 'Reschedule Requested' ? filledSlots.value.map((s) => `${s.date} ${s.time}:00`) : [],
     })
     emit('replied', result)
     reply.open = false

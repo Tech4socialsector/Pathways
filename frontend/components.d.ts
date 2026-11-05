@@ -59,6 +59,7 @@ declare module 'vue' {
     ReferenceResponses: typeof import('./src/components/references/ReferenceResponses.vue')['default']
     RegretsThanks: typeof import('./src/components/selection/RegretsThanks.vue')['default']
     ReportChartCard: typeof import('./src/components/reports/ReportChartCard.vue')['default']
+    RescheduleDecisionDialog: typeof import('./src/components/jobs/RescheduleDecisionDialog.vue')['default']
     RoleAwareSidebar: typeof import('./src/components/layout/RoleAwareSidebar.vue')['default']
     RolesPermissionsPanel: typeof import('./src/components/settings/RolesPermissionsPanel.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']

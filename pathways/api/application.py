@@ -444,7 +444,7 @@ def get_application_status(application_name):
 		filters={"application": application_name},
 		fields=[
 			"name", "round_type", "status", "scheduled_datetime", "mode", "meeting_platform", "meeting_link", "location", "rsvp_status",
-			"rsvp_reason", "reschedule_preferences", "rsvp_responded_on",
+			"rsvp_reason", "reschedule_preferences", "rsvp_responded_on", "reschedule_outcome", "reschedule_outcome_note",
 		],
 		order_by="scheduled_datetime asc",
 	)

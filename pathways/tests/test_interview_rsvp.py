@@ -125,3 +125,50 @@ class TestInterviewRSVP(IntegrationTestCase):
 		self.assertRaises(frappe.ValidationError, self._reply, "Maybe")
 		frappe.db.set_value("Interview", self.iv, "status", "Cancelled")
 		self.assertRaises(frappe.ValidationError, self._reply, "Confirmed")
+
+	# ----- the recruitment team's answer (Interviews > Reschedule requests)
+
+	def _request(self, *days):
+		slots = [self._slot(d) for d in days]
+		self._reply("Reschedule Requested", reason="I am travelling on that date.", preferred_slots=slots)
+		return slots
+
+	def _decide(self, decision, **kwargs):
+		with patch("pathways.utils.communication.send_event") as send:
+			return interviews.decide_reschedule_request(self.iv, decision, **kwargs), send
+
+	def test_accept_moves_to_a_suggested_time_and_keeps_the_venue(self):
+		frappe.db.set_value("Interview", self.iv, {"mode": "In-Person", "location": "Room 004", "meeting_link": None})
+		slots = self._request(5, 6)
+		self.assertRaises(frappe.ValidationError, self._decide, "Accept", preferred_time=self._slot(9))  # not suggested
+		result, _send = self._decide("Accept", preferred_time=slots[1])
+		self.assertEqual(result["outcome"], "Accepted")
+		iv = frappe.get_doc("Interview", self.iv)
+		self.assertEqual(get_datetime(iv.scheduled_datetime), get_datetime(slots[1]))
+		self.assertEqual((iv.status, iv.rsvp_status, iv.reschedule_outcome), ("Rescheduled", "Pending", "Accepted"))
+		self.assertEqual(iv.location, "Room 004")
+		self.assertFalse(iv.reschedule_preferences)
+		# Answered: nothing left to decide.
+		self.assertRaises(frappe.ValidationError, self._decide, "Decline", note="Not possible on that day.")
+
+	def test_decline_keeps_the_time_and_blocks_a_second_request(self):
+		self._request(5)
+		self.assertRaises(frappe.ValidationError, self._decide, "Decline", note="No.")  # reason too short
+		result, send = self._decide("Decline", note="The panel is available only on this date.")
+		self.assertEqual(result["outcome"], "Declined")
+		self.assertEqual(send.call_args.args[0], "reschedule_request_declined")
+		iv = frappe.get_doc("Interview", self.iv)
+		self.assertEqual(get_datetime(iv.scheduled_datetime), self.start)
+		self.assertEqual((iv.rsvp_status, iv.reschedule_outcome), ("Pending", "Declined"))
+		self.assertEqual(iv.reschedule_outcome_note, "The panel is available only on this date.")
+		self.assertRaises(frappe.ValidationError, self._reply, "Reschedule Requested", reason="I really cannot make it.", preferred_slots=[self._slot(7)])
+		self.assertEqual(self._reply("Confirmed")[0]["rsvp_status"], "Confirmed")
+		# A new time from the team clears the decision.
+		with patch("pathways.utils.communication.send_event"):
+			interviews.update_interview(self.iv, start=self._slot(8), send_invite=0)
+		self.assertFalse(frappe.db.get_value("Interview", self.iv, "reschedule_outcome"))
+
+	def test_no_decision_without_an_open_request(self):
+		self.assertRaises(frappe.ValidationError, self._decide, "Decline", note="Not possible on that day.")
+		self._request(5)
+		self.assertRaises(frappe.ValidationError, self._decide, "Maybe")

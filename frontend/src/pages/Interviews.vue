@@ -31,7 +31,10 @@
           @click="tab = t.key"
         >
           {{ t.label }}
-          <span class="rounded-full px-1.5 text-xs font-semibold" :class="tab === t.key ? 'bg-brand-50 text-brand-700' : 'bg-gray-100 text-gray-600'">
+          <span
+            class="rounded-full px-1.5 text-xs font-semibold"
+            :class="t.key === 'requests' && tabCount.requests ? 'bg-amber-500 text-white' : tab === t.key ? 'bg-brand-50 text-brand-700' : 'bg-gray-100 text-gray-600'"
+          >
             {{ tabCount[t.key] }}
           </span>
           <span v-if="tab === t.key" class="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-brand-700" />
@@ -68,6 +71,45 @@
         </template>
         <template #actions="{ row }">
           <Button size="sm" variant="solid" icon-left="calendar" :class="BTN_BRAND" @click="openSchedule([row])">Schedule</Button>
+        </template>
+      </DataTable>
+
+      <!-- Reschedule requests: accept a suggested time, decline, or pick another time -->
+      <DataTable
+        v-else-if="tab === 'requests'"
+        export-name="interviews-reschedule-requests"
+        :columns="requestColumns"
+        :rows="requestRows"
+        :loading="loading"
+        :filters="requestFilters"
+        empty-title="No reschedule requests waiting"
+        search-placeholder="Search candidate, job or application…"
+      >
+        <template #cell-candidate_name="{ row }">
+          <router-link :to="`/applications/${row.application}`" class="font-medium text-gray-900 hover:text-brand-700 hover:underline">{{ row.candidate_name }}</router-link>
+          <div class="font-mono text-xs text-gray-500">{{ row.application_id }}</div>
+        </template>
+        <template #cell-reschedule_preferences="{ row }">
+          <div class="flex flex-col gap-1">
+            <span
+              v-for="t in preferredTimes(row)"
+              :key="t"
+              class="w-fit whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium"
+              :class="dayjs(t).isAfter(dayjs()) ? 'bg-amber-50 text-amber-900' : 'bg-gray-100 text-gray-400 line-through'"
+            >
+              {{ dayjs(t).format('ddd DD MMM, h:mm A') }}
+            </span>
+          </div>
+        </template>
+        <template #cell-rsvp_reason="{ value }">
+          <span class="line-clamp-3 max-w-[18rem] text-gray-700" :title="value">{{ value || '—' }}</span>
+        </template>
+        <template #actions="{ row }">
+          <div class="flex items-center justify-end gap-1.5">
+            <Button size="sm" variant="solid" icon-left="check" :class="BTN_BRAND" @click="openDecision(row, 'Accept')">Accept</Button>
+            <Button size="sm" variant="outline" theme="red" icon-left="x" @click="openDecision(row, 'Decline')">Reject</Button>
+            <Button size="sm" variant="outline" icon-left="calendar" @click="Object.assign(editDialog, { open: true, interview: row })">Reschedule</Button>
+          </div>
         </template>
       </DataTable>
 
@@ -160,9 +202,9 @@
               v-if="rsvpLabel(row.rsvp_status) === 'Reschedule Requested' && isOpen(row)"
               type="button"
               class="mt-1 text-xs font-medium text-brand-700 hover:underline"
-              @click.stop="Object.assign(editDialog, { open: true, interview: row })"
+              @click.stop="tab = 'requests'"
             >
-              Reschedule now
+              Answer request
             </button>
           </template>
           <span v-else class="text-gray-300">—</span>
@@ -187,6 +229,7 @@
     </div>
 
     <EditInterviewDialog v-model:open="editDialog.open" :interview="editDialog.interview" :assessor-limit="assessorLimit" @saved="load" />
+    <RescheduleDecisionDialog v-model:open="decisionDialog.open" :interview="decisionDialog.interview" :decision="decisionDialog.decision" @decided="load" />
     <CancelInterviewDialog v-model:open="cancelDialog.open" :interview="cancelDialog.interview" :interviews="cancelDialog.interviews" @saved="onCancelled" />
     <ConfirmActionDialog v-model:open="confirmBox.open" v-bind="confirmBox" />
     <ScheduleInterviewDialog v-model:open="scheduleDialog.open" :candidates="scheduleDialog.candidates" :round="scheduleDialog.round" :assessor-limit="assessorLimit" @scheduled="onScheduled" />
@@ -202,6 +245,7 @@ import { Button, Dropdown, FeatherIcon } from 'frappe-ui'
 import ConfirmActionDialog from '@/components/common/ConfirmActionDialog.vue'
 import CancelInterviewDialog from '@/components/jobs/CancelInterviewDialog.vue'
 import EditInterviewDialog from '@/components/jobs/EditInterviewDialog.vue'
+import RescheduleDecisionDialog from '@/components/jobs/RescheduleDecisionDialog.vue'
 import { toast } from '@/utils/notify'
 import dayjs from 'dayjs'
 import StaffLayout from '@/layouts/StaffLayout.vue'
@@ -218,6 +262,7 @@ const toScheduleCount = computed(() => toSchedule.value.reduce((n, j) => n + j.c
 const TABS = [
   // In workflow order: waiting, booked, changed, called off.
   { key: 'to_schedule', label: 'To schedule' },
+  { key: 'requests', label: 'Reschedule requests' },
   { key: 'scheduled', label: 'Scheduled' },
   { key: 'final', label: 'Final interview' },
   { key: 'changed', label: 'Rescheduled / edited' },
@@ -229,6 +274,13 @@ const assessorLimit = computed(() => rows.value[0]?.hr_assessor_limit || 2)
 // Scheduled tab: open and completed interviews; cancelled ones have their own tab.
 const activeRows = computed(() => rows.value.filter((r) => r.status !== 'Cancelled'))
 const cancelledRows = computed(() => rows.value.filter((r) => r.status === 'Cancelled'))
+// Reschedule requests: open interviews whose candidate asked for another
+// time, oldest request first, to answer from here.
+const requestRows = computed(() =>
+  activeRows.value
+    .filter((r) => r.rsvp_label === 'Reschedule Requested' && isOpen(r))
+    .sort((a, b) => String(a.rsvp_responded_on || '').localeCompare(String(b.rsvp_responded_on || ''))),
+)
 // Final interview: the Selection Committee round only (also on Scheduled).
 const finalRows = computed(() => activeRows.value.filter((r) => r.round_type === 'Final'))
 // Rescheduled / edited: open or completed interviews changed after they were
@@ -241,6 +293,7 @@ const changedRows = computed(() =>
     .sort((a, b) => String(b.last_changed_on || b.modified || '').localeCompare(String(a.last_changed_on || a.modified || ''))),
 )
 const tabCount = computed(() => ({
+  requests: requestRows.value.length,
   scheduled: activeRows.value.length,
   final: finalRows.value.length,
   changed: changedRows.value.length,
@@ -421,6 +474,24 @@ const changedFilters = [
   { key: 'job_title', label: 'Job Openings' },
 ]
 
+const requestColumns = [
+  { key: 'rsvp_responded_on', label: 'Requested', format: (r) => (r.rsvp_responded_on ? dayjs(r.rsvp_responded_on).format('DD MMM, h:mm A') : '') },
+  { key: 'candidate_name', label: 'Candidate' },
+  { key: 'job_title', label: 'Job Opening' },
+  { key: 'round_type', label: 'Round', format: columns[3].format },
+  { key: 'scheduled_datetime', label: 'Now scheduled', format: columns[0].format },
+  { key: 'reschedule_preferences', label: 'Times suggested', sortable: false },
+  { key: 'rsvp_reason', label: 'Reason', sortable: false },
+]
+const requestFilters = [
+  { key: 'round_type', label: 'Rounds' },
+  { key: 'job_title', label: 'Job Openings' },
+]
+const decisionDialog = reactive({ open: false, interview: null, decision: 'Accept' })
+function openDecision(row, decision) {
+  Object.assign(decisionDialog, { open: true, interview: row, decision })
+}
+
 const cancelledColumns = [
   { key: 'scheduled_datetime', label: 'Was scheduled for', format: (r) => (r.scheduled_datetime ? dayjs(r.scheduled_datetime).format('DD MMM YYYY, h:mm A [IST]') : '') },
   { key: 'candidate_name', label: 'Candidate' },
@@ -470,7 +541,9 @@ async function load() {
 
 onMounted(async () => {
   await load()
-  // Nothing scheduled yet: open on the candidates waiting for one.
-  if (!activeRows.value.length && toSchedule.value.length) tab.value = 'to_schedule'
+  // Candidates waiting for an answer come first; with nothing scheduled
+  // yet, open on the candidates waiting for an interview.
+  if (requestRows.value.length) tab.value = 'requests'
+  else if (!activeRows.value.length && toSchedule.value.length) tab.value = 'to_schedule'
 })
 </script>
