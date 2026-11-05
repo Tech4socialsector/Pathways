@@ -89,6 +89,62 @@
   {
    "read": 1,
    "role": "Pathways Recruiter"
+  },
+  {
+   "read": 1,
+   "role": "Pathways PNCO"
+  },
+  {
+   "read": 1,
+   "role": "Pathways Director People Culture"
+  },
+  {
+   "read": 1,
+   "role": "Pathways Dean Academics"
+  },
+  {
+   "read": 1,
+   "role": "Pathways Dean Research"
+  },
+  {
+   "read": 1,
+   "role": "Pathways Senior Manager Research"
+  },
+  {
+   "read": 1,
+   "role": "Pathways CFO"
+  },
+  {
+   "read": 1,
+   "role": "Pathways Registrar"
+  },
+  {
+   "read": 1,
+   "role": "Pathways Vice Chancellor"
+  },
+  {
+   "read": 1,
+   "role": "Pathways Shortlisting Committee Member"
+  },
+  {
+   "read": 1,
+   "role": "Pathways Selection Committee Member"
+  },
+  {
+   "read": 1,
+   "role": "Pathways Communications"
+  },
+  {
+   "read": 1,
+   "role": "Pathways IT Facilities"
+  },
+  {
+   "read": 1,
+   "role": "Pathways Tagged Colleague"
+  },
+  {
+   "read": 1,
+   "role": "Pathways Candidate"
   }
  ],
  "sort_field": "modified",
