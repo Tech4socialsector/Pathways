@@ -205,6 +205,9 @@ has_permission = {
 # Candidates may log in with a mobile number typed as +91 / with spaces:
 # bring it to the stored form before Frappe looks the user up.
 before_login = ["pathways.utils.candidate_account.before_login"]
+# A candidate who sets a new password from a reset link no longer has to
+# replace the temporary one.
+on_session_creation = ["pathways.utils.candidate_account.clear_temporary_password_after_reset"]
 
 doc_events = {
 	# Master Setup integrity guards — no-ops for DocTypes not in

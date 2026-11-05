@@ -20,6 +20,7 @@ import string
 
 import frappe
 from frappe import _
+from frappe.rate_limiter import rate_limit
 
 from pathways.permissions import CANDIDATE_ROLE
 from pathways.utils.db import commit
@@ -229,6 +230,43 @@ def queue_portal_account(candidate):
 		candidate=candidate,
 		enqueue_after_commit=True,
 	)
+
+
+@frappe.whitelist(methods=["POST"])
+@rate_limit(limit=3, seconds=60 * 60)
+def send_my_password_reset():
+	"""Change password > Forgot your current password: email the signed-in
+	candidate a link to set a new one (Frappe's own reset email). Returns
+	the address it went to, partly hidden."""
+	user = frappe.session.user
+	if user == "Guest":
+		frappe.throw(_("Please log in first."), frappe.PermissionError)
+	if CANDIDATE_ROLE not in frappe.get_roles(user) or frappe.db.get_value("User", user, "user_type") == "System User":
+		frappe.throw(_("Use the password reset on the login page."), frappe.PermissionError)
+	doc = frappe.get_doc("User", user)
+	doc.validate_reset_password()
+	# After the new password is set, come back to the portal.
+	frappe.cache.hset("redirect_after_login", user, PORTAL_PATH)
+	doc.reset_password(send_email=True)
+	return {"email": _mask_email(doc.email)}
+
+
+def _mask_email(email):
+	"""n*******a@gmail.com"""
+	local, _sep, domain = (email or "").partition("@")
+	hidden = local[:1] + "*" * max(len(local) - 2, 1) + local[-1:] if len(local) > 2 else local[:1] + "*"
+	return f"{hidden}@{domain}"
+
+
+def clear_temporary_password_after_reset(login_manager=None):
+	"""on_session_creation: a candidate who set a new password from a reset
+	link has replaced the temporary one, so the portal must not ask again."""
+	request = getattr(frappe.local, "request", None)
+	if not (frappe.form_dict.get("key") and request and request.path.rstrip("/").endswith("update_password")):
+		return
+	user = frappe.session.user if login_manager is None else login_manager.user
+	if user and frappe.db.get_value("Candidate", {"email": user}, "password_change_required"):
+		frappe.db.set_value("Candidate", {"email": user}, "password_change_required", 0, update_modified=False)
 
 
 def must_change_password(user=None):

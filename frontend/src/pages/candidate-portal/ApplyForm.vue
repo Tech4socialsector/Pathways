@@ -679,10 +679,17 @@
             <span class="min-w-0 flex-1 text-xs" :class="draft.state === 'error' ? 'text-red-600' : 'text-gray-500'" aria-live="polite">
               <template v-if="errorCount">{{ errorCount }} field{{ errorCount === 1 ? '' : 's' }} to fix</template>
               <template v-else-if="draft.state === 'error'">{{ draft.error }}</template>
-              <template v-else-if="draft.state === 'saving'">Saving draft…</template>
+              <template v-else-if="draft.state === 'saving'">
+                <FeatherIcon name="loader" class="inline h-3.5 w-3.5 animate-spin" /> Saving…
+              </template>
+              <!-- Edited since the last save: say so, instead of an old "saved" time. -->
+              <template v-else-if="unsaved">
+                <span class="mr-1 inline-block h-2 w-2 rounded-full bg-amber-500 align-middle" aria-hidden="true" />
+                <span class="text-amber-700">{{ accountDrafts ? 'Unsaved changes, saving…' : 'Unsaved changes. Save as draft to keep them.' }}</span>
+              </template>
               <template v-else-if="draft.state === 'saved'">
                 <FeatherIcon name="check" class="inline h-3.5 w-3.5 text-green-600" />
-                {{ accountDrafts ? 'Draft saved' : 'Saved on this device' }} {{ formatSavedAt(draft.savedAt) }}
+                {{ accountDrafts ? 'All changes saved' : 'Saved on this device' }} · {{ formatSavedAt(draft.savedAt) }}
               </template>
               <template v-else>Please review your details. An application can be submitted only once.</template>
             </span>
@@ -1000,7 +1007,8 @@ function addEmployment() {
 // Guests: on this device only, and only for GUEST_DRAFT_DAYS, since a shared
 // computer would otherwise show the next person someone else's details.
 const GUEST_DRAFT_DAYS = 7
-const ACCOUNT_SAVE_DELAY = 3000
+// Short, so a reload or close rarely finds changes not yet saved.
+const ACCOUNT_SAVE_DELAY = 1200
 const accountDrafts = computed(
   () => !!viewer.value.logged_in && !viewer.value.is_staff && !viewer.value.already_applied && !!form.value.is_open,
 )
