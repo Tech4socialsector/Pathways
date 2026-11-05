@@ -194,10 +194,10 @@ TEMPLATES = {
 		"<p>Regards,<br>Registrar's Office</p>",
 	),
 	"Candidate Portal Login": (
-		"Your NLSIU Careers login: track your application",
+		"Your NLSIU Careers login",
 		"<p>Dear {{ candidate_name }},</p>"
-		"<p>Thank you for applying. You can now log in to the NLSIU Careers portal to track the status of your application(s) "
-		"and view what you submitted.</p>"
+		"<p>Thank you for applying. You can now log in to the NLSIU Careers portal to view what you submitted and reply to "
+		"interview invitations. We will email you when there is news about your application.</p>"
 		"<table style=\"border-collapse:collapse;margin:12px 0\">"
 		"<tr><td style=\"padding:4px 16px 4px 0;color:#555\">Login page</td><td><a href=\"{{ login_link }}\">{{ login_link }}</a></td></tr>"
 		"<tr><td style=\"padding:4px 16px 4px 0;color:#555\">Log in with</td><td>your email address"
@@ -208,10 +208,10 @@ TEMPLATES = {
 		"Please do not share these details with anyone.</p>" + SIGN_OFF,
 	),
 	"Candidate Portal Login (Existing Account)": (
-		"Your NLSIU Careers login: track your application",
+		"Your NLSIU Careers login",
 		"<p>Dear {{ candidate_name }},</p>"
 		"<p>Thank you for applying. An account already exists for <b>{{ login_email }}</b> on this site, so you can use it to "
-		"log in to the NLSIU Careers portal, track the status of your application(s) and view what you submitted.</p>"
+		"log in to the NLSIU Careers portal, view what you submitted and reply to interview invitations. We will email you when there is news about your application.</p>"
 		"<table style=\"border-collapse:collapse;margin:12px 0\">"
 		"<tr><td style=\"padding:4px 16px 4px 0;color:#555\">Login page</td><td><a href=\"{{ login_link }}\">{{ login_link }}</a></td></tr>"
 		"<tr><td style=\"padding:4px 16px 4px 0;color:#555\">Log in with</td><td>your email address <b>{{ login_email }}</b> and your existing password</td></tr>"

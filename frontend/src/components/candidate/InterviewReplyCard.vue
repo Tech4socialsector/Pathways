@@ -13,6 +13,21 @@
       <span class="text-xs opacity-80">{{ roundLabel }}</span>
     </div>
 
+    <!-- The team's answer to an earlier reschedule request, full width -->
+    <div v-if="outcome" class="flex items-start gap-3 border-b px-5 py-4" :class="outcome.tone">
+      <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full" :class="outcome.iconTone">
+        <FeatherIcon :name="outcome.icon" class="h-5 w-5" />
+      </span>
+      <div class="min-w-0 flex-1 text-sm">
+        <div class="font-semibold text-gray-900">{{ outcome.title }}</div>
+        <p class="mt-0.5 text-gray-700">{{ outcome.text }}</p>
+        <figure v-if="outcome.note" class="mt-2.5 rounded-lg border bg-white px-3 py-2">
+          <figcaption class="text-xs font-medium text-gray-500">Message from the recruitment team</figcaption>
+          <blockquote class="mt-0.5 whitespace-pre-line break-words text-gray-900">{{ outcome.note }}</blockquote>
+        </figure>
+      </div>
+    </div>
+
     <div class="grid grid-cols-1 gap-5 p-5 md:grid-cols-[minmax(0,1fr)_auto] md:items-start">
       <!-- When and where -->
       <div class="flex items-start gap-4">
@@ -42,16 +57,6 @@
       <!-- The reply -->
       <div class="flex flex-col gap-2 md:w-72">
         <template v-if="state === 'Pending'">
-          <!-- The team's answer to an earlier reschedule request -->
-          <div v-if="declined" class="rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-xs text-red-900">
-            <div class="font-semibold">Your request for another time could not be met</div>
-            <p v-if="interview.reschedule_outcome_note" class="mt-1">“{{ interview.reschedule_outcome_note }}”</p>
-            <p class="mt-1">The interview stays at this time. Please confirm, or withdraw if you cannot attend.</p>
-          </div>
-          <div v-else-if="interview.reschedule_outcome === 'Accepted'" class="rounded-lg border border-green-200 bg-green-50 px-3 py-2.5 text-xs text-green-900">
-            <div class="font-semibold">Moved to this time at your request</div>
-            <p class="mt-1">Please confirm that you will attend.</p>
-          </div>
           <span class="text-sm font-medium text-gray-700">Will you attend this interview?</span>
           <template v-if="canReply">
             <Button size="md" variant="solid" icon-left="check" :class="BTN_BRAND" @click="openReply('Confirmed')">Confirm attendance</Button>
@@ -247,6 +252,31 @@ const state = computed(() => {
 const at = computed(() => dayjs(props.interview.scheduled_datetime))
 // The team declined a request for this slot: no second request.
 const declined = computed(() => props.interview.reschedule_outcome === 'Declined')
+// Shown while the candidate still has to reply to this slot.
+const outcome = computed(() => {
+  if (state.value !== 'Pending') return null
+  if (declined.value) {
+    return {
+      icon: 'info',
+      tone: 'bg-red-50/60',
+      iconTone: 'bg-red-100 text-red-700',
+      title: 'We could not move your interview',
+      text: 'It stays at the time below. Please confirm that you will attend, or withdraw if you cannot.',
+      note: (props.interview.reschedule_outcome_note || '').trim(),
+    }
+  }
+  if (props.interview.reschedule_outcome === 'Accepted') {
+    return {
+      icon: 'check-circle',
+      tone: 'bg-green-50/60',
+      iconTone: 'bg-green-100 text-green-700',
+      title: 'Your interview has been moved',
+      text: 'As you asked, it is now at the time below. Please confirm that you will attend.',
+      note: '',
+    }
+  }
+  return null
+})
 const roundLabel = computed(() => (props.interview.round_type === 'HR Interaction' ? 'Round 1 · HR interaction' : 'Final interview'))
 const preferences = computed(() =>
   (props.interview.reschedule_preferences || '').split('\n').filter(Boolean).map((p) => dayjs(p).format('ddd, DD MMM YYYY, h:mm A [IST]')),

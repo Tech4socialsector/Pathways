@@ -115,7 +115,7 @@
               v-if="loginSent"
               class="rounded-lg border border-brand-200 bg-brand-50 px-4 py-3 text-sm text-brand-900 sm:col-span-2 sm:order-last"
             >
-              <div class="flex items-center gap-2 font-semibold"><FeatherIcon name="key" class="h-4 w-4" />Track your application online</div>
+              <div class="flex items-center gap-2 font-semibold"><FeatherIcon name="key" class="h-4 w-4" />Your portal login</div>
               <p class="mt-1">
                 We've emailed a temporary password to <b>{{ submittedEmail }}</b>; you'll set your own the first time you log in.
                 Log in with your email, your mobile number or your Candidate ID <b class="font-mono">{{ candidateId }}</b>.
@@ -135,7 +135,7 @@
             <div class="flex gap-2">
               <Button @click="$router.push('/portal/jobs')">View other openings</Button>
               <Button v-if="viewer.logged_in" variant="solid" @click="$router.push('/portal/applications')">
-                Track my applications
+                Go to my applications
               </Button>
             </div>
           </div>
@@ -149,7 +149,7 @@
         <div v-else-if="viewer.already_applied" class="mt-6 rounded-lg border bg-white p-6 text-center text-sm text-gray-700">
           You have already applied for this position (application
           <span class="font-mono">{{ viewer.already_applied }}</span>). An application can be submitted only once.
-          <div class="mt-4"><Button @click="$router.push('/portal/applications')">Track my applications</Button></div>
+          <div class="mt-4"><Button @click="$router.push('/portal/applications')">Go to my applications</Button></div>
         </div>
 
         <!-- The form -->

@@ -193,7 +193,7 @@
           <a href="https://www.nls.ac.in" target="_blank" rel="noopener" class="font-medium text-brand-700 hover:underline">nls.ac.in</a>.
           <template v-if="!session.isLoggedIn">
             Already applied?
-            <a :href="loginUrl" class="font-medium text-brand-700 hover:underline">Log in to track your application</a>.
+            <a :href="loginUrl" class="font-medium text-brand-700 hover:underline">Log in to see your applications</a>.
           </template>
         </p>
       </section>
@@ -220,7 +220,7 @@ const loginUrl = `/login?redirect-to=${encodeURIComponent('/pathways/portal/appl
 const HOW_TO_APPLY = [
   { icon: 'search', title: 'Find your role', text: 'Read the posting and the official notification, and check the documents you need.' },
   { icon: 'edit-3', title: 'Apply online', text: 'No account needed. Apply with your personal email; the form saves your progress on this device.' },
-  { icon: 'mail', title: 'Track your application', text: 'We email you a portal login when you submit, so you can follow each stage.' },
+  { icon: 'mail', title: 'Hear from us by email', text: 'We email you when there is news about your application, such as an interview invitation. Log in to see what you submitted and reply to interviews.' },
 ]
 
 // Applications that opened in the last 7 days.

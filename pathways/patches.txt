@@ -57,3 +57,5 @@ pathways.patches.v1_0.seed_email_events #staff-welcome
 pathways.patches.v1_0.seed_email_events #interview-reply
 pathways.patches.v1_0.seed_email_events #reschedule-request-declined
 pathways.patches.v1_0.honorarium_to_finance
+pathways.patches.v1_0.portal_login_wording
+pathways.patches.v1_0.portal_login_wording #news-not-each-update

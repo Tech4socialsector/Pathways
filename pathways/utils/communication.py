@@ -238,6 +238,11 @@ def _send_event(rule_event=None, reference_doctype=None, reference_name=None, co
 				attachments=attachments or None,
 				reply_to=reply_to,
 			)
+			if candidate and email.lower() == (candidate.get("email") or "").lower():
+				# The same news in the candidate's portal bell.
+				from pathways.utils.candidate_notifications import notify_candidate
+
+				notify_candidate(event, email, subject, reference_doctype, reference_name)
 		except Exception:
 			status = "Failed"
 			frappe.log_error(title=f"Pathways email failed: {event} to {email}", reference_doctype=reference_doctype, reference_name=reference_name)
