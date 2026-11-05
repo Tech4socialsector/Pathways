@@ -86,7 +86,7 @@
           </div>
 
           <div class="grid gap-6 px-6 py-6 sm:grid-cols-2">
-            <dl class="flex flex-col gap-3 text-sm">
+            <dl class="flex flex-col gap-3 text-sm sm:col-span-2 sm:flex-row sm:flex-wrap sm:gap-x-12">
               <div class="flex gap-3">
                 <FeatherIcon name="briefcase" class="mt-0.5 h-4 w-4 shrink-0 text-gray-400" />
                 <div>
@@ -128,24 +128,6 @@
               You already have a portal login. <a :href="loginUrl" class="font-semibold text-brand-700 hover:underline">Log in</a> to track all your applications.
             </div>
 
-            <div>
-              <div class="mb-3 text-sm font-semibold text-gray-900">What happens next</div>
-              <ol class="flex flex-col gap-3 text-sm">
-                <li v-for="(step, i) in NEXT_STEPS" :key="step.title" class="flex gap-3">
-                  <span
-                    class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold"
-                    :class="i === 0 ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-600'"
-                  >
-                    <FeatherIcon v-if="i === 0" name="check" class="h-3.5 w-3.5" />
-                    <template v-else>{{ i + 1 }}</template>
-                  </span>
-                  <div>
-                    <div class="font-medium text-gray-900">{{ step.title }}</div>
-                    <div class="text-gray-500">{{ step.text }}</div>
-                  </div>
-                </li>
-              </ol>
-            </div>
           </div>
 
           <div class="flex flex-wrap items-center justify-between gap-3 border-t bg-gray-50 px-6 py-4">
@@ -1339,13 +1321,6 @@ const loginUrl = '/login?redirect-to=' + encodeURIComponent('/pathways/portal/ap
 const loginToApplyUrl = computed(() => '/login?redirect-to=' + encodeURIComponent(`/pathways/portal/jobs/${props.id}/apply`))
 const submittedAt = ref('')
 const copied = ref(false)
-
-const NEXT_STEPS = [
-  { title: 'Application received', text: 'We have your application and documents.' },
-  { title: 'Screening', text: 'The recruitment team reviews eligibility and documents.' },
-  { title: 'Shortlisting', text: 'Shortlisted candidates are contacted by email for the next round.' },
-  { title: 'Interview & decision', text: 'Interview details and the final outcome are sent to your email.' },
-]
 
 async function copyApplicationId() {
   try {
