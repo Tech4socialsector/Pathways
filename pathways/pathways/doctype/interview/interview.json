@@ -26,6 +26,9 @@
   "location",
   "calendar_event",
   "rsvp_status",
+  "rsvp_responded_on",
+  "rsvp_reason",
+  "reschedule_preferences",
   "changes_section",
   "change_type",
   "previous_datetime",
@@ -175,7 +178,27 @@
    "fieldname": "rsvp_status",
    "fieldtype": "Select",
    "label": "RSVP Status",
-   "options": "\nPending\nConfirmed\nDeclined"
+   "options": "\nPending\nConfirmed\nReschedule Requested\nWithdrawn\nDeclined"
+  },
+  {
+   "fieldname": "rsvp_responded_on",
+   "fieldtype": "Datetime",
+   "label": "RSVP Responded On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "rsvp_reason",
+   "fieldtype": "Small Text",
+   "label": "Candidate's Reason",
+   "read_only": 1,
+   "description": "Why the candidate withdrew or asked to reschedule."
+  },
+  {
+   "fieldname": "reschedule_preferences",
+   "fieldtype": "Small Text",
+   "label": "Preferred Times (Candidate)",
+   "read_only": 1,
+   "description": "One per line, as YYYY-MM-DD HH:MM (IST)."
   },
   {
    "collapsible": 1,
@@ -231,7 +254,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-10-23 12:00:00.000000",
+ "modified": "2026-11-05 15:00:00.000000",
  "modified_by": "Administrator",
  "module": "Pathways",
  "name": "Interview",

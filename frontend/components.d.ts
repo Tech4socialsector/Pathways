@@ -38,6 +38,7 @@ declare module 'vue' {
     HrAssessorPicker: typeof import('./src/components/jobs/HrAssessorPicker.vue')['default']
     HrInteractionCard: typeof import('./src/components/jobs/HrInteractionCard.vue')['default']
     ImportApplicationsDialog: typeof import('./src/components/applications/ImportApplicationsDialog.vue')['default']
+    InterviewReplyCard: typeof import('./src/components/candidate/InterviewReplyCard.vue')['default']
     InterviewsPanel: typeof import('./src/components/jobs/InterviewsPanel.vue')['default']
     ITRequestsTab: typeof import('./src/components/onboarding/ITRequestsTab.vue')['default']
     JobOpeningForm: typeof import('./src/components/jobs/JobOpeningForm.vue')['default']

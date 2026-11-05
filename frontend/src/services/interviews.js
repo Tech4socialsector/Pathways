@@ -36,8 +36,14 @@ export const interviewService = {
   updateInterview(params) {
     return callMethod('pathways.api.interviews.update_interview', params)
   },
-  respondRsvp(interview, response) {
-    return callMethod('pathways.api.interviews.respond_rsvp', { interview, response })
+  // response: Confirmed | Reschedule Requested | Withdrawn
+  respondRsvp(interview, response, { reason = '', preferredSlots = [] } = {}) {
+    return callMethod('pathways.api.interviews.respond_rsvp', {
+      interview,
+      response,
+      reason,
+      preferred_slots: JSON.stringify(preferredSlots),
+    })
   },
   getMeetStatus() {
     return callMethod('pathways.api.interviews.get_meet_status')

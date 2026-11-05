@@ -9,6 +9,27 @@
           <div class="text-xs text-gray-500">Currently {{ dayjs(interview.scheduled_datetime).format('ddd, DD MMM YYYY, h:mm A [IST]') }}</div>
         </div>
 
+        <!-- The candidate asked for another time (candidate portal) -->
+        <div v-if="rsvpLabel(interview.rsvp_status) === 'Reschedule Requested'" class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-amber-900">
+          <div class="flex items-center gap-1.5 font-medium"><FeatherIcon name="clock" class="h-4 w-4" />The candidate asked to reschedule</div>
+          <p v-if="interview.rsvp_reason" class="mt-1 text-xs">“{{ interview.rsvp_reason }}”</p>
+          <div v-if="preferredTimes(interview).length" class="mt-2 flex flex-wrap items-center gap-1.5">
+            <span class="text-xs">Times that suit them:</span>
+            <button
+              v-for="t in preferredTimes(interview)"
+              :key="t"
+              type="button"
+              class="rounded-full border px-2 py-0.5 text-xs font-medium transition"
+              :class="pickedTime(t) ? 'border-brand-700 bg-brand-700 text-white' : 'border-amber-300 bg-white text-amber-900 hover:border-brand-400'"
+              :aria-pressed="pickedTime(t)"
+              @click="useTime(t)"
+            >
+              {{ dayjs(t).format('ddd DD MMM, h:mm A') }}
+            </button>
+          </div>
+          <p class="mt-1.5 text-xs">Pick one to fill in the date and time. Saving a new time sends the candidate the updated invite.</p>
+        </div>
+
         <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <FormControl label="Date" type="date" v-model="form.date" :min="today" />
           <FormControl label="Time" type="time" v-model="form.time" />
@@ -71,6 +92,7 @@
 import { computed, reactive, ref, watch } from 'vue'
 import { Button, Dialog, FeatherIcon, FormControl } from 'frappe-ui'
 import dayjs from 'dayjs'
+import { preferredTimes, rsvpLabel } from '@/utils/rsvp'
 import EmailRecipients from '@/components/jobs/EmailRecipients.vue'
 import HrAssessorPicker from '@/components/jobs/HrAssessorPicker.vue'
 import { interviewService } from '@/services/interviews'
@@ -127,6 +149,13 @@ watch(
     }
   },
 )
+
+// A preferred time from the candidate's reschedule request.
+function useTime(t) {
+  const at = dayjs(t)
+  Object.assign(form, { date: at.format('YYYY-MM-DD'), time: at.format('HH:mm') })
+}
+const pickedTime = (t) => form.date === dayjs(t).format('YYYY-MM-DD') && form.time === dayjs(t).format('HH:mm')
 
 const start = computed(() => (form.date && form.time ? dayjs(`${form.date} ${form.time}`) : null))
 const timeChanged = computed(() => !!start.value && !!props.interview && !start.value.isSame(dayjs(props.interview.scheduled_datetime), 'minute'))

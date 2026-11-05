@@ -33,59 +33,16 @@
           </div>
         </div>
 
-        <!-- Upcoming interviews: first thing on the page, with the reply buttons -->
-        <section
+        <!-- Upcoming interviews: first thing on the page, with the reply -->
+        <InterviewReplyCard
           v-for="iv in upcomingInterviews"
-          :id="'interview-' + iv.name"
           :key="'up-' + iv.name"
-          class="mb-6 scroll-mt-20 overflow-hidden rounded-xl border-2 shadow-sm transition"
-          :class="[needsReply(iv) ? 'border-brand-700' : 'border-green-300', highlighted === iv.name ? 'ring-4 ring-brand-200' : '']"
-        >
-          <div class="flex flex-wrap items-center justify-between gap-2 px-5 py-3 text-white" :class="needsReply(iv) ? 'bg-brand-700' : 'bg-green-700'">
-            <span class="flex items-center gap-2 text-sm font-semibold">
-              <FeatherIcon :name="needsReply(iv) ? 'bell' : 'check-circle'" class="h-4 w-4" />
-              {{ needsReply(iv) ? 'Action needed: please confirm your interview' : 'Interview confirmed' }}
-            </span>
-            <span class="text-xs text-white/80">{{ iv.round_type === 'HR Interaction' ? 'Round 1 · HR interaction' : 'Final interview' }}</span>
-          </div>
-          <div class="grid grid-cols-1 gap-5 bg-white p-5 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
-            <div class="flex items-start gap-4">
-              <div class="flex w-16 shrink-0 flex-col items-center rounded-lg border bg-brand-50 py-2 text-brand-800">
-                <span class="text-[11px] font-semibold uppercase">{{ dayjs(iv.scheduled_datetime).format('MMM') }}</span>
-                <span class="text-2xl font-bold leading-none">{{ dayjs(iv.scheduled_datetime).format('D') }}</span>
-                <span class="text-[11px]">{{ dayjs(iv.scheduled_datetime).format('ddd') }}</span>
-              </div>
-              <div class="min-w-0 text-sm">
-                <div class="text-lg font-semibold text-gray-900">{{ dayjs(iv.scheduled_datetime).format('dddd, DD MMMM YYYY') }}</div>
-                <div class="mt-0.5 text-gray-700">{{ dayjs(iv.scheduled_datetime).format('h:mm A [IST]') }} · {{ iv.mode === 'In-Person' ? 'In person' : 'Online' }}</div>
-                <div v-if="iv.location" class="mt-1 flex items-center gap-1.5 text-gray-700">
-                  <FeatherIcon name="map-pin" class="h-4 w-4 text-gray-400" />{{ iv.location }}
-                </div>
-                <a
-                  v-if="iv.meeting_link"
-                  :href="iv.meeting_link"
-                  target="_blank"
-                  rel="noopener"
-                  class="mt-2 inline-flex items-center gap-1.5 rounded-md border border-brand-200 px-3 py-1.5 font-medium text-brand-700 hover:bg-brand-50"
-                >
-                  <FeatherIcon name="video" class="h-4 w-4" />Join {{ iv.meeting_platform || 'meeting' }}
-                </a>
-              </div>
-            </div>
-            <div v-if="needsReply(iv) && session.isCandidate" class="flex flex-col gap-2 md:items-end">
-              <span class="text-sm font-medium text-gray-700">Will you attend?</span>
-              <div class="flex gap-2">
-                <Button size="md" variant="solid" icon-left="check" :class="BTN_BRAND" :loading="rsvpBusy === iv.name + 'Confirmed'" @click="askRsvp(iv, 'Confirmed')">Confirm</Button>
-                <Button size="md" variant="outline" icon-left="x" :loading="rsvpBusy === iv.name + 'Declined'" @click="askRsvp(iv, 'Declined')">Decline</Button>
-              </div>
-            </div>
-            <div v-else-if="!needsReply(iv)" class="flex items-center gap-2 text-sm font-medium" :class="iv.rsvp_status === 'Declined' ? 'text-red-700' : 'text-green-700'">
-              <FeatherIcon :name="iv.rsvp_status === 'Declined' ? 'x-circle' : 'check-circle'" class="h-5 w-5" />
-              {{ iv.rsvp_status === 'Declined' ? 'You declined this interview.' : 'You confirmed. See you then.' }}
-            </div>
-          </div>
-        </section>
-
+          :ref="(el) => (replyCards[iv.name] = el)"
+          :interview="iv"
+          :highlighted="highlighted === iv.name"
+          :can-reply="session.isCandidate"
+          @replied="(r) => Object.assign(iv, r)"
+        />
 
         <div class="mb-6 grid grid-cols-1 items-start gap-6 md:grid-cols-2 xl:grid-cols-3">
             <!-- Files they uploaded with the application -->
@@ -127,11 +84,6 @@
                 <a v-if="iv.meeting_link && isOpen(iv)" :href="iv.meeting_link" target="_blank" rel="noopener" class="mt-1 inline-flex items-center gap-1 text-brand-700 hover:underline">
                   <FeatherIcon name="video" class="h-3.5 w-3.5" />Join {{ iv.meeting_platform || 'meeting' }}
                 </a>
-                <div v-if="isOpen(iv) && (iv.rsvp_status || 'Pending') === 'Pending'" class="mt-3 flex flex-wrap items-center gap-2 border-t pt-3">
-                  <span class="text-gray-600">Will you attend?</span>
-                  <Button size="sm" variant="solid" :class="BTN_BRAND" :loading="rsvpBusy === iv.name + 'Confirmed'" @click="askRsvp(iv, 'Confirmed')">Confirm</Button>
-                  <Button size="sm" variant="outline" :loading="rsvpBusy === iv.name + 'Declined'" @click="askRsvp(iv, 'Declined')">Decline</Button>
-                </div>
               </div>
             </div>
 
@@ -159,36 +111,6 @@
         :start-index="viewerIndex"
       />
     </div>
-    <!-- Confirm / decline: asked here, also when arriving from the invite email -->
-    <Dialog v-model="rsvpAsk.open" :options="{ title: rsvpAsk.response === 'Declined' ? 'Decline this interview?' : 'Confirm your attendance?', size: 'sm' }">
-      <template #body-content>
-        <div v-if="rsvpAsk.iv" class="text-sm text-gray-700">
-          <p>
-            {{ rsvpAsk.iv.round_type === 'HR Interaction' ? 'Round 1 (HR interaction)' : 'Final interview' }} on
-            <b>{{ dayjs(rsvpAsk.iv.scheduled_datetime).format('dddd, DD MMMM YYYY [at] h:mm A [IST]') }}</b>.
-          </p>
-          <p class="mt-2 text-gray-600">
-            {{ rsvpAsk.response === 'Declined'
-              ? 'The Recruitment Team will be told that you cannot attend. If you would like another time, please email them.'
-              : 'The Recruitment Team will be told that you will attend.' }}
-          </p>
-        </div>
-      </template>
-      <template #actions>
-        <div class="flex justify-end gap-2">
-          <Button variant="ghost" @click="rsvpAsk.open = false">Not now</Button>
-          <Button
-            variant="solid"
-            :theme="rsvpAsk.response === 'Declined' ? 'red' : 'gray'"
-            :class="rsvpAsk.response === 'Declined' ? '' : BTN_BRAND"
-            :loading="!!rsvpBusy"
-            @click="sendAsked"
-          >
-            {{ rsvpAsk.response === 'Declined' ? "Yes, I can't attend" : 'Yes, I will attend' }}
-          </Button>
-        </div>
-      </template>
-    </Dialog>
   </CandidatePortalLayout>
 </template>
 
@@ -198,8 +120,6 @@ import BackButton from '@/components/common/BackButton.vue'
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { Button, Dialog, FeatherIcon, FormControl } from 'frappe-ui'
 import { useRoute, useRouter } from 'vue-router'
-import { BTN_BRAND } from '@/utils/buttonStyles'
-import { interviewService } from '@/services/interviews'
 import dayjs from 'dayjs'
 import ApplicationSubmissionPanel from '@/components/common/ApplicationSubmissionPanel.vue'
 import DocumentViewer from '@/components/common/DocumentViewer.vue'
@@ -209,6 +129,7 @@ import CandidatePortalLayout from '@/layouts/CandidatePortalLayout.vue'
 import OnboardingDocumentsPanel from '@/components/candidate/OnboardingDocumentsPanel.vue'
 import { useApplicationStatus } from '@/composables/useApplications'
 import CandidateOfferCard from '@/components/offers/CandidateOfferCard.vue'
+import InterviewReplyCard from '@/components/candidate/InterviewReplyCard.vue'
 
 const session = useSessionStore()
 const props = defineProps({ id: { type: String, required: true } })
@@ -242,37 +163,15 @@ async function fetchSubmission(id) {
 // ----- interviews: upcoming ones at the top, past ones in the card below
 const upcomingInterviews = computed(() => (status.value?.interviews || []).filter((iv) => isOpen(iv)))
 const pastInterviews = computed(() => (status.value?.interviews || []).filter((iv) => !isOpen(iv)))
-const needsReply = (iv) => (iv.rsvp_status || 'Pending') === 'Pending'
 
-// ----- interviews: RSVP
-const rsvpBusy = ref('')
 const isOpen = (iv) => ['Scheduled', 'Rescheduled'].includes(iv.status) && dayjs(iv.scheduled_datetime).isAfter(dayjs())
-async function rsvp(iv, response) {
-  rsvpBusy.value = iv.name + response
-  try {
-    await interviewService.respondRsvp(iv.name, response)
-    iv.rsvp_status = response
-    toast({ title: response === 'Confirmed' ? 'Thank you. Your attendance is confirmed.' : 'Your reply has been sent.', icon: 'check', iconClasses: 'text-green-500' })
-  } catch (e) {
-    toast({ title: e?.messages?.[0] || 'Could not send your reply.', icon: 'alert-triangle', iconClasses: 'text-red-500' })
-  } finally {
-    rsvpBusy.value = ''
-  }
-}
 
 // Ask before replying. The invite email links here with ?interview=…,
 // so the candidate signs in and answers on the portal, not in the email.
 const route = useRoute()
 const router = useRouter()
-const rsvpAsk = ref({ open: false, iv: null, response: 'Confirmed' })
 const highlighted = ref('')
-function askRsvp(iv, response) {
-  rsvpAsk.value = { open: true, iv, response }
-}
-async function sendAsked() {
-  await rsvp(rsvpAsk.value.iv, rsvpAsk.value.response)
-  rsvpAsk.value.open = false
-}
+const replyCards = {}
 watch(
   () => status.value?.interviews,
   async (list) => {
@@ -291,7 +190,10 @@ watch(
     document.getElementById('interview-' + iv.name)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     // "Click here to respond": the card is highlighted and they choose.
     // Older emails had separate accept / decline links: ask that one.
-    if (answer && needsReply(iv) && session.isCandidate) askRsvp(iv, answer === 'Declined' ? 'Declined' : 'Confirmed')
+    if (answer && (iv.rsvp_status || 'Pending') === 'Pending' && session.isCandidate) {
+      const response = { Declined: 'Withdrawn', Withdrawn: 'Withdrawn', 'Reschedule Requested': 'Reschedule Requested' }[answer] || 'Confirmed'
+      replyCards[iv.name]?.openReply(response)
+    }
   },
 )
 

@@ -80,9 +80,10 @@
                     <span
                       v-if="['Scheduled', 'Rescheduled'].includes(c.rounds[round].status)"
                       class="rounded-full px-2 py-0.5 text-[11px] font-medium"
-                      :class="RSVP_TONE[c.rounds[round].rsvp_status || 'Pending']"
+                      :class="RSVP_TONE[rsvpLabel(c.rounds[round].rsvp_status)]"
+                      :title="c.rounds[round].rsvp_reason || ''"
                     >
-                      RSVP: {{ c.rounds[round].rsvp_status || 'Pending' }}
+                      RSVP: {{ rsvpLabel(c.rounds[round].rsvp_status) }}
                     </span>
                     <Dropdown v-if="data.can_manage" :options="roundMenu(c.rounds[round], c)" placement="left">
                       <button type="button" class="rounded p-0.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700" :aria-label="`${round} actions`">
@@ -127,6 +128,7 @@
 </template>
 
 <script setup>
+import { RSVP_TONE, rsvpLabel } from '@/utils/rsvp'
 import { computed, reactive, ref, watch } from 'vue'
 import { Button, Dropdown, FeatherIcon } from 'frappe-ui'
 import ConfirmActionDialog from '@/components/common/ConfirmActionDialog.vue'
@@ -162,11 +164,6 @@ const HR_TONE = {
   'Recommend for final': 'text-green-700',
   Hold: 'text-amber-700',
   'Not recommended': 'text-red-700',
-}
-const RSVP_TONE = {
-  Pending: 'bg-orange-50 text-orange-700',
-  Confirmed: 'bg-green-50 text-green-700',
-  Declined: 'bg-red-50 text-red-700',
 }
 
 const selected = ref([])

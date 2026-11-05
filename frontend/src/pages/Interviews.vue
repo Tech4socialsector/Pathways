@@ -114,13 +114,13 @@
       <DataTable
         v-else
         :key="tab"
-        :export-name="tab === 'changed' ? 'interviews-rescheduled' : 'interviews'"
-        :columns="tab === 'changed' ? changedColumns : columns"
-        :rows="tab === 'changed' ? changedRows : activeRows"
+        :export-name="LIST[tab].exportName"
+        :columns="LIST[tab].columns"
+        :rows="LIST[tab].rows.value"
         :loading="loading"
-        :filters="tab === 'changed' ? changedFilters : filters"
+        :filters="LIST[tab].filters"
         clickable
-        :empty-title="tab === 'changed' ? 'No interviews have been rescheduled or edited' : 'No interviews scheduled yet'"
+        :empty-title="LIST[tab].empty"
         search-placeholder="Search candidate, job or application…"
         @row-click="(r) => router.push(`/applications/${r.application}`)"
       >
@@ -147,9 +147,24 @@
           <div v-if="row.change_note" class="max-w-[16rem] truncate text-xs text-gray-500" :title="row.change_note">{{ row.change_note }}</div>
         </template>
         <template #cell-rsvp_status="{ row }">
-          <span v-if="['Scheduled', 'Rescheduled'].includes(row.status)" class="rounded-full px-2 py-0.5 text-xs font-medium" :class="RSVP_TONE[row.rsvp_status || 'Pending']">
-            {{ row.rsvp_status || 'Pending' }}
-          </span>
+          <template v-if="['Scheduled', 'Rescheduled'].includes(row.status)">
+            <span class="whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium" :class="RSVP_TONE[rsvpLabel(row.rsvp_status)]">
+              {{ rsvpLabel(row.rsvp_status) }}
+            </span>
+            <!-- What the candidate asked for, so it can be acted on from here -->
+            <div v-if="preferredTimes(row).length" class="mt-1 max-w-[15rem] text-xs text-gray-600">
+              <div v-for="t in preferredTimes(row)" :key="t" class="whitespace-nowrap">{{ dayjs(t).format('DD MMM, h:mm A') }}</div>
+            </div>
+            <div v-if="row.rsvp_reason" class="mt-0.5 max-w-[15rem] truncate text-xs italic text-gray-500" :title="row.rsvp_reason">“{{ row.rsvp_reason }}”</div>
+            <button
+              v-if="rsvpLabel(row.rsvp_status) === 'Reschedule Requested' && isOpen(row)"
+              type="button"
+              class="mt-1 text-xs font-medium text-brand-700 hover:underline"
+              @click.stop="Object.assign(editDialog, { open: true, interview: row })"
+            >
+              Reschedule now
+            </button>
+          </template>
           <span v-else class="text-gray-300">—</span>
         </template>
         <template #bulk-actions="{ rows: chosen, clear }">
@@ -194,6 +209,7 @@ import PageHeader from '@/components/layout/PageHeader.vue'
 import DataTable from '@/components/common/DataTable.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
 import { interviewService } from '@/services/interviews'
+import { RSVP_TONE, preferredTimes, rsvpLabel } from '@/utils/rsvp'
 
 const router = useRouter()
 const rows = ref([])
@@ -203,6 +219,7 @@ const TABS = [
   // In workflow order: waiting, booked, changed, called off.
   { key: 'to_schedule', label: 'To schedule' },
   { key: 'scheduled', label: 'Scheduled' },
+  { key: 'final', label: 'Final interview' },
   { key: 'changed', label: 'Rescheduled / edited' },
   { key: 'cancelled', label: 'Cancelled' },
 ]
@@ -212,6 +229,8 @@ const assessorLimit = computed(() => rows.value[0]?.hr_assessor_limit || 2)
 // Scheduled tab: open and completed interviews; cancelled ones have their own tab.
 const activeRows = computed(() => rows.value.filter((r) => r.status !== 'Cancelled'))
 const cancelledRows = computed(() => rows.value.filter((r) => r.status === 'Cancelled'))
+// Final interview: the Selection Committee round only (also on Scheduled).
+const finalRows = computed(() => activeRows.value.filter((r) => r.round_type === 'Final'))
 // Rescheduled / edited: open or completed interviews changed after they were
 // scheduled (they stay on the Scheduled tab too).
 const changedRows = computed(() =>
@@ -223,6 +242,7 @@ const changedRows = computed(() =>
 )
 const tabCount = computed(() => ({
   scheduled: activeRows.value.length,
+  final: finalRows.value.length,
   changed: changedRows.value.length,
   to_schedule: toScheduleCount.value,
   cancelled: cancelledRows.value.length,
@@ -355,7 +375,6 @@ const STATUS_TONE = {
   Completed: 'bg-green-50 text-green-700',
   Cancelled: 'bg-gray-100 text-gray-500',
 }
-const RSVP_TONE = { Pending: 'bg-orange-50 text-orange-700', Confirmed: 'bg-green-50 text-green-700', Declined: 'bg-red-50 text-red-700' }
 
 const columns = [
   { key: 'scheduled_datetime', label: 'When', format: (r) => (r.scheduled_datetime ? dayjs(r.scheduled_datetime).format('DD MMM YYYY, h:mm A [IST]') : '') },
@@ -369,8 +388,12 @@ const columns = [
 const filters = [
   { key: 'status', label: 'Statuses' },
   { key: 'round_type', label: 'Rounds' },
+  { key: 'rsvp_label', label: 'RSVP', options: Object.keys(RSVP_TONE) },
   { key: 'job_title', label: 'Job Openings' },
 ]
+// Final interview tab: no Round column or filter (every row is Final).
+const finalColumns = columns.filter((c) => c.key !== 'round_type')
+const finalFilters = filters.filter((f) => f.key !== 'round_type')
 
 const changeLabel = (r) => r.change_type || 'Rescheduled'
 const changedColumns = [
@@ -412,6 +435,13 @@ const cancelledFilters = [
   { key: 'job_title', label: 'Job Openings' },
 ]
 
+// The lists of the shared table, by tab.
+const LIST = {
+  scheduled: { rows: activeRows, columns, filters, exportName: 'interviews', empty: 'No interviews scheduled yet' },
+  final: { rows: finalRows, columns: finalColumns, filters: finalFilters, exportName: 'interviews-final', empty: 'No final interviews scheduled yet' },
+  changed: { rows: changedRows, columns: changedColumns, filters: changedFilters, exportName: 'interviews-rescheduled', empty: 'No interviews have been rescheduled or edited' },
+}
+
 const tiles = computed(() => {
   const now = dayjs()
   const open = rows.value.filter((r) => ['Scheduled', 'Rescheduled'].includes(r.status))
@@ -429,7 +459,8 @@ async function load() {
   loading.value = true
   const [scheduled, waiting] = await Promise.allSettled([interviewService.listInterviews(), interviewService.listToSchedule()])
   const errors = []
-  if (scheduled.status === 'fulfilled') rows.value = scheduled.value || []
+  // rsvp_label: Declined (older replies) reads as Withdrawn, for the RSVP filter.
+  if (scheduled.status === 'fulfilled') rows.value = (scheduled.value || []).map((r) => ({ ...r, rsvp_label: rsvpLabel(r.rsvp_status) }))
   else errors.push(`Could not load scheduled interviews: ${scheduled.reason?.messages?.[0] || 'please try again.'}`)
   if (waiting.status === 'fulfilled') toSchedule.value = waiting.value || []
   else errors.push(`Could not load candidates to schedule: ${waiting.reason?.messages?.[0] || 'please try again.'}`)

@@ -257,6 +257,20 @@ TEMPLATES = {
 		"<p>For questions about your access, write to {{ contact_email or 'recruitment@nls.ac.in' }}. "
 		"Please do not share your login details or this email with anyone.</p>" + SIGN_OFF,
 	),
+	# Workflow folder: 5. Round 1 / 6. Final interview. The candidate replies on the portal.
+	"Interview Reply": (
+		"{{ response_label }}: {{ candidate_name }}, {{ interview_round }} for {{ job_title }}",
+		"<p>Dear {{ recipient_name }},</p>"
+		"<p><b>{{ candidate_name }}</b> ({{ application_id }}) has replied to the {{ interview_round }} for <b>{{ job_title }}</b> "
+		"scheduled for {{ interview_date_time }}.</p>"
+		"<p style=\"margin:12px 0\"><b>Reply:</b> {{ response_label }}</p>"
+		"{% if reason %}<p><b>Reason given:</b> {{ reason }}</p>{% endif %}"
+		"{% if preferred_times %}<p style=\"margin-bottom:4px\"><b>Times that suit the candidate:</b></p>"
+		"<ul style=\"margin-top:0\">{% for t in preferred_times %}<li>{{ t }}</li>{% endfor %}</ul>"
+		"<p>Use <b>Reschedule</b> on the Interviews page to give a new time; the candidate is sent the updated invite.</p>{% endif %}"
+		"{% if response == 'Withdrawn' %}<p>You may want to cancel the interview and offer the slot to another candidate.</p>{% endif %}"
+		"<p><a href=\"{{ application_link }}\">Open the application</a></p>" + SIGN_OFF,
+	),
 	"Green Sheet Approval Request": (
 		"Approval needed: Green Sheet for {{ job_title }}",
 		"<p>Dear {{ recipient_name }},</p>"
@@ -573,6 +587,10 @@ EVENTS = [
 		"Interview Invite (Round 1)", {"send_to_candidate": 1}, True, True, CANDIDATE_VARS + ", interview_date_time, meeting_link, meeting_platform, interview_location, rsvp_deadline, rsvp_link, rsvp_respond_link, updated, change_note"),
 	("Interviews", "interview_call_letter", "Interview call letter: final interview", "The final interview is scheduled (workflow steps 14-16).",
 		"Interview Call Letter", {"send_to_candidate": 1}, True, True, CANDIDATE_VARS + ", track, interview_date, interview_day, interview_time, interview_mode, meeting_platform, meeting_link, interview_location, meeting_details, login_time, rsvp_link, rsvp_respond_link, updated, change_note"),
+	("Interviews", "interview_rsvp_update", "Candidate replied to an interview (to recruitment team)",
+		"A candidate confirms, asks to reschedule (with a reason and preferred times) or withdraws from an interview on the portal.",
+		"Interview Reply", {"roles": ["Pathways Recruiter"]}, True, True,
+		CANDIDATE_VARS + ", response, response_label, interview_round, interview_date_time, reason, preferred_times, application_link"),
 	("Interviews", "interview_cancelled", "Interview cancelled (to candidate)",
 		"An interview is cancelled and 'Email the candidate' is ticked.",
 		"Interview Cancelled", {"send_to_candidate": 1}, True, True, CANDIDATE_VARS + ", interview_round, interview_date_time, reason"),
