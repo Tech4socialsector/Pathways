@@ -30,6 +30,16 @@
       </div>
       <div class="flex shrink-0 flex-wrap items-center gap-2 lg:ml-auto">
         <slot name="toolbar" />
+        <!-- Everything that matches the search and filters, all pages -->
+        <Button
+          v-if="exportAll"
+          icon-left="download"
+          :disabled="!sortedRows.length"
+          :title="sortedRows.length ? `Download ${sortedRows.length} row${sortedRows.length === 1 ? '' : 's'} as CSV` : 'Nothing to export'"
+          @click="exportCsv(sortedRows)"
+        >
+          Export
+        </Button>
         <AdvancedFilter v-if="advancedFilter && rows.length" v-model="conditions" :columns="allColumns" :rows="rows" />
         <!-- Cards have no column headers to click, so sorting gets its own control. -->
         <div v-if="view === 'cards'" class="flex items-center gap-1">
@@ -287,6 +297,9 @@ const props = defineProps({
   selectable: { type: Boolean, default: true },
   // File name for Export CSV (without .csv).
   exportName: { type: String, default: 'export' },
+  // An Export button in the toolbar: every row matching the search and
+  // filters (all pages), in the current sort and visible columns.
+  exportAll: { type: Boolean, default: false },
   // @export="(rows, clear) => ..." replaces the built-in CSV of the visible
   // columns (e.g. Applications exports full records from the server).
   onExport: { type: Function, default: null },
@@ -464,14 +477,21 @@ watch(
 
 function exportSelected() {
   if (props.onExport) props.onExport(selectedRows.value, clearSelection)
-  else exportCsv()
+  else exportCsv(selectedRows.value)
 }
 
-function exportCsv() {
-  const cell = (value) => `"${String(value ?? '').replace(/"/g, '""')}"`
+function exportCsv(list) {
+  if (!list.length) return
+  // A value a spreadsheet would run as a formula is kept as text; phone
+  // numbers (+91 …) and negative numbers are left alone.
+  const cell = (value) => {
+    let text = String(value ?? '')
+    if (/^[=@\t\r]/.test(text) || /^[+-][^\d\s.]/.test(text)) text = `'${text}`
+    return `"${text.replace(/"/g, '""')}"`
+  }
   const lines = [
     shownColumns.value.map((c) => cell(c.label)).join(','),
-    ...selectedRows.value.map((row) => shownColumns.value.map((c) => cell(display(row, c))).join(',')),
+    ...list.map((row) => shownColumns.value.map((c) => cell(display(row, c))).join(',')),
   ]
   const blob = new Blob(['\ufeff' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' })
   const link = document.createElement('a')

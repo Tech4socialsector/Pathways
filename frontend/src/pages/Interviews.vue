@@ -58,7 +58,8 @@
       <!-- To schedule: shortlisted candidates with no interview yet; schedule them here -->
       <DataTable
         v-if="tab === 'to_schedule'"
-        export-name="interviews-to-schedule"
+        :export-name="exportFile('to-schedule')"
+        export-all
         :columns="toScheduleColumns"
         :extra-columns="toScheduleExtra"
         :rows="toScheduleList"
@@ -92,7 +93,8 @@
       <!-- Cancelled: kept for the record; nothing more can be done with them here -->
       <DataTable
         v-else-if="tab === 'cancelled'"
-        export-name="interviews-cancelled"
+        :export-name="exportFile('cancelled')"
+        export-all
         :columns="cancelledColumns"
         :rows="cancelledRows"
         :loading="loading"
@@ -139,7 +141,8 @@
         </h2>
         <!-- Reschedule requests: accept a suggested time, decline, or pick another time -->
         <DataTable
-          export-name="interviews-reschedule-requests"
+          :export-name="exportFile('reschedule-requests')"
+          export-all
           :columns="requestColumns"
           :rows="requestRows"
           :loading="loading"
@@ -181,7 +184,8 @@
       </section>
       <DataTable
         :key="tab"
-        :export-name="LIST[tab].exportName"
+        :export-name="exportFile(LIST[tab].exportName.replace(/^interviews-/, ''))"
+        export-all
         :columns="round === 'all' ? LIST[tab].columns : LIST[tab].roundColumns"
         :rows="LIST[tab].rows.value"
         :loading="loading"
@@ -294,12 +298,16 @@ const ROUNDS = [
   { key: 'Final', label: 'Final interview' },
 ]
 const round = ref('all')
+// Export file: interviews-<stage>[-<round>]-<date>.csv (DataTable adds the date).
+const ROUND_SLUG = { 'HR Interaction': 'round-1', Final: 'final' }
+const exportFile = (stage) => ['interviews', stage, ROUND_SLUG[round.value]].filter(Boolean).join('-')
 const inRound = (r) => round.value === 'all' || (r.round_type || r.next_round) === round.value
 const TABS = [
   // In workflow order: waiting, booked, moved, done, called off.
   { key: 'to_schedule', label: 'To schedule' },
   { key: 'scheduled', label: 'Scheduled' },
   { key: 'reschedule', label: 'Reschedule' },
+  { key: 'withdrawn', label: 'Withdrawn' },
   { key: 'completed', label: 'Completed' },
   { key: 'cancelled', label: 'Cancelled' },
 ]
@@ -308,8 +316,16 @@ const tab = ref('scheduled')
 const assessorLimit = computed(() => rows.value[0]?.hr_assessor_limit || 2)
 // Not cancelled: open and completed interviews (all rounds, for loading).
 const activeRows = computed(() => rows.value.filter((r) => r.status !== 'Cancelled'))
+// Withdrawn: still open, but the candidate withdrew on the portal (older
+// replies say Declined); cancel them to free the slot. Not on Scheduled.
+const isWithdrawn = (r) => r.rsvp_label === 'Withdrawn'
+const withdrawnRows = computed(() =>
+  activeRows.value
+    .filter((r) => isOpen(r) && isWithdrawn(r) && inRound(r))
+    .sort((a, b) => String(b.rsvp_responded_on || '').localeCompare(String(a.rsvp_responded_on || ''))),
+)
 // Scheduled: still to take place (or to be marked completed).
-const scheduledRows = computed(() => activeRows.value.filter((r) => isOpen(r) && inRound(r)))
+const scheduledRows = computed(() => activeRows.value.filter((r) => isOpen(r) && !isWithdrawn(r) && inRound(r)))
 const completedRows = computed(() => activeRows.value.filter((r) => r.status === 'Completed' && inRound(r)))
 const cancelledRows = computed(() => rows.value.filter((r) => r.status === 'Cancelled' && inRound(r)))
 // Reschedule requests: open interviews whose candidate asked for another
@@ -332,6 +348,7 @@ const tabCount = computed(() => ({
   // Reschedule: the badge counts requests still to answer.
   reschedule: requestRows.value.length,
   scheduled: scheduledRows.value.length,
+  withdrawn: withdrawnRows.value.length,
   completed: completedRows.value.length,
   to_schedule: toScheduleList.value.length,
   cancelled: cancelledRows.value.length,
@@ -472,7 +489,7 @@ const columns = [
   { key: 'job_title', label: 'Job Opening' },
   { key: 'round_type', label: 'Round', format: (r) => (r.round_type === 'HR Interaction' ? 'Round 1 (HR)' : r.round_type) },
   { key: 'mode', label: 'Mode', format: (r) => (r.mode === 'In-Person' ? `In person${r.location ? ' · ' + r.location : ''}` : `Online${r.meeting_platform ? ' · ' + r.meeting_platform : ''}`) },
-  { key: 'rsvp_status', label: 'RSVP' },
+  { key: 'rsvp_status', label: 'RSVP', format: (r) => rsvpLabel(r.rsvp_status) },
   { key: 'status', label: 'Status' },
 ]
 const filters = [
@@ -502,7 +519,7 @@ const changedColumns = [
     label: 'Changed on',
     format: (r) => (r.last_changed_on ? dayjs(r.last_changed_on).format('DD MMM YYYY, h:mm A [IST]') + (r.last_changed_by_name ? ` · ${r.last_changed_by_name}` : '') : '—'),
   },
-  { key: 'rsvp_status', label: 'RSVP' },
+  { key: 'rsvp_status', label: 'RSVP', format: (r) => rsvpLabel(r.rsvp_status) },
   { key: 'status', label: 'Status' },
 ]
 const changedFilters = [
@@ -545,9 +562,25 @@ const cancelledFilters = [
 
 // The lists of the shared table, by tab.
 const withoutRound = (list) => list.filter((c) => c.key !== 'round_type')
+const withdrawnColumns = [
+  { key: 'rsvp_responded_on', label: 'Withdrew on', format: (r) => (r.rsvp_responded_on ? dayjs(r.rsvp_responded_on).format('DD MMM YYYY, h:mm A') : '—') },
+  { key: 'candidate_name', label: 'Candidate' },
+  { key: 'job_title', label: 'Job Opening' },
+  { key: 'round_type', label: 'Round', format: columns[3].format },
+  { key: 'scheduled_datetime', label: 'Was scheduled for', format: columns[0].format },
+  { key: 'rsvp_reason', label: 'Reason', sortable: false, format: (r) => r.rsvp_reason || '—' },
+]
+const withdrawnFilters = [
+  { key: 'round_type', label: 'Rounds' },
+  { key: 'job_title', label: 'Job Openings' },
+]
 const LIST = {
   scheduled: { rows: scheduledRows, columns, filters, roundColumns, roundFilters, exportName: 'interviews-scheduled', empty: 'No interviews scheduled' },
   completed: { rows: completedRows, columns, filters, roundColumns, roundFilters, exportName: 'interviews-completed', empty: 'No completed interviews yet' },
+  withdrawn: {
+    rows: withdrawnRows, columns: withdrawnColumns, filters: withdrawnFilters, roundColumns: withoutRound(withdrawnColumns), roundFilters: withoutRound(withdrawnFilters),
+    exportName: 'interviews-withdrawn', empty: 'No candidate has withdrawn from an interview',
+  },
   reschedule: {
     rows: changedRows, columns: changedColumns, filters: changedFilters, roundColumns: withoutRound(changedColumns), roundFilters: withoutRound(changedFilters),
     exportName: 'interviews-rescheduled', empty: 'No interviews have been rescheduled or edited',
@@ -556,7 +589,8 @@ const LIST = {
 
 const tiles = computed(() => {
   const now = dayjs()
-  const open = rows.value.filter((r) => ['Scheduled', 'Rescheduled'].includes(r.status))
+  // A withdrawn interview will not take place: not upcoming, not today.
+  const open = rows.value.filter((r) => ['Scheduled', 'Rescheduled'].includes(r.status) && !isWithdrawn(r))
   return [
     { label: 'Upcoming', value: open.filter((r) => dayjs(r.scheduled_datetime).isAfter(now)).length },
     { label: 'Today', value: open.filter((r) => dayjs(r.scheduled_datetime).isSame(now, 'day')).length },

@@ -1043,6 +1043,49 @@ def decide_reschedule_request(interview, decision, preferred_time=None, note=Non
 # ----------------------------------------------------------- all interviews
 
 
+# Applications list > Interview filter: where each application stands, in
+# workflow order (an open interview wins over a completed one).
+INTERVIEW_STAGES = (
+	"No interview", "Round 1 scheduled", "Reschedule requested", "Withdrawn from interview",
+	"Round 1 completed", "Final scheduled", "Final completed", "Interview cancelled",
+)
+
+
+def _interview_stage(interviews):
+	open_ = [iv for iv in interviews if iv.status in ("Scheduled", "Rescheduled")]
+	if open_:
+		iv = max(open_, key=lambda i: (i.round_type == "Final", i.scheduled_datetime or ""))
+		rsvp = RSVP_ALIASES.get(iv.rsvp_status, iv.rsvp_status)
+		if rsvp == RSVP_WITHDRAW:
+			return "Withdrawn from interview"
+		if rsvp == RSVP_RESCHEDULE:
+			return "Reschedule requested"
+		return "Final scheduled" if iv.round_type == "Final" else "Round 1 scheduled"
+	done = {iv.round_type for iv in interviews if iv.status == "Completed"}
+	if "Final" in done:
+		return "Final completed"
+	if "HR Interaction" in done:
+		return "Round 1 completed"
+	if interviews:
+		return "Interview cancelled"
+	return "No interview"
+
+
+@frappe.whitelist()
+def get_application_interview_stages():
+	"""{application: stage} for the applications with interviews the user
+	may see (others are "No interview"), and the stages in order."""
+	rows = frappe.get_list(
+		"Interview",
+		fields=["application", "round_type", "status", "rsvp_status", "scheduled_datetime"],
+		limit_page_length=0,
+	)
+	by_app = {}
+	for row in rows:
+		by_app.setdefault(row.application, []).append(row)
+	return {"stages": list(INTERVIEW_STAGES), "by_application": {app: _interview_stage(ivs) for app, ivs in by_app.items()}}
+
+
 @frappe.whitelist()
 def list_interviews():
 	"""Interviews page: every interview the user may see, with names."""

@@ -172,3 +172,22 @@ class TestInterviewRSVP(IntegrationTestCase):
 		self.assertRaises(frappe.ValidationError, self._decide, "Decline", note="Not possible on that day.")
 		self._request(5)
 		self.assertRaises(frappe.ValidationError, self._decide, "Maybe")
+
+	def test_interview_stage_for_the_applications_filter(self):
+		iv = lambda round_type, status, rsvp="Pending", when="2026-12-01 10:00": frappe._dict(
+			round_type=round_type, status=status, rsvp_status=rsvp, scheduled_datetime=get_datetime(when)
+		)
+		stage = interviews._interview_stage
+		self.assertEqual(stage([]), "No interview")
+		self.assertEqual(stage([iv("HR Interaction", "Scheduled")]), "Round 1 scheduled")
+		self.assertEqual(stage([iv("HR Interaction", "Rescheduled", "Reschedule Requested")]), "Reschedule requested")
+		self.assertEqual(stage([iv("HR Interaction", "Scheduled", "Declined")]), "Withdrawn from interview")
+		self.assertEqual(stage([iv("HR Interaction", "Completed")]), "Round 1 completed")
+		# An open final interview wins over the completed Round 1.
+		self.assertEqual(stage([iv("HR Interaction", "Completed"), iv("Final", "Scheduled")]), "Final scheduled")
+		self.assertEqual(stage([iv("HR Interaction", "Completed"), iv("Final", "Completed")]), "Final completed")
+		self.assertEqual(stage([iv("HR Interaction", "Cancelled")]), "Interview cancelled")
+		self.assertEqual(set(interviews.INTERVIEW_STAGES), {
+			"No interview", "Round 1 scheduled", "Reschedule requested", "Withdrawn from interview",
+			"Round 1 completed", "Final scheduled", "Final completed", "Interview cancelled",
+		})

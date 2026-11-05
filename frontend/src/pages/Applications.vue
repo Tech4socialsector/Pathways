@@ -170,7 +170,7 @@
 </template>
 
 <script setup>
-import { computed, nextTick, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import dayjs from 'dayjs'
 import { Button, FeatherIcon } from 'frappe-ui'
@@ -186,6 +186,7 @@ import StatusBadge from '@/components/common/StatusBadge.vue'
 import { useApplicationList } from '@/composables/useApplicationList'
 import { applicationService } from '@/services/applications'
 import { useSessionStore } from '@/stores/session'
+import { callMethod } from '@/services/api'
 
 const session = useSessionStore()
 const showImport = ref(false)
@@ -226,6 +227,7 @@ const extraColumns = [
   { key: 'relevant_experience_years', label: 'Relevant Experience (yrs)', align: 'right' },
   { key: 'notice_period', label: 'Notice Period' },
   { key: 'eligibility_reason', label: 'Reason Not Eligible' },
+  { key: 'interview_stage', label: 'Interview', format: (row) => interviewOf(row) },
   { key: 'regret_sent_on', label: 'Regret Sent', format: (row) => fmtDate(row.regret_sent_on, true) },
   { key: 'modified', label: 'Last Updated', format: (row) => fmtDate(row.modified, true) },
 ]
@@ -237,11 +239,28 @@ const ELIGIBILITY = [
   { value: 'Not Eligible', label: 'Not eligible' },
 ]
 const eligibilityOf = (row) => row.eligibility_status || 'Pending'
+
+// Interview stage per application (server: only interviews the user may
+// see). Loaded once with the page; a failure just leaves the filter out.
+const interviewStages = reactive({ order: [], byApp: {}, loaded: false })
+const interviewOf = (row) => interviewStages.byApp[row.name] || 'No interview'
+async function loadInterviewStages() {
+  try {
+    const r = await callMethod('pathways.api.interviews.get_application_interview_stages')
+    Object.assign(interviewStages, { order: r?.stages || [], byApp: r?.by_application || {}, loaded: true })
+  } catch {
+    interviewStages.loaded = false
+  }
+}
+onMounted(loadInterviewStages)
+// The list reloads after bulk changes; so do the stages.
+watch(() => applications.data, () => interviewStages.loaded && loadInterviewStages())
 const filters = computed(() => {
   const rows = applications.data || []
   const count = (read) => rows.reduce((m, r) => ((m[read(r)] = (m[read(r)] || 0) + 1), m), {})
   const byEligibility = count(eligibilityOf)
   const byStatus = count((r) => r.status)
+  const byInterview = count(interviewOf)
   return [
     {
       key: 'eligibility_status',
@@ -250,6 +269,16 @@ const filters = computed(() => {
       options: ELIGIBILITY.map((e) => ({ ...e, count: byEligibility[e.value] || 0 })),
     },
     { key: 'status', label: 'Statuses', options: STATUSES.map((s) => ({ label: s, value: s, count: byStatus[s] || 0 })) },
+    ...(interviewStages.loaded
+      ? [
+          {
+            key: 'interview_stage',
+            label: 'Interviews',
+            value: interviewOf,
+            options: interviewStages.order.map((s) => ({ label: s, value: s, count: byInterview[s] || 0 })),
+          },
+        ]
+      : []),
     { key: 'job_title', label: 'Job Openings' },
   ]
 })
