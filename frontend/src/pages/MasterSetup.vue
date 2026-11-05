@@ -205,9 +205,6 @@ const STAGES = [
     hint: 'Choices candidates pick from on the application form.',
     masters: [
       { doctype: 'Document Type Master', needs: [] },
-      { doctype: 'Institution Master', needs: [] },
-      { doctype: 'Specialization Master', needs: [] },
-      { doctype: 'UGC NET Subject Master', needs: [] },
       { doctype: 'Candidate Source', needs: [] },
     ],
   },

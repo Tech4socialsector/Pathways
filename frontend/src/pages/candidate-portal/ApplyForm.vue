@@ -709,19 +709,41 @@
         ],
       }"
     />
-    <Dialog
-      v-model="leave.open"
-      :options="{
-        title: 'Leave without saving?',
-        message: 'You have changes that are not saved as a draft yet. Save them before you leave, or they may be lost.',
-        actions: [
-          { label: 'Save as draft and leave', variant: 'solid', class: BTN_BRAND, onClick: () => answerLeave('save') },
-          { label: 'Leave without saving', theme: 'red', onClick: () => answerLeave('leave') },
-          { label: 'Stay on this page', onClick: () => answerLeave('stay') },
-        ],
-      }"
-      @close="answerLeave('stay')"
-    />
+    <!-- Leaving for another portal page with changes not yet saved -->
+    <Dialog v-model="leave.open" :options="{ size: 'md' }" @close="answerLeave('stay')">
+      <template #body>
+        <div class="px-6 pb-6 pt-7 text-center">
+          <span class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-brand-50 text-brand-700">
+            <FeatherIcon name="save" class="h-6 w-6" />
+          </span>
+          <h2 class="mt-4 font-heading text-lg font-bold text-gray-900">Save your progress before you go?</h2>
+          <p class="mx-auto mt-2 max-w-sm text-sm text-gray-600">
+            Your latest changes to <b class="text-gray-900">{{ job?.job_title || 'this application' }}</b> are not saved yet.
+            <template v-if="accountDrafts">Save them as a draft and continue any time from <b class="text-gray-900">My Applications</b>, on any device.</template>
+            <template v-else>Save them on this device and continue any time in the next {{ GUEST_DRAFT_DAYS }} days.</template>
+          </p>
+          <p v-if="draft.savedAt" class="mt-2 text-xs text-gray-500">Last saved {{ formatSavedAt(draft.savedAt) }}</p>
+          <div v-if="leave.error" class="mt-4 flex items-start gap-2 rounded-lg bg-red-50 px-3 py-2.5 text-left text-sm text-red-700" role="alert">
+            <FeatherIcon name="alert-circle" class="mt-0.5 h-4 w-4 shrink-0" />
+            <span>{{ leave.error }}</span>
+          </div>
+          <div class="mt-6 flex flex-col gap-2">
+            <Button variant="solid" size="lg" icon-left="save" :class="BTN_BRAND" :loading="leave.saving" @click="saveAndLeave">
+              {{ leave.error ? 'Try again' : 'Save draft and leave' }}
+            </Button>
+            <Button size="lg" :disabled="leave.saving" @click="answerLeave('stay')">Keep editing</Button>
+            <button
+              v-if="leave.error"
+              type="button"
+              class="mt-1 text-sm text-gray-500 underline-offset-2 hover:text-gray-800 hover:underline"
+              @click="answerLeave('leave')"
+            >
+              Leave anyway: your answers stay on this device
+            </button>
+          </div>
+        </div>
+      </template>
+    </Dialog>
     <Dialog v-model="showInstructions" :options="{ size: '3xl' }">
       <template #body>
         <div class="flex max-h-[85vh] flex-col">
@@ -766,6 +788,7 @@
 import BackButton from '@/components/common/BackButton.vue'
 import { computed, h, nextTick, onBeforeUnmount, onMounted, provide, reactive, ref, watch } from 'vue'
 import { onBeforeRouteLeave } from 'vue-router'
+import { toast } from '@/utils/notify'
 import { Autocomplete, Button, Dialog, FeatherIcon, FormControl } from 'frappe-ui'
 import { BTN_BRAND } from '@/utils/buttonStyles'
 import dayjs from 'dayjs'
@@ -1028,7 +1051,7 @@ function saveLocal(synced) {
       JSON.stringify({ ...draftContent(), uploadTokens: Object.fromEntries(uploadTokens), savedAt, synced }),
     )
   } catch {
-    // storage unavailable — logged-in candidates still have the account copy
+    return '' // storage unavailable — logged-in candidates still have the account copy
   }
   return savedAt
 }
@@ -1077,10 +1100,13 @@ async function saveDraftNow() {
     dirty = true
     await saving
     await saveToAccount()
-  } else {
+  } else if (savedAt) {
     draft.savedAt = savedAt
     draft.state = 'saved'
     unsaved.value = false
+  } else {
+    draft.state = 'error'
+    draft.error = "Couldn't save on this device (browser storage is off or full). Log in to save a draft to your account."
   }
 }
 
@@ -1197,36 +1223,70 @@ function formatSavedAt(value) {
 }
 
 // ----- leaving with unsaved changes
-// Closing the tab or reloading: the browser's own "Leave site?" prompt
-// (browsers do not show a page's own text there).
 const mustAsk = () => unsaved.value && !submitted.value
+
+// Closing the tab or reloading: save on the way out instead of asking.
+// The answers go to this device at once (and, logged in, to the account in
+// the background); the draft is restored on return. The browser's own
+// "Leave site?" box (which a page cannot restyle) shows only when nothing
+// could be kept.
+function flushToAccount() {
+  const headers = { 'Content-Type': 'application/json; charset=utf-8' }
+  if (window.csrf_token && window.csrf_token !== '{{ csrf_token }}') headers['X-Frappe-CSRF-Token'] = window.csrf_token
+  try {
+    // keepalive: the request outlives the page being closed.
+    fetch('/api/method/pathways.api.application.save_application_draft', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ job_opening: props.id, data: draftContent() }),
+      keepalive: true,
+    }).catch(() => {})
+  } catch {
+    // too large for a keepalive request: the device copy syncs on return
+  }
+}
 function onBeforeUnload(event) {
   if (!mustAsk()) return
+  clearTimeout(localTimer)
+  const kept = saveLocal(false)
+  if (accountDrafts.value && dirty) flushToAccount()
+  if (kept) return
   event.preventDefault()
   event.returnValue = ''
 }
 onMounted(() => window.addEventListener('beforeunload', onBeforeUnload))
 onBeforeUnmount(() => window.removeEventListener('beforeunload', onBeforeUnload))
 
-// Moving elsewhere in the portal (Back, Openings): ask in a dialog.
-const leave = reactive({ open: false, resolve: null })
+// Moving elsewhere in the portal (Back, Openings, My Applications).
+const leave = reactive({ open: false, resolve: null, saving: false, error: '' })
 function answerLeave(choice) {
   const resolve = leave.resolve
-  if (!resolve) return
-  leave.resolve = null
-  leave.open = false
+  if (!resolve || leave.saving) return
+  Object.assign(leave, { resolve: null, open: false, error: '' })
   resolve(choice)
+}
+async function saveAndLeave() {
+  leave.saving = true
+  leave.error = ''
+  await saveDraftNow()
+  leave.saving = false
+  if (draft.state === 'error') {
+    // Closed (Esc) while saving: stay, so the navigation is not left waiting.
+    if (!leave.open) return answerLeave('stay')
+    leave.error = draft.error || "Couldn't save your draft. Please try again."
+    return
+  }
+  toast({
+    title: accountDrafts.value ? 'Draft saved. Continue any time from My Applications.' : 'Saved on this device.',
+    icon: 'check',
+    iconClasses: 'text-green-500',
+  })
+  answerLeave('leave')
 }
 onBeforeRouteLeave(async () => {
   if (!mustAsk()) return true
-  const choice = await new Promise((resolve) => Object.assign(leave, { open: true, resolve }))
-  if (choice === 'stay') return false
-  if (choice === 'save') {
-    await saveDraftNow()
-    // A failed account save keeps the candidate here, with its error shown.
-    if (draft.state === 'error') return false
-  }
-  return true
+  const choice = await new Promise((resolve) => Object.assign(leave, { open: true, resolve, error: '' }))
+  return choice === 'leave'
 })
 
 onBeforeUnmount(() => {
