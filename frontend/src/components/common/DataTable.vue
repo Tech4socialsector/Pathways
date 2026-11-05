@@ -30,16 +30,6 @@
       </div>
       <div class="flex shrink-0 flex-wrap items-center gap-2 lg:ml-auto">
         <slot name="toolbar" />
-        <!-- Everything that matches the search and filters, all pages -->
-        <Button
-          v-if="exportAll"
-          icon-left="download"
-          :disabled="!sortedRows.length"
-          :title="sortedRows.length ? `Download ${sortedRows.length} row${sortedRows.length === 1 ? '' : 's'} as CSV` : 'Nothing to export'"
-          @click="exportCsv(sortedRows)"
-        >
-          Export
-        </Button>
         <AdvancedFilter v-if="advancedFilter && rows.length" v-model="conditions" :columns="allColumns" :rows="rows" />
         <!-- Cards have no column headers to click, so sorting gets its own control. -->
         <div v-if="view === 'cards'" class="flex items-center gap-1">
@@ -297,9 +287,6 @@ const props = defineProps({
   selectable: { type: Boolean, default: true },
   // File name for Export CSV (without .csv).
   exportName: { type: String, default: 'export' },
-  // An Export button in the toolbar: every row matching the search and
-  // filters (all pages), in the current sort and visible columns.
-  exportAll: { type: Boolean, default: false },
   // @export="(rows, clear) => ..." replaces the built-in CSV of the visible
   // columns (e.g. Applications exports full records from the server).
   onExport: { type: Function, default: null },

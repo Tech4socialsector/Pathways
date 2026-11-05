@@ -59,7 +59,6 @@
       <DataTable
         v-if="tab === 'to_schedule'"
         :export-name="exportFile('to-schedule')"
-        export-all
         :columns="toScheduleColumns"
         :extra-columns="toScheduleExtra"
         :rows="toScheduleList"
@@ -94,7 +93,6 @@
       <DataTable
         v-else-if="tab === 'cancelled'"
         :export-name="exportFile('cancelled')"
-        export-all
         :columns="cancelledColumns"
         :rows="cancelledRows"
         :loading="loading"
@@ -142,8 +140,7 @@
         <!-- Reschedule requests: accept a suggested time, decline, or pick another time -->
         <DataTable
           :export-name="exportFile('reschedule-requests')"
-          export-all
-          :columns="requestColumns"
+            :columns="requestColumns"
           :rows="requestRows"
           :loading="loading"
           :filters="requestFilters"
@@ -185,7 +182,6 @@
       <DataTable
         :key="tab"
         :export-name="exportFile(LIST[tab].exportName.replace(/^interviews-/, ''))"
-        export-all
         :columns="round === 'all' ? LIST[tab].columns : LIST[tab].roundColumns"
         :rows="LIST[tab].rows.value"
         :loading="loading"
