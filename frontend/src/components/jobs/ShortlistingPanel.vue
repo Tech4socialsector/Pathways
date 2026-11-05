@@ -43,6 +43,11 @@
                 {{ (m.full_name || m.user)[0] }}
               </span>
               <span class="text-gray-800">{{ m.full_name || m.user }}</span>
+              <span
+                v-if="m.designation_label && m.designation_label !== 'Member'"
+                class="rounded-full px-1.5 text-[11px] font-medium"
+                :class="m.designation_label === 'Chairperson' ? 'bg-brand-50 text-brand-700' : 'bg-gray-100 text-gray-600'"
+              >{{ m.designation_label }}</span>
             </li>
           </ul>
           <p v-if="s.committee.office_order_reference" class="mt-2 text-xs text-gray-500">Office order: {{ s.committee.office_order_reference }}</p>

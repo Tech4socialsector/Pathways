@@ -114,6 +114,7 @@ import UserPicker from '@/components/common/UserPicker.vue'
 import { interviewService } from '@/services/interviews'
 import { BTN_BRAND } from '@/utils/buttonStyles'
 import { toast } from '@/utils/notify'
+import { EXTERNAL, roleOptions } from '@/utils/committeeRoles'
 
 const props = defineProps({
   open: { type: Boolean, default: false },
@@ -130,15 +131,6 @@ const state = reactive({ date: '', time: '', members: [], saving: false, error: 
 const title = computed(() => (existing.value ? 'Edit Selection Committee' : 'Set up Selection Committee'))
 const chosenCount = computed(() => new Set(state.members.map((m) => m.member).filter(Boolean)).size)
 
-// Roles offered on the panel; a custom role already saved stays selectable.
-// "External expert" also sets the member's External flag (shown as a badge
-// on the job's committee); there is no separate External switch.
-const EXTERNAL = 'External expert'
-const ROLES = ['Member', 'Chairperson', 'Subject expert', EXTERNAL, 'Member secretary']
-function roleOptions(current) {
-  const list = current && !ROLES.includes(current) ? [current, ...ROLES] : ROLES
-  return list.map((r) => ({ label: r, value: r }))
-}
 
 // Panel size is the target; members are only the people added so far.
 const panelSize = ref(3)

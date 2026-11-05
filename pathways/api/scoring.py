@@ -234,10 +234,35 @@ def get_committee_options():
 	users = frappe.get_all(
 		"User",
 		filters={"enabled": 1, "user_type": "System User", "name": ["not in", ["Guest"]]},
-		fields=["name", "full_name"],
+		fields=["name", "full_name", "email"],
 		order_by="full_name asc",
 	)
 	return {"min": minimum, "max": maximum, "users": users}
+
+
+def _member_rows(members, previous=None):
+	"""Committee Member Rows from the dialog's members: user IDs, or
+	{member, designation_label, is_external_expert} as the Selection
+	Committee sends. A bare user ID keeps the role it had (previous:
+	{user: row})."""
+	if isinstance(members, str):
+		members = frappe.parse_json(members)
+	rows, seen = [], set()
+	for m in members or []:
+		entry = m if isinstance(m, dict) else {"member": m}
+		user = (entry.get("member") or "").strip()
+		if not user or user in seen:
+			continue
+		seen.add(user)
+		old = (previous or {}).get(user)
+		if isinstance(m, dict):
+			label = (entry.get("designation_label") or "").strip() or None
+			external = frappe.utils.cint(entry.get("is_external_expert"))
+		else:
+			label = old.designation_label if old else None
+			external = old.is_external_expert if old else 0
+		rows.append({"member": user, "designation_label": label, "is_external_expert": external})
+	return rows
 
 
 @frappe.whitelist(methods=["POST"])
@@ -247,8 +272,6 @@ def create_shortlisting_committee(
 	"""Create the job's Shortlisting Committee (workflow step 8: office order
 	and deadline). insert() enforces create permission and the committee-size
 	rule; after_insert emails every member (committee_assigned)."""
-	if isinstance(members, str):
-		members = frappe.parse_json(members)
 	existing = frappe.db.get_value("Shortlisting Committee", {"job_opening": job_opening}, "name")
 	if existing:
 		frappe.throw(_("Job Opening {0} already has a Shortlisting Committee ({1}).").format(job_opening, existing))
@@ -259,7 +282,7 @@ def create_shortlisting_committee(
 			"office_order_reference": office_order_reference,
 			"office_order_attachment": office_order_attachment or None,
 			"shortlisting_deadline": shortlisting_deadline or None,
-			"members": [{"member": user} for user in dict.fromkeys(members or [])],
+			"members": _member_rows(members),
 		}
 	).insert()
 	return doc.name
@@ -276,6 +299,10 @@ def get_shortlisting_committee(job_opening):
 	return {
 		"name": doc.name,
 		"members": [row.member for row in doc.members],
+		"member_rows": [
+			{"member": row.member, "designation_label": row.designation_label, "is_external_expert": row.is_external_expert}
+			for row in doc.members
+		],
 		"office_order_reference": doc.office_order_reference,
 		"office_order_attachment": doc.office_order_attachment,
 		"shortlisting_deadline": doc.shortlisting_deadline,
@@ -298,21 +325,7 @@ def update_shortlisting_committee(
 	doc = frappe.get_doc("Shortlisting Committee", name)
 	previous = [row.member for row in doc.members]
 	if members is not None:
-		if isinstance(members, str):
-			members = frappe.parse_json(members)
-		members = list(dict.fromkeys(members or []))
-		kept = {row.member: row for row in doc.members if row.member in members}
-		doc.set("members", [])
-		for user in members:
-			old = kept.get(user)
-			doc.append(
-				"members",
-				{
-					"member": user,
-					"designation_label": old.designation_label if old else None,
-					"is_external_expert": old.is_external_expert if old else 0,
-				},
-			)
+		doc.set("members", _member_rows(members, {row.member: row for row in doc.members}))
 	doc.office_order_reference = office_order_reference or None
 	doc.office_order_attachment = office_order_attachment or None
 	doc.shortlisting_deadline = shortlisting_deadline or None
@@ -510,8 +523,13 @@ def shortlisting_summary(job):
 	members = []
 	if committee:
 		members = [
-			{"user": m, "full_name": frappe.utils.get_fullname(m)}
-			for m in frappe.get_all("Committee Member Row", filters={"parent": committee.name, "parenttype": "Shortlisting Committee"}, pluck="member", order_by="idx asc")
+			{"user": m.member, "full_name": frappe.utils.get_fullname(m.member), "designation_label": m.designation_label, "is_external_expert": m.is_external_expert}
+			for m in frappe.get_all(
+				"Committee Member Row",
+				filters={"parent": committee.name, "parenttype": "Shortlisting Committee"},
+				fields=["member", "designation_label", "is_external_expert"],
+				order_by="idx asc",
+			)
 		]
 	return {
 		"ratio": ratio,

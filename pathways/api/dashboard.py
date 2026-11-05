@@ -364,22 +364,42 @@ def _application_rows(filters):
 			"Candidate", filters={"name": ["in", {a.candidate for a in apps}]}, fields=["name", "full_name"], as_list=True
 		)
 	)
-	titles = dict(
-		frappe.get_all(
-			"Job Opening", filters={"name": ["in", {a.job_opening for a in apps}]}, fields=["name", "job_title"], as_list=True
+	jobs = {
+		j.name: j
+		for j in frappe.get_all(
+			"Job Opening",
+			filters={"name": ["in", {a.job_opening for a in apps}]},
+			fields=["name", "job_title", "status", "application_deadline"],
 		)
-	)
+	}
+	now = frappe.utils.now_datetime()
 	return [
 		{
 			"name": a.name,
 			"application_id": a.application_id,
 			"candidate_name": names.get(a.candidate) or a.candidate,
-			"job_title": titles.get(a.job_opening) or a.job_opening,
+			"job_title": (jobs[a.job_opening].job_title if a.job_opening in jobs else None) or a.job_opening,
+			"jd_status": _jd_status(jobs.get(a.job_opening), now),
 			"status": a.status,
 			"application_date": a.application_date,
 		}
 		for a in apps
 	]
+
+
+def _jd_status(job, now):
+	"""Whether the job opening (JD) is still taking applications: an
+	advertised job is Open until its deadline (as application.py and
+	public_feed.py decide), then "Deadline Passed"."""
+	if not job:
+		return None
+	if job.status == "Advertised":
+		if job.application_deadline and frappe.utils.get_datetime(job.application_deadline) <= now:
+			return "Deadline Passed"
+		return "Open"
+	if job.status in ("Draft", "Pending Approval", "Approved"):
+		return "Not Yet Advertised"
+	return job.status  # Closed, Filled, Cancelled
 
 
 # ------------------------------------------------------------ dashboard page

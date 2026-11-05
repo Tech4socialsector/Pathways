@@ -51,6 +51,11 @@
             <template #cell-application_id="{ row }">
               <span class="font-mono text-xs text-gray-700">{{ row.application_id }}</span>
             </template>
+            <template #cell-jd_status="{ row }">
+              <span v-if="row.jd_status" class="rounded px-1.5 py-0.5 text-xs font-medium" :class="JD_TONES[row.jd_status] || 'bg-gray-100 text-gray-600'">
+                {{ row.jd_status }}
+              </span>
+            </template>
             <template #cell-status="{ row }">
               <StatusBadge :status="row.status" />
             </template>
@@ -112,6 +117,7 @@ watch(
 const columns = computed(() => [
   { key: 'candidate_name', label: 'Candidate' },
   { key: 'job_title', label: 'Job Opening' },
+  { key: 'jd_status', label: 'JD Status' },
   { key: 'application_id', label: 'Application ID' },
   { key: 'status', label: 'Status' },
   { key: 'application_date', label: 'Applied On', format: (row) => (row.application_date ? formatDate(row.application_date) : '') },
@@ -119,10 +125,24 @@ const columns = computed(() => [
   ...(rows.value.some((r) => r.detail) ? [{ key: 'detail', label: 'Reason', sortable: false }] : []),
 ])
 
-const filters = [
-  { key: 'job_title', label: 'Job Openings' },
-  { key: 'status', label: 'Statuses' },
-]
+// Job opening states from pathways.api.dashboard._jd_status, open first.
+const JD_STATUSES = ['Open', 'Deadline Passed', 'Closed', 'Filled', 'Cancelled', 'Not Yet Advertised']
+const JD_TONES = {
+  Open: 'bg-green-50 text-green-700',
+  'Deadline Passed': 'bg-amber-50 text-amber-700',
+  Closed: 'bg-gray-100 text-gray-700',
+  Filled: 'bg-blue-50 text-blue-700',
+  Cancelled: 'bg-red-50 text-red-700',
+}
+
+const filters = computed(() => {
+  const present = new Set(rows.value.map((r) => r.jd_status).filter(Boolean))
+  return [
+    { key: 'job_title', label: 'Job Openings' },
+    { key: 'jd_status', label: 'JD Statuses', options: JD_STATUSES.filter((s) => present.has(s)) },
+    { key: 'status', label: 'Statuses' },
+  ]
+})
 
 function openJob() {
   emit('update:open', false)

@@ -2,7 +2,7 @@
   <StaffLayout>
     <PageHeader
       title="Interviews"
-      subtitle="Every scheduled interview across job openings. Schedule shortlisted candidates from the To schedule tab."
+      subtitle="Every scheduled interview across job openings. Pick a round, then a stage. Schedule candidates from the To schedule tab."
     />
     <div class="flex-1 overflow-y-auto bg-gray-50/60 p-6">
       <!-- A list that fails to load says so, instead of looking empty. -->
@@ -19,7 +19,21 @@
           <div class="mt-0.5 text-xs text-gray-500">{{ t.label }}</div>
         </div>
       </div>
-      <!-- Scheduled interviews, or shortlisted candidates still to schedule -->
+      <!-- Round: narrows every tab below -->
+      <div class="mb-4 inline-flex rounded-lg border bg-white p-0.5 shadow-sm" role="group" aria-label="Interview round">
+        <button
+          v-for="r in ROUNDS"
+          :key="r.key"
+          type="button"
+          class="rounded-md px-3 py-1.5 text-sm"
+          :class="round === r.key ? 'bg-brand-700 font-semibold text-white' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'"
+          :aria-pressed="round === r.key"
+          @click="round = r.key"
+        >
+          {{ r.label }}
+        </button>
+      </div>
+      <!-- One tab per stage; every interview is on exactly one of them -->
       <nav class="mb-4 flex gap-1 border-b" aria-label="Interview lists">
         <button
           v-for="t in TABS"
@@ -33,7 +47,7 @@
           {{ t.label }}
           <span
             class="rounded-full px-1.5 text-xs font-semibold"
-            :class="t.key === 'requests' && tabCount.requests ? 'bg-amber-500 text-white' : tab === t.key ? 'bg-brand-50 text-brand-700' : 'bg-gray-100 text-gray-600'"
+            :class="t.key === 'reschedule' && tabCount.reschedule ? 'bg-amber-500 text-white' : tab === t.key ? 'bg-brand-50 text-brand-700' : 'bg-gray-100 text-gray-600'"
           >
             {{ tabCount[t.key] }}
           </span>
@@ -47,7 +61,7 @@
         export-name="interviews-to-schedule"
         :columns="toScheduleColumns"
         :extra-columns="toScheduleExtra"
-        :rows="toScheduleRows"
+        :rows="toScheduleList"
         :loading="loading"
         :filters="toScheduleFilters"
         empty-title="Nobody is waiting for an interview to be scheduled"
@@ -74,44 +88,6 @@
         </template>
       </DataTable>
 
-      <!-- Reschedule requests: accept a suggested time, decline, or pick another time -->
-      <DataTable
-        v-else-if="tab === 'requests'"
-        export-name="interviews-reschedule-requests"
-        :columns="requestColumns"
-        :rows="requestRows"
-        :loading="loading"
-        :filters="requestFilters"
-        empty-title="No reschedule requests waiting"
-        search-placeholder="Search candidate, job or application…"
-      >
-        <template #cell-candidate_name="{ row }">
-          <router-link :to="`/applications/${row.application}`" class="font-medium text-gray-900 hover:text-brand-700 hover:underline">{{ row.candidate_name }}</router-link>
-          <div class="font-mono text-xs text-gray-500">{{ row.application_id }}</div>
-        </template>
-        <template #cell-reschedule_preferences="{ row }">
-          <div class="flex flex-col gap-1">
-            <span
-              v-for="t in preferredTimes(row)"
-              :key="t"
-              class="w-fit whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium"
-              :class="dayjs(t).isAfter(dayjs()) ? 'bg-amber-50 text-amber-900' : 'bg-gray-100 text-gray-400 line-through'"
-            >
-              {{ dayjs(t).format('ddd DD MMM, h:mm A') }}
-            </span>
-          </div>
-        </template>
-        <template #cell-rsvp_reason="{ value }">
-          <span class="line-clamp-3 max-w-[18rem] text-gray-700" :title="value">{{ value || '—' }}</span>
-        </template>
-        <template #actions="{ row }">
-          <div class="flex items-center justify-end gap-1.5">
-            <Button size="sm" variant="solid" icon-left="check" :class="BTN_BRAND" @click="openDecision(row, 'Accept')">Accept</Button>
-            <Button size="sm" variant="outline" theme="red" icon-left="x" @click="openDecision(row, 'Decline')">Reject</Button>
-            <Button size="sm" variant="outline" icon-left="calendar" @click="Object.assign(editDialog, { open: true, interview: row })">Reschedule</Button>
-          </div>
-        </template>
-      </DataTable>
 
       <!-- Cancelled: kept for the record; nothing more can be done with them here -->
       <DataTable
@@ -154,55 +130,62 @@
       </DataTable>
 
       <template v-else>
-      <!-- Final interview: candidates whose Round 1 is done wait here first,
-           then their scheduled final interviews are listed below. -->
-      <section v-if="tab === 'final'" class="mb-6">
-        <div class="mb-2 flex flex-wrap items-baseline justify-between gap-2">
-          <h2 class="text-sm font-semibold text-gray-900">
-            Waiting for a final interview
-            <span class="ml-1 rounded-full bg-brand-50 px-1.5 text-xs font-semibold text-brand-700">{{ finalWaitingRows.length }}</span>
-          </h2>
-          <p class="text-xs text-gray-500">Round 1 is done. Schedule the final interview with the job's Selection Committee.</p>
-        </div>
+      <!-- Reschedule: requests to answer first, then interviews already
+           rescheduled or edited (those stay on Scheduled / Completed too). -->
+      <section v-if="tab === 'reschedule'" class="mb-6">
+        <h2 class="mb-2 text-sm font-semibold text-gray-900">
+          Requests to answer
+          <span class="ml-1 rounded-full px-1.5 text-xs font-semibold" :class="requestRows.length ? 'bg-amber-500 text-white' : 'bg-gray-100 text-gray-600'">{{ requestRows.length }}</span>
+        </h2>
+        <!-- Reschedule requests: accept a suggested time, decline, or pick another time -->
         <DataTable
-          export-name="interviews-final-waiting"
-          :columns="finalWaitingColumns"
-          :rows="finalWaitingRows"
+          export-name="interviews-reschedule-requests"
+          :columns="requestColumns"
+          :rows="requestRows"
           :loading="loading"
-          empty-title="Nobody is waiting for a final interview"
+          :filters="requestFilters"
+          empty-title="No reschedule requests waiting"
           search-placeholder="Search candidate, job or application…"
         >
-          <template #cell-application_id="{ row }">
-            <router-link :to="`/applications/${row.name}`" class="font-mono text-xs text-gray-700 hover:text-brand-700 hover:underline">{{ row.application_id }}</router-link>
-          </template>
           <template #cell-candidate_name="{ row }">
-            <span class="font-medium text-gray-900">{{ row.candidate_name }}</span>
-            <div v-if="row.interview_history" class="text-xs text-gray-500">{{ row.interview_history }}</div>
+            <router-link :to="`/applications/${row.application}`" class="font-medium text-gray-900 hover:text-brand-700 hover:underline">{{ row.candidate_name }}</router-link>
+            <div class="font-mono text-xs text-gray-500">{{ row.application_id }}</div>
           </template>
-          <template #cell-committee="{ row }">
-            <span class="rounded-full px-2 py-0.5 text-xs font-medium" :class="row.has_committee ? 'bg-green-50 text-green-700' : 'bg-orange-50 text-orange-700'">
-              {{ row.has_committee ? 'Set up' : 'Not set up' }}
-            </span>
+          <template #cell-reschedule_preferences="{ row }">
+            <div class="flex flex-col gap-1">
+              <span
+                v-for="t in preferredTimes(row)"
+                :key="t"
+                class="w-fit whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium"
+                :class="dayjs(t).isAfter(dayjs()) ? 'bg-amber-50 text-amber-900' : 'bg-gray-100 text-gray-400 line-through'"
+              >
+                {{ dayjs(t).format('ddd DD MMM, h:mm A') }}
+              </span>
+            </div>
           </template>
-          <template #bulk-actions="{ rows: chosen, clear }">
-            <Button size="sm" variant="solid" icon-left="calendar" :class="BTN_BRAND" @click="openSchedule(chosen, clear)">Schedule final interview</Button>
+          <template #cell-rsvp_reason="{ value }">
+            <span class="line-clamp-3 max-w-[18rem] text-gray-700" :title="value">{{ value || '—' }}</span>
           </template>
           <template #actions="{ row }">
-            <Button size="sm" variant="solid" icon-left="calendar" :class="BTN_BRAND" @click="openSchedule([row])">Schedule final</Button>
+            <div class="flex items-center justify-end gap-1.5">
+              <Button size="sm" variant="solid" icon-left="check" :class="BTN_BRAND" @click="openDecision(row, 'Accept')">Accept</Button>
+              <Button size="sm" variant="outline" theme="red" icon-left="x" @click="openDecision(row, 'Decline')">Reject</Button>
+              <Button size="sm" variant="outline" icon-left="calendar" @click="Object.assign(editDialog, { open: true, interview: row })">Reschedule</Button>
+            </div>
           </template>
         </DataTable>
         <h2 class="mb-2 mt-6 text-sm font-semibold text-gray-900">
-          Scheduled final interviews
-          <span class="ml-1 rounded-full bg-gray-100 px-1.5 text-xs font-semibold text-gray-600">{{ finalRows.length }}</span>
+          Rescheduled / edited
+          <span class="ml-1 rounded-full bg-gray-100 px-1.5 text-xs font-semibold text-gray-600">{{ changedRows.length }}</span>
         </h2>
       </section>
       <DataTable
         :key="tab"
         :export-name="LIST[tab].exportName"
-        :columns="LIST[tab].columns"
+        :columns="round === 'all' ? LIST[tab].columns : LIST[tab].roundColumns"
         :rows="LIST[tab].rows.value"
         :loading="loading"
-        :filters="LIST[tab].filters"
+        :filters="round === 'all' ? LIST[tab].filters : LIST[tab].roundFilters"
         clickable
         :empty-title="LIST[tab].empty"
         search-placeholder="Search candidate, job or application…"
@@ -244,7 +227,7 @@
               v-if="rsvpLabel(row.rsvp_status) === 'Reschedule Requested' && isOpen(row)"
               type="button"
               class="mt-1 text-xs font-medium text-brand-700 hover:underline"
-              @click.stop="tab = 'requests'"
+              @click.stop="tab = 'reschedule'"
             >
               Answer request
             </button>
@@ -262,6 +245,7 @@
             <a v-if="row.meeting_link && isOpen(row)" :href="row.meeting_link" target="_blank" rel="noopener">
               <Button size="sm" variant="outline" icon-left="video">Join</Button>
             </a>
+            <Button v-if="isOpen(row)" size="sm" variant="outline" icon-left="calendar" @click="Object.assign(editDialog, { open: true, interview: row })">Reschedule</Button>
             <Dropdown :options="rowMenu(row)" placement="right">
               <Button size="sm" variant="ghost" icon="more-horizontal" :aria-label="`Actions for ${row.candidate_name}`" />
             </Dropdown>
@@ -302,55 +286,54 @@ const router = useRouter()
 const rows = ref([])
 const toSchedule = ref([])
 const toScheduleCount = computed(() => toSchedule.value.reduce((n, j) => n + j.candidates.length, 0))
+// Round switch: narrows every tab (round_type on interviews, next_round on
+// candidates to schedule).
+const ROUNDS = [
+  { key: 'all', label: 'All rounds' },
+  { key: 'HR Interaction', label: 'Round 1 (HR)' },
+  { key: 'Final', label: 'Final interview' },
+]
+const round = ref('all')
+const inRound = (r) => round.value === 'all' || (r.round_type || r.next_round) === round.value
 const TABS = [
-  // In workflow order: waiting, booked, changed, called off.
+  // In workflow order: waiting, booked, moved, done, called off.
   { key: 'to_schedule', label: 'To schedule' },
-  { key: 'requests', label: 'Reschedule requests' },
   { key: 'scheduled', label: 'Scheduled' },
-  { key: 'final', label: 'Final interview' },
-  { key: 'changed', label: 'Rescheduled / edited' },
+  { key: 'reschedule', label: 'Reschedule' },
+  { key: 'completed', label: 'Completed' },
   { key: 'cancelled', label: 'Cancelled' },
 ]
 const tab = ref('scheduled')
 // Most HR assessors per Round 1 interview (Pathways Settings), sent with each row.
 const assessorLimit = computed(() => rows.value[0]?.hr_assessor_limit || 2)
-// Scheduled tab: open and completed interviews; cancelled ones have their own tab.
+// Not cancelled: open and completed interviews (all rounds, for loading).
 const activeRows = computed(() => rows.value.filter((r) => r.status !== 'Cancelled'))
-const cancelledRows = computed(() => rows.value.filter((r) => r.status === 'Cancelled'))
+// Scheduled: still to take place (or to be marked completed).
+const scheduledRows = computed(() => activeRows.value.filter((r) => isOpen(r) && inRound(r)))
+const completedRows = computed(() => activeRows.value.filter((r) => r.status === 'Completed' && inRound(r)))
+const cancelledRows = computed(() => rows.value.filter((r) => r.status === 'Cancelled' && inRound(r)))
 // Reschedule requests: open interviews whose candidate asked for another
 // time, oldest request first, to answer from here.
 const requestRows = computed(() =>
   activeRows.value
-    .filter((r) => r.rsvp_label === 'Reschedule Requested' && isOpen(r))
+    .filter((r) => r.rsvp_label === 'Reschedule Requested' && isOpen(r) && inRound(r))
     .sort((a, b) => String(a.rsvp_responded_on || '').localeCompare(String(b.rsvp_responded_on || ''))),
 )
-// Final interview tab, top: Round 1 done, final not yet scheduled (they are
-// on To schedule too).
-const finalWaitingRows = computed(() => toScheduleRows.value.filter((r) => r.next_round === 'Final'))
-const finalWaitingColumns = [
-  { key: 'application_id', label: 'Candidate ID' },
-  { key: 'candidate_name', label: 'Candidate Name' },
-  { key: 'job_title', label: 'Job Opening' },
-  { key: 'track', label: 'Track' },
-  { key: 'committee', label: 'Selection Committee' },
-]
-// Final interview: the Selection Committee round only (also on Scheduled).
-const finalRows = computed(() => activeRows.value.filter((r) => r.round_type === 'Final'))
 // Rescheduled / edited: open or completed interviews changed after they were
-// scheduled (they stay on the Scheduled tab too).
+// scheduled (they stay on Scheduled / Completed too).
 const changedRows = computed(() =>
   activeRows.value
-    .filter((r) => r.change_count > 0 || r.status === 'Rescheduled')
+    .filter((r) => (r.change_count > 0 || r.status === 'Rescheduled') && inRound(r))
     // Rescheduled before changes were tracked: no change_type saved.
     .map((r) => (r.change_type ? r : { ...r, change_type: 'Rescheduled' }))
     .sort((a, b) => String(b.last_changed_on || b.modified || '').localeCompare(String(a.last_changed_on || a.modified || ''))),
 )
 const tabCount = computed(() => ({
-  requests: requestRows.value.length,
-  scheduled: activeRows.value.length,
-  final: finalWaitingRows.value.length + finalRows.value.length,
-  changed: changedRows.value.length,
-  to_schedule: toScheduleCount.value,
+  // Reschedule: the badge counts requests still to answer.
+  reschedule: requestRows.value.length,
+  scheduled: scheduledRows.value.length,
+  completed: completedRows.value.length,
+  to_schedule: toScheduleList.value.length,
   cancelled: cancelledRows.value.length,
 }))
 
@@ -371,6 +354,7 @@ const toScheduleRows = computed(() =>
     })),
   ),
 )
+const toScheduleList = computed(() => toScheduleRows.value.filter(inRound))
 const toScheduleColumns = [
   { key: 'application_id', label: 'Candidate ID' },
   { key: 'candidate_name', label: 'Candidate Name' },
@@ -497,9 +481,9 @@ const filters = [
   { key: 'rsvp_label', label: 'RSVP', options: Object.keys(RSVP_TONE) },
   { key: 'job_title', label: 'Job Openings' },
 ]
-// Final interview tab: no Round column or filter (every row is Final).
-const finalColumns = columns.filter((c) => c.key !== 'round_type')
-const finalFilters = filters.filter((f) => f.key !== 'round_type')
+// One round chosen: no Round column or filter (every row is that round).
+const roundColumns = columns.filter((c) => c.key !== 'round_type')
+const roundFilters = filters.filter((f) => f.key !== 'round_type')
 
 const changeLabel = (r) => r.change_type || 'Rescheduled'
 const changedColumns = [
@@ -560,10 +544,14 @@ const cancelledFilters = [
 ]
 
 // The lists of the shared table, by tab.
+const withoutRound = (list) => list.filter((c) => c.key !== 'round_type')
 const LIST = {
-  scheduled: { rows: activeRows, columns, filters, exportName: 'interviews', empty: 'No interviews scheduled yet' },
-  final: { rows: finalRows, columns: finalColumns, filters: finalFilters, exportName: 'interviews-final', empty: 'No final interviews scheduled yet' },
-  changed: { rows: changedRows, columns: changedColumns, filters: changedFilters, exportName: 'interviews-rescheduled', empty: 'No interviews have been rescheduled or edited' },
+  scheduled: { rows: scheduledRows, columns, filters, roundColumns, roundFilters, exportName: 'interviews-scheduled', empty: 'No interviews scheduled' },
+  completed: { rows: completedRows, columns, filters, roundColumns, roundFilters, exportName: 'interviews-completed', empty: 'No completed interviews yet' },
+  reschedule: {
+    rows: changedRows, columns: changedColumns, filters: changedFilters, roundColumns: withoutRound(changedColumns), roundFilters: withoutRound(changedFilters),
+    exportName: 'interviews-rescheduled', empty: 'No interviews have been rescheduled or edited',
+  },
 }
 
 const tiles = computed(() => {
@@ -596,7 +584,7 @@ onMounted(async () => {
   await load()
   // Candidates waiting for an answer come first; with nothing scheduled
   // yet, open on the candidates waiting for an interview.
-  if (requestRows.value.length) tab.value = 'requests'
-  else if (!activeRows.value.length && toSchedule.value.length) tab.value = 'to_schedule'
+  if (requestRows.value.length) tab.value = 'reschedule'
+  else if (!scheduledRows.value.length && toScheduleList.value.length) tab.value = 'to_schedule'
 })
 </script>
