@@ -5,6 +5,7 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 from frappe.utils import get_datetime, now_datetime
+from pathways.utils.options import sort_options
 
 # Statuses that may only be reached once the linked Pre-Recruitment Green
 # Sheet has been fully approved (unless the user can override, see below).
@@ -37,8 +38,9 @@ def validate_form_rows(doc):
 			options = [o.strip() for o in (q.options or "").splitlines() if o.strip()]
 			if len(options) < 2:
 				frappe.throw(_("Screening question {0}: give at least two choices, one per line.").format(q.idx))
-			if len(options) != len(set(options)):
+			if len({o.lower() for o in options}) != len(options):
 				frappe.throw(_("Screening question {0}: choices must be unique.").format(q.idx))
+			q.options = "\n".join(sort_options(options))
 		if q.answer_type != "Yes/No":
 			q.ask_details_if_yes = 0
 		q.show_if_previous_answer = (q.show_if_previous_answer or "").strip()

@@ -23,6 +23,7 @@ from frappe import _
 
 from pathways.permissions import CANDIDATE_ROLE
 from pathways.utils.db import commit
+from pathways.utils.options import sort_options
 
 PORTAL_PATH = "/pathways/portal/applications"
 
@@ -287,7 +288,7 @@ def get_my_profile():
 	fields = ["name", "full_name", "email", "mobile_number", "date_of_birth", "gender", "address"]
 	profile = frappe.db.get_value("Candidate", name, fields, as_dict=True)
 	meta = frappe.get_meta("Candidate")
-	profile["gender_options"] = [o for o in (meta.get_field("gender").options or "").split("\n") if o]
+	profile["gender_options"] = sort_options(o for o in (meta.get_field("gender").options or "").split("\n") if o)
 	profile["applications"] = frappe.db.count("Application", {"candidate": name})
 	return profile
 

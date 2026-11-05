@@ -243,7 +243,7 @@
                   label="Gender"
                   type="select"
                   v-model="data.candidate.gender"
-                  :options="['', 'Female', 'Male', 'Prefer not to say', 'Other']"
+                  :options="['', 'Female', 'Male', 'Other', 'Prefer not to say']"
                   required
                 />
               </FormField>
@@ -709,6 +709,19 @@
         ],
       }"
     />
+    <Dialog
+      v-model="leave.open"
+      :options="{
+        title: 'Leave without saving?',
+        message: 'You have changes that are not saved as a draft yet. Save them before you leave, or they may be lost.',
+        actions: [
+          { label: 'Save as draft and leave', variant: 'solid', class: BTN_BRAND, onClick: () => answerLeave('save') },
+          { label: 'Leave without saving', theme: 'red', onClick: () => answerLeave('leave') },
+          { label: 'Stay on this page', onClick: () => answerLeave('stay') },
+        ],
+      }"
+      @close="answerLeave('stay')"
+    />
     <Dialog v-model="showInstructions" :options="{ size: '3xl' }">
       <template #body>
         <div class="flex max-h-[85vh] flex-col">
@@ -741,7 +754,7 @@
             </section>
           </div>
           <footer class="flex shrink-0 justify-end border-t bg-gray-50 px-6 py-3">
-            <Button variant="solid" :class="BTN_BRAND" @click="showInstructions = false">I have read these — start</Button>
+            <Button variant="solid" :class="BTN_BRAND" @click="showInstructions = false">OK</Button>
           </footer>
         </div>
       </template>
@@ -752,6 +765,7 @@
 <script setup>
 import BackButton from '@/components/common/BackButton.vue'
 import { computed, h, nextTick, onBeforeUnmount, onMounted, provide, reactive, ref, watch } from 'vue'
+import { onBeforeRouteLeave } from 'vue-router'
 import { Autocomplete, Button, Dialog, FeatherIcon, FormControl } from 'frappe-ui'
 import { BTN_BRAND } from '@/utils/buttonStyles'
 import dayjs from 'dayjs'
@@ -975,6 +989,9 @@ const draft = reactive({ state: 'idle', savedAt: '', restoredAt: '', error: '' }
 const showDiscard = ref(false)
 let ready = false // false while the form is being filled from a draft: that is not an edit
 let dirty = false // edited since the last successful save to the account
+// Edited since the last "Save as draft" (or, logged in, the last account
+// save): leaving the page then asks first.
+const unsaved = ref(false)
 let saving = null // the account save in flight
 let localTimer = null
 let accountTimer = null
@@ -1020,6 +1037,7 @@ function clearDraft() {
   clearTimeout(localTimer)
   clearTimeout(accountTimer)
   dirty = false
+  unsaved.value = false
   removeLocal(draftKey.value)
 }
 
@@ -1035,7 +1053,10 @@ function saveToAccount() {
       draft.savedAt = result.saved_at
       draft.error = ''
       draft.state = 'saved'
-      if (!dirty) saveLocal(true)
+      if (!dirty) {
+        saveLocal(true)
+        unsaved.value = false
+      }
     })
     .catch((e) => {
       dirty = true
@@ -1059,12 +1080,14 @@ async function saveDraftNow() {
   } else {
     draft.savedAt = savedAt
     draft.state = 'saved'
+    unsaved.value = false
   }
 }
 
 watch([() => data, answers, documents], () => {
   if (!ready || submitted.value) return
   dirty = true
+  unsaved.value = true
   clearTimeout(localTimer)
   localTimer = setTimeout(() => saveLocal(false), 600)
   if (accountDrafts.value) {
@@ -1108,6 +1131,7 @@ async function restore() {
   clearTimeout(localTimer)
   clearTimeout(accountTimer)
   dirty = false
+  unsaved.value = false
   Object.assign(draft, { state: 'idle', savedAt: '', restoredAt: '', error: '' })
   Object.assign(data, emptyData())
   for (const key of Object.keys(answers)) delete answers[key]
@@ -1171,6 +1195,39 @@ function formatSavedAt(value) {
   const at = /[zZ]$/.test(value) ? dayjs(new Date(value).toLocaleString('en-US', { timeZone: 'Asia/Kolkata' })) : dayjs(value)
   return at.format('D MMM, h:mm A [IST]')
 }
+
+// ----- leaving with unsaved changes
+// Closing the tab or reloading: the browser's own "Leave site?" prompt
+// (browsers do not show a page's own text there).
+const mustAsk = () => unsaved.value && !submitted.value
+function onBeforeUnload(event) {
+  if (!mustAsk()) return
+  event.preventDefault()
+  event.returnValue = ''
+}
+onMounted(() => window.addEventListener('beforeunload', onBeforeUnload))
+onBeforeUnmount(() => window.removeEventListener('beforeunload', onBeforeUnload))
+
+// Moving elsewhere in the portal (Back, Openings): ask in a dialog.
+const leave = reactive({ open: false, resolve: null })
+function answerLeave(choice) {
+  const resolve = leave.resolve
+  if (!resolve) return
+  leave.resolve = null
+  leave.open = false
+  resolve(choice)
+}
+onBeforeRouteLeave(async () => {
+  if (!mustAsk()) return true
+  const choice = await new Promise((resolve) => Object.assign(leave, { open: true, resolve }))
+  if (choice === 'stay') return false
+  if (choice === 'save') {
+    await saveDraftNow()
+    // A failed account save keeps the candidate here, with its error shown.
+    if (draft.state === 'error') return false
+  }
+  return true
+})
 
 onBeforeUnmount(() => {
   clearTimeout(localTimer)

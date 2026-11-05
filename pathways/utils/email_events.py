@@ -220,6 +220,43 @@ TEMPLATES = {
 		"<p>If you do not remember your password, use <a href=\"{{ reset_link }}\">Forgot password</a> on the login page "
 		"to set a new one. Please do not share your login details with anyone.</p>" + SIGN_OFF,
 	),
+	# Staff & Access: a staff login is created from Roles & Permissions.
+	"Staff Welcome": (
+		"Welcome to Pathways: your NLSIU recruitment login",
+		"<p>Dear {{ user_name }},</p>"
+		"<p>{{ added_by }} has created a Pathways login for you. Pathways is NLSIU's recruitment platform: job openings, "
+		"applications, interviews, offers and onboarding all run here.</p>"
+		"<p style=\"margin:18px 0 6px\"><b>1. Set your password</b></p>"
+		"<p style=\"margin:0 0 6px\"><a href=\"{{ set_password_link }}\" style=\"display:inline-block;background:#8a1538;color:#ffffff;"
+		"padding:9px 18px;border-radius:6px;text-decoration:none;font-weight:600\">Set my password</a></p>"
+		"<p style=\"margin:0;color:#555;font-size:13px\">This link works once{% if link_expiry %} and expires in {{ link_expiry }}{% endif %}. "
+		"If it has expired, use \"Forgot password\" on the login page.</p>"
+		"<p style=\"margin:18px 0 6px\"><b>2. Log in</b></p>"
+		"<table style=\"border-collapse:collapse;margin:0 0 6px\">"
+		"<tr><td style=\"padding:3px 16px 3px 0;color:#555\">Login page</td><td><a href=\"{{ login_link }}\">{{ login_link }}</a></td></tr>"
+		"<tr><td style=\"padding:3px 16px 3px 0;color:#555\">Username</td><td><b>{{ login_email }}</b></td></tr>"
+		"</table>"
+		"<p style=\"margin:18px 0 6px\"><b>3. Your role{{ '' if roles|length == 1 else 's' }} and what you can do</b></p>"
+		# Divs, not table rows: the template editor moves Jinja tags out of a table.
+		"{% if roles %}"
+		"{% for r in roles %}"
+		"<div style=\"border:1px solid #e5e7eb;border-radius:6px;padding:10px 12px;margin:0 0 8px;max-width:640px;font-size:14px\">"
+		"<div style=\"font-weight:600;color:#8a1538\">{{ r.title }}</div>"
+		"<div style=\"margin-top:3px\">{{ r.summary }}</div>"
+		"{% if r.sections %}<div style=\"margin-top:6px;color:#555;font-size:13px\"><b>Opens:</b> {{ r.sections|join(', ') }}</div>{% endif %}"
+		"{% if r.approvals %}<div style=\"margin-top:6px;color:#555;font-size:13px\"><b>Approves:</b><ul style=\"margin:2px 0 0;padding-left:18px\">"
+		"{% for a in r.approvals %}<li>{{ a }}</li>{% endfor %}</ul></div>{% endif %}"
+		"</div>"
+		"{% endfor %}"
+		"{% if sections %}<p style=\"margin:10px 0 0;color:#555;font-size:13px\">Your Pathways menu: {{ sections|join(' · ') }}.</p>{% endif %}"
+		"{% else %}"
+		"<p>No Pathways role has been given to you yet. You will be able to see more once the recruitment team assigns one.</p>"
+		"{% endif %}"
+		"<p style=\"margin-top:18px\">You may also be added to a job's Shortlisting or Selection Committee, or tagged on a job; you will get a "
+		"separate email each time, and see only those jobs.</p>"
+		"<p>For questions about your access, write to {{ contact_email or 'recruitment@nls.ac.in' }}. "
+		"Please do not share your login details or this email with anyone.</p>" + SIGN_OFF,
+	),
 	"Green Sheet Approval Request": (
 		"Approval needed: Green Sheet for {{ job_title }}",
 		"<p>Dear {{ recipient_name }},</p>"
@@ -579,6 +616,11 @@ EVENTS = [
 		"IT & Facilities complete a new joiner's request (laptop, NLS email ID, access card / seating). Also a bell notification to whoever confirmed the joining.",
 		"IT & Facilities Completed", {"roles": ["Pathways Recruiter"]}, True, True,
 		"candidate_name, job_title, joining_date, official_email, completed_by, joining_link, recipient_name"),
+	("Staff & Access", "staff_welcome", "Welcome: new staff login",
+		"A staff user is created from Roles & Permissions. Explains each role given and the Pathways sections it opens, with a "
+		"set-password link. Goes only to the new user: CC on this email is ignored, because it carries their set-password link.",
+		"Staff Welcome", {}, True, True,
+		"user_name, login_email, added_by, set_password_link, link_expiry, login_link, roles (title, summary, sections, approvals), sections, contact_email"),
 ]
 
 

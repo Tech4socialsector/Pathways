@@ -18,7 +18,7 @@
           <input v-model="form.notify" type="checkbox" class="rounded border-gray-300 text-brand-700 focus:ring-brand-700" />
           Email each candidate that the interview is cancelled
         </label>
-        <EmailRecipients v-if="form.notify && open" v-model="form.cc" cancelled :job-openings="jobOpenings" :candidate-names="list.map((iv) => iv.candidate_name)" />
+        <EmailRecipients v-if="form.notify && open" ref="recipients" v-model="form.cc" v-model:bcc="form.bcc" cancelled :job-openings="jobOpenings" :candidate-names="list.map((iv) => iv.candidate_name)" />
         <p v-if="form.error" class="whitespace-pre-line rounded-md bg-red-50 px-3 py-2 text-red-700">{{ form.error }}</p>
       </div>
       <div v-else-if="interview" class="flex flex-col gap-4 text-sm">
@@ -32,7 +32,7 @@
           <input v-model="form.notify" type="checkbox" class="rounded border-gray-300 text-brand-700 focus:ring-brand-700" />
           Email {{ interview.candidate_name }} that the interview is cancelled
         </label>
-        <EmailRecipients v-if="form.notify && open" v-model="form.cc" cancelled :job-openings="jobOpenings" :candidate-names="[interview.candidate_name]" />
+        <EmailRecipients v-if="form.notify && open" ref="recipients" v-model="form.cc" v-model:bcc="form.bcc" cancelled :job-openings="jobOpenings" :candidate-names="[interview.candidate_name]" />
         <p class="text-xs text-gray-500">To move it to another time instead, use Reschedule.</p>
         <p v-if="form.error" class="rounded-md bg-red-50 px-3 py-2 text-red-700">{{ form.error }}</p>
       </div>
@@ -47,7 +47,7 @@
 </template>
 
 <script setup>
-import { computed, reactive, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { Button, Dialog, FormControl } from 'frappe-ui'
 import dayjs from 'dayjs'
 import EmailRecipients from '@/components/jobs/EmailRecipients.vue'
@@ -64,21 +64,29 @@ const list = computed(() => (props.interviews.length ? props.interviews : props.
 const emit = defineEmits(['update:open', 'saved'])
 
 const jobOpenings = computed(() => [...new Set(list.value.map((iv) => iv.job_opening).filter(Boolean))])
-const form = reactive({ reason: '', notify: true, cc: [], saving: false, error: '' })
+const form = reactive({ reason: '', notify: true, cc: [], bcc: [], saving: false, error: '' })
 watch(
   () => props.open,
-  (open) => open && Object.assign(form, { reason: '', notify: true, cc: [], error: '' }),
+  (open) => open && Object.assign(form, { reason: '', notify: true, cc: [], bcc: [], error: '' }),
 )
 
+const recipients = ref(null)
+
 async function cancel() {
-  form.saving = true
   form.error = ''
+  // CC / BCC, including an address typed but not yet added with Enter.
+  const copies = form.notify ? recipients.value?.commit() ?? { cc: form.cc, bcc: form.bcc } : { cc: [], bcc: [] }
+  if (!copies) {
+    form.error = 'Correct the CC / BCC addresses first.'
+    return
+  }
+  form.saving = true
   const failed = []
   let done = 0
   try {
     for (const iv of list.value) {
       try {
-        await interviewService.setStatus(iv.name, 'Cancelled', { reason: form.reason.trim(), notify: form.notify ? 1 : 0, cc: form.notify ? form.cc : [] })
+        await interviewService.setStatus(iv.name, 'Cancelled', { reason: form.reason.trim(), notify: form.notify ? 1 : 0, cc: copies.cc, bcc: copies.bcc })
         done++
       } catch (e) {
         failed.push(`${iv.candidate_name}: ${e?.messages?.[0] || 'could not cancel'}`)

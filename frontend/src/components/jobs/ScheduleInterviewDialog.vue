@@ -77,7 +77,9 @@
         </label>
         <EmailRecipients
           v-if="form.send && open"
+          ref="recipients"
           v-model="form.cc"
+          v-model:bcc="form.bcc"
           :round-type="form.round"
           :job-openings="jobs.map((j) => j.job_opening)"
           :candidate-names="candidates.map((c) => c.candidate_name)"
@@ -138,7 +140,7 @@ const ROUND_OPTIONS = [
   { value: 'Final', label: 'Final interview' },
 ]
 const today = dayjs().format('YYYY-MM-DD')
-const form = reactive({ round: 'HR Interaction', date: '', time: '10:00', slot: 20, mode: 'Video Conference', platform: 'Microsoft Teams', otherPlatform: '', link: '', createMeet: true, location: '', rsvp: '', send: true, cc: [], assessors: [], saving: false, error: '' })
+const form = reactive({ round: 'HR Interaction', date: '', time: '10:00', slot: 20, mode: 'Video Conference', platform: 'Microsoft Teams', otherPlatform: '', link: '', createMeet: true, location: '', rsvp: '', send: true, cc: [], bcc: [], assessors: [], saving: false, error: '' })
 const inPerson = computed(() => form.mode === 'In-Person')
 // Google Meet through the Google Calendar integration (Settings > Google Meet).
 const meet = reactive({ ready: false, checked: false })
@@ -200,6 +202,7 @@ watch(
       error: '',
       send: true,
       cc: [],
+      bcc: [],
       assessors: [],
       slot: props.round === 'Final' ? 30 : 20,
       // Default to tomorrow, so the form is never left without a date.
@@ -241,9 +244,17 @@ function onCommitteeSaved() {
   committeeAdded.value = new Set([...committeeAdded.value, committeeDialog.job])
 }
 
+const recipients = ref(null)
+
 async function schedule() {
-  form.saving = true
   form.error = ''
+  // CC / BCC, including an address typed but not yet added with Enter.
+  const copies = form.send ? recipients.value?.commit() ?? { cc: form.cc, bcc: form.bcc } : { cc: [], bcc: [] }
+  if (!copies) {
+    form.error = 'Correct the CC / BCC addresses first.'
+    return
+  }
+  form.saving = true
   const start = dayjs(`${form.date} ${form.time}`)
   const step = Number(form.slot || 0)
   let index = 0
@@ -266,7 +277,8 @@ async function schedule() {
         meeting_platform: inPerson.value ? '' : platformName.value,
         rsvp_deadline: form.rsvp ? form.rsvp.replace('T', ' ') + ':00' : null,
         send_invite: form.send ? 1 : 0,
-        cc: JSON.stringify(form.send ? form.cc : []),
+        cc: JSON.stringify(copies.cc),
+        bcc: JSON.stringify(copies.bcc),
         hr_assessors: form.round === 'HR Interaction' ? JSON.stringify(form.assessors) : null,
       })
       done += r.scheduled

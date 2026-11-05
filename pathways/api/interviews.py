@@ -270,7 +270,7 @@ def _time_label(value):
 @frappe.whitelist(methods=["POST"])
 def schedule_interviews(
 	job_opening, applications, round_type, start, slot_minutes=0, mode="Video Conference", meeting_link=None,
-	meeting_platform=None, rsvp_deadline=None, send_invite=1, location=None, create_meet=0, cc=None, hr_assessors=None,
+	meeting_platform=None, rsvp_deadline=None, send_invite=1, location=None, create_meet=0, cc=None, hr_assessors=None, bcc=None,
 ):
 	"""Schedule (or reschedule) one round for several candidates. Each
 	candidate gets the next slot: start, start + slot, ... The invite (Round
@@ -281,6 +281,7 @@ def schedule_interviews(
 	_require_manage()
 	if round_type not in ROUNDS:
 		frappe.throw(_("Unknown interview round."))
+	cc, bcc = _copies(cc, bcc) if cint(send_invite) else ([], [])
 	assessors = _parse_users(hr_assessors) if round_type == "HR Interaction" else None
 	if isinstance(applications, str):
 		applications = frappe.parse_json(applications)
@@ -354,7 +355,7 @@ def schedule_interviews(
 			),
 		)
 		if cint(send_invite):
-			_send_invite(iv, app, meeting_platform, rsvp_deadline, cc=cc)
+			_send_invite(iv, app, meeting_platform, rsvp_deadline, cc=cc, bcc=bcc)
 		done.append(iv.name)
 	return {"scheduled": len(done), "interviews": done}
 
@@ -491,7 +492,25 @@ def _cancel_meet_event(iv):
 		ev.save(ignore_permissions=True)
 
 
-def _send_invite(iv, app, meeting_platform=None, rsvp_deadline=None, updated=False, note=None, cc=None):
+MAX_COPIES = 20
+
+
+def _copies(cc=None, bcc=None):
+	"""(cc, bcc) for one interview email, checked before anything is saved:
+	valid addresses, at most MAX_COPIES each, and nobody in both."""
+	from pathways.utils.communication import parse_emails
+
+	cc, bcc = parse_emails(cc), parse_emails(bcc)
+	for label, emails in (("CC", cc), ("BCC", bcc)):
+		if len(emails) > MAX_COPIES:
+			frappe.throw(_("At most {0} {1} addresses per email.").format(MAX_COPIES, label))
+	both = {e.lower() for e in cc} & {e.lower() for e in bcc}
+	if both:
+		frappe.throw(_("{0} cannot be in both CC and BCC.").format(", ".join(sorted(both))))
+	return cc, bcc
+
+
+def _send_invite(iv, app, meeting_platform=None, rsvp_deadline=None, updated=False, note=None, cc=None, bcc=None):
 	from pathways.utils.communication import candidate_email_context, send_event
 
 	when = get_datetime(iv.scheduled_datetime)
@@ -516,24 +535,26 @@ def _send_invite(iv, app, meeting_platform=None, rsvp_deadline=None, updated=Fal
 			"change_note": (note or "").strip(),
 		}
 	)
-	send_event(INVITE_EVENT[iv.round_type], "Interview", iv.name, context, candidate=candidate, cc=cc)
+	send_event(INVITE_EVENT[iv.round_type], "Interview", iv.name, context, candidate=candidate, cc=cc, bcc=bcc)
 
 
 @frappe.whitelist(methods=["POST"])
-def resend_invite(interview, meeting_platform=None, rsvp_deadline=None, cc=None):
+def resend_invite(interview, meeting_platform=None, rsvp_deadline=None, cc=None, bcc=None):
 	_require_manage()
+	cc, bcc = _copies(cc, bcc)
 	iv = frappe.get_doc("Interview", interview)
-	_send_invite(iv, frappe.get_doc("Application", iv.application), meeting_platform, rsvp_deadline, cc=cc)
+	_send_invite(iv, frappe.get_doc("Application", iv.application), meeting_platform, rsvp_deadline, cc=cc, bcc=bcc)
 	return True
 
 
 @frappe.whitelist(methods=["POST"])
-def set_interview_status(interview, status, reason=None, notify=0, cc=None):
+def set_interview_status(interview, status, reason=None, notify=0, cc=None, bcc=None):
 	"""Mark an interview Completed or Cancelled. A completed Final moves the
 	application to Interview Completed. Cancelling can email the candidate."""
 	_require_manage()
 	if status not in ("Completed", "Cancelled"):
 		frappe.throw(_("Unknown interview status."))
+	cc, bcc = _copies(cc, bcc) if cint(notify) else ([], [])
 	iv = frappe.get_doc("Interview", interview)
 	iv.status = status
 	iv.save(ignore_permissions=True)
@@ -563,7 +584,7 @@ def set_interview_status(interview, status, reason=None, notify=0, cc=None):
 				"reason": (reason or "").strip(),
 			}
 		)
-		send_event("interview_cancelled", "Interview", iv.name, context, candidate=candidate, cc=cc)
+		send_event("interview_cancelled", "Interview", iv.name, context, candidate=candidate, cc=cc, bcc=bcc)
 	return {"status": iv.status, "application_status": app.status}
 
 
@@ -627,7 +648,7 @@ def _record_change(iv, new_start, note=None):
 @frappe.whitelist(methods=["POST"])
 def update_interview(
 	interview, start=None, minutes=None, mode=None, meeting_platform=None, meeting_link=None, location=None,
-	rsvp_deadline=None, create_meet=0, send_invite=1, note=None, cc=None, hr_assessors=None,
+	rsvp_deadline=None, create_meet=0, send_invite=1, note=None, cc=None, hr_assessors=None, bcc=None,
 ):
 	"""Reschedule or edit one open interview. A new time marks it Rescheduled
 	and asks the candidate to reply again; the updated invite says it
@@ -635,6 +656,7 @@ def update_interview(
 	(None keeps them); new ones are emailed, and on a new time the others
 	get the updated details."""
 	_require_manage()
+	cc, bcc = _copies(cc, bcc) if cint(send_invite) else ([], [])
 	iv = frappe.get_doc("Interview", interview)
 	if iv.status not in ("Scheduled", "Rescheduled"):
 		frappe.throw(_("Only scheduled interviews can be changed (this one is {0}).").format(iv.status))
@@ -683,7 +705,7 @@ def update_interview(
 		comment += " " + _("Note: {0}").format(frappe.utils.escape_html(note))
 	app.add_comment("Info", comment)
 	if cint(send_invite):
-		_send_invite(iv, app, meeting_platform, rsvp_deadline, updated=True, note=note, cc=cc)
+		_send_invite(iv, app, meeting_platform, rsvp_deadline, updated=True, note=note, cc=cc, bcc=bcc)
 	if iv.round_type == "HR Interaction":
 		_notify_hr_assessors(iv, app, new_assessors)
 		if time_changed:

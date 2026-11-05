@@ -23,8 +23,8 @@ export const interviewService = {
   resendInvite(interview) {
     return callMethod('pathways.api.interviews.resend_invite', { interview })
   },
-  setStatus(interview, status, { reason = '', notify = 0, cc = [] } = {}) {
-    return callMethod('pathways.api.interviews.set_interview_status', { interview, status, reason, notify, cc: JSON.stringify(cc) })
+  setStatus(interview, status, { reason = '', notify = 0, cc = [], bcc = [] } = {}) {
+    return callMethod('pathways.api.interviews.set_interview_status', { interview, status, reason, notify, cc: JSON.stringify(cc), bcc: JSON.stringify(bcc) })
   },
   getEmailRecipients({ roundType, jobOpenings = [], cancelled = false } = {}) {
     return callMethod('pathways.api.interviews.get_email_recipients', {

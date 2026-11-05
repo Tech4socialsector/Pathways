@@ -13,6 +13,7 @@ import frappe
 from frappe import _
 
 from pathways.utils.master_setup import MASTER_SETUP, can_manage, get_active_field, get_master
+from pathways.utils.options import sort_options
 
 
 @frappe.whitelist()
@@ -131,7 +132,7 @@ def _fields(meta):
 		field["label"] = _(df.label) if df.label else ""
 		field["description"] = _(df.description) if df.description else ""
 		if df.fieldtype == "Select":
-			field["options"] = (df.options or "").split("\n")
+			field["options"] = sort_options((df.options or "").split("\n"))
 		else:
 			field["options"] = df.options
 		out.append(field)
@@ -184,7 +185,7 @@ def _filter_fields(doctype, meta, columns):
 			continue
 		seen.add(df.fieldname)
 		if df.fieldtype == "Select":
-			options = [o for o in (df.options or "").split("\n") if o]
+			options = sort_options(o for o in (df.options or "").split("\n") if o)
 		else:
 			options = sorted(
 				v for v in frappe.get_list(doctype, pluck=df.fieldname, distinct=True, limit_page_length=0) if v
@@ -303,7 +304,10 @@ def search_link(doctype, txt="", page_length=20):
 	filters = {active_field: active_value} if active_field else {}
 	if doctype == "User":
 		filters["user_type"] = "System User"
-	return desk_search_link(doctype, txt or "", filters=filters or None, page_length=min(frappe.utils.cint(page_length) or 20, 50))
+	results = desk_search_link(doctype, txt or "", filters=filters or None, page_length=min(frappe.utils.cint(page_length) or 20, 50))
+	# A-Z, so a newly added record sits in its place rather than on top.
+	order = {v: i for i, v in enumerate(sort_options(r.get("label") or r.get("value") for r in results))}
+	return sorted(results, key=lambda r: order.get(r.get("label") or r.get("value"), 0))
 
 
 @frappe.whitelist(methods=["POST"])

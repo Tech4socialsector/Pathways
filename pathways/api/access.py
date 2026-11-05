@@ -23,6 +23,9 @@ from frappe.utils import cint, validate_email_address
 from pathways.permissions import (
 	CANDIDATE_ROLE,
 	SCOPED_ROLES,
+	SELECTION_ROLE,
+	SHORTLISTING_ROLE,
+	TAGGED_ROLE,
 	get_pathways_roles,
 	has_full_access,
 )
@@ -441,6 +444,9 @@ def create_staff_user(email, first_name, last_name=None, roles=None):
 		roles = frappe.parse_json(roles)
 	roles = [r for r in (roles or []) if r in get_pathways_roles() and r != CANDIDATE_ROLE]
 
+	# Pathways' own welcome (Email Setup > Staff & Access) explains the roles;
+	# Frappe's generic one is the fallback when that email is turned off.
+	own_welcome = bool(frappe.db.get_value("Recruitment Email Rule", WELCOME_EVENT, "enabled"))
 	user = frappe.get_doc(
 		{
 			"doctype": "User",
@@ -448,10 +454,116 @@ def create_staff_user(email, first_name, last_name=None, roles=None):
 			"first_name": (first_name or "").strip() or email,
 			"last_name": (last_name or "").strip() or None,
 			"user_type": "System User",
-			"send_welcome_email": 1,
+			"send_welcome_email": 0 if own_welcome else 1,
 		}
 	)
 	user.insert()
 	if roles:
 		user.add_roles(*roles)
+	if own_welcome:
+		send_staff_welcome(user)
 	return user.name
+
+
+# ------------------------------------------------------------- welcome email
+
+WELCOME_EVENT = "staff_welcome"
+
+# What each standard role is for, in plain words. A role added later from
+# this screen gets a summary built from the sections it opens.
+ROLE_SUMMARY = {
+	"Pathways Admin": "Runs Pathways end to end: job openings, applications, interviews, offers, onboarding and the master setup. "
+	"Can also step in on an approval when the approver is away.",
+	"Pathways Recruiter": "Manages recruitment day to day: creates job openings and green sheets, screens applications, "
+	"schedules interviews and sends the candidate emails.",
+	"Pathways PNCO": "People and Culture Office: reviews green sheets, verifies new joiners' documents and supports offers and joining.",
+	"Pathways Director People Culture": "Oversees People and Culture recruitment and approves green sheets when they reach your step.",
+	"Pathways Dean Academics": "Approves faculty recruitment green sheets when they reach your step.",
+	"Pathways Dean Research": "Approves research recruitment green sheets when they reach your step.",
+	"Pathways Senior Manager Research": "Raises and approves research recruitment green sheets.",
+	"Pathways CFO": "Reviews the budget side of recruitment: approves green sheets when they reach your step and panel honorarium.",
+	"Pathways Registrar": "Approves green sheets, signs corrigenda and appointment orders.",
+	"Pathways Vice Chancellor": "Gives the final approval on recruitment green sheets.",
+	SHORTLISTING_ROLE: "Scores and shortlists applications for the jobs whose Shortlisting Committee you are on. You see only those jobs.",
+	SELECTION_ROLE: "Interviews and scores candidates for the jobs whose Selection Committee you are on, and the Round 1 interviews "
+	"you are asked to assess, from the Interview Panel page.",
+	"Pathways Communications": "Publishes job notifications and advertisements, and takes them down when a job closes.",
+	"Pathways IT Facilities": "Sets up a new joiner's laptop, NLS email ID, access card and seating from the IT Requests page.",
+	TAGGED_ROLE: "Reads the applications and documents of the jobs you are tagged on (\"Shared with\").",
+}
+
+
+def role_guide(roles):
+	"""[{title, summary, sections, approvals}] for the welcome email: what
+	each Pathways role is for, the sidebar sections its permissions open
+	and the approval steps it takes."""
+	pathways_roles = get_pathways_roles()
+	roles = sorted(r for r in roles or [] if r in pathways_roles and r != CANDIDATE_ROLE)
+	perms = {item["doctype"]: _role_rows(item["doctype"]) for item in MENU_ITEMS}
+	chains = frappe.get_all(
+		"Approval Chain Template", filters={"is_active": 1}, fields=["name", "template_name", "applies_to", "track"], order_by="track asc, applies_to desc"
+	)
+	steps = frappe.get_all(
+		"Approval Chain Step",
+		filters={"parenttype": "Approval Chain Template", "parent": ["in", [c.name for c in chains] or [""]]},
+		fields=["parent", "sequence", "approver_type", "approver_role", "approver_label"],
+	)
+	guide = []
+	for role in roles:
+		sections = [item["label"] for item in MENU_ITEMS if perms[item["doctype"]].get(role, {}).get("read")]
+		if role == SELECTION_ROLE:
+			sections.append(_("Interview Panel"))
+		approvals = []
+		for chain in chains:
+			chain_steps = sorted((s for s in steps if s.parent == chain.name), key=lambda s: cint(s.sequence))
+			for i, step in enumerate(chain_steps, start=1):
+				if step.approver_type == "Role" and step.approver_role == role:
+					approvals.append(
+						_("{0} ({1} track), step {2} of {3}{4}").format(
+							_(chain.applies_to), chain.track or _("any"), i, len(chain_steps), f" as {step.approver_label}" if step.approver_label else ""
+						)
+					)
+		summary = ROLE_SUMMARY.get(role) or (
+			_("Gives you access to {0}.").format(", ".join(sections)) if sections else _("Gives you access to parts of Pathways.")
+		)
+		guide.append(
+			{"role": role, "title": role.removeprefix("Pathways "), "summary": summary, "sections": sections, "approvals": approvals}
+		)
+	return guide
+
+
+def _duration(seconds):
+	"""'48 hours', '30 minutes'; '' for no expiry."""
+	if not seconds:
+		return ""
+	value, unit = (seconds // 3600, "hour") if seconds >= 3600 else (max(seconds // 60, 1), "minute")
+	return f"{value} {unit}{'' if value == 1 else 's'}"
+
+
+def welcome_context(user, roles, added_by=None):
+	"""Placeholders of the Staff Welcome email. Makes a fresh set-password
+	link, so call it only when the email is really going out."""
+	expiry = cint(frappe.get_system_settings("reset_password_link_expiry_duration"))
+	guide = role_guide(roles)
+	return {
+		"user_name": user.get_fullname() or user.email,
+		"login_email": user.email,
+		"added_by": added_by or frappe.utils.get_fullname(frappe.session.user),
+		"set_password_link": user.reset_password(),
+		"link_expiry": _duration(expiry),
+		"login_link": frappe.utils.get_url("/login?redirect-to=/pathways"),
+		"roles": guide,
+		"sections": list(dict.fromkeys(s for r in guide for s in r["sections"])),
+	}
+
+
+def send_staff_welcome(user):
+	from pathways.utils.communication import send_event
+
+	send_event(
+		WELCOME_EVENT,
+		"User",
+		user.name,
+		welcome_context(user, frappe.get_roles(user.name)),
+		recipients=[{"email": user.email, "name": user.get_fullname()}],
+	)

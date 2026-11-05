@@ -138,12 +138,19 @@ def _new_check(app, referee, template, job):
 		frappe.throw(_("Enter the referee's name."))
 	candidate_name = frappe.db.get_value("Candidate", app.candidate, "full_name")
 	doc.candidate_name = candidate_name
+	asked = set()
 	for row in sorted(tpl.questions, key=lambda r: (cint(r.sequence), r.idx)):
+		question = _fill(row.question, candidate_name, job.job_title)
+		# Each question once, even if the template repeats one.
+		key = " ".join(question.lower().split())
+		if not key or key in asked:
+			continue
+		asked.add(key)
 		doc.append(
 			"responses",
 			{
 				"section": row.section,
-				"question_text": _fill(row.question, candidate_name, job.job_title),
+				"question_text": question,
 				"answer_type": row.answer_type or "Text",
 				"required": row.required,
 			},

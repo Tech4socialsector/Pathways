@@ -26,6 +26,7 @@ import shutil
 import frappe
 from frappe import _
 from frappe.utils import cint, flt, get_datetime, getdate, now_datetime, today, validate_email_address
+from pathways.utils.options import select_options, sort_options
 
 YES_NO = ("Yes", "No")
 
@@ -137,7 +138,7 @@ def get_form_config(job):
 			"idx": q.idx,
 			"question": q.question,
 			"answer_type": q.answer_type,
-			"options": [o.strip() for o in (q.options or "").splitlines() if o.strip()],
+			"options": sort_options(o.strip() for o in (q.options or "").splitlines() if o.strip()),
 			"mandatory": cint(q.is_mandatory),
 			"ask_details_if_yes": cint(q.ask_details_if_yes),
 			"details_label": q.details_label or _("Please describe the relevant experience in brief."),
@@ -157,7 +158,7 @@ def get_form_config(job):
 		"required_documents": get_required_documents(job),
 		"upload_rule": default_upload_rule(),
 		"sources": frappe.get_all(
-			"Candidate Source", filters={"is_active": 1}, pluck="name", order_by="creation asc"
+			"Candidate Source", filters={"is_active": 1}, pluck="name", order_by="name asc"
 		),
 		"declaration": _settings().get("application_declaration") or "",
 		"instructions": {
@@ -187,7 +188,7 @@ def get_form_sections(job):
 
 
 def _select_options(doctype, fieldname):
-	return [o for o in (frappe.get_meta(doctype).get_field(fieldname).options or "").split("\n") if o]
+	return select_options(doctype, fieldname)
 
 
 # Nature of Relationship for a referee, by track (alphabetical).
@@ -218,7 +219,7 @@ def _form_options(job):
 			"Specialization Master",
 			filters={"is_active": 1, "discipline": job.get("specialization_discipline") or ""},
 			pluck="specialization_name",
-			order_by="creation asc",
+			order_by="specialization_name asc",
 		)
 	if sections["category_disability"]:
 		options["categories"] = _select_options("Candidate", "category")

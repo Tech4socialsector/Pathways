@@ -148,6 +148,10 @@ def event_attachments(rule, reference_doctype=None, reference_name=None):
 	return list(dict.fromkeys(files))
 
 
+# Emails that carry the recipient's own credentials (set-password link).
+PRIVATE_EVENTS = frozenset({"staff_welcome"})
+
+
 def _event_parts(event, reference_doctype=None, reference_name=None, candidate=None, job_opening=None, approvers=None, extra_cc=None, extra_recipients=None, extra_bcc=None):
 	"""Everything an event's email is built from, shared by sending and
 	preview_event so a preview is exactly what goes out."""
@@ -155,6 +159,9 @@ def _event_parts(event, reference_doctype=None, reference_name=None, candidate=N
 	template = frappe.get_doc("Email Template", rule.email_template)
 	cc = [e.strip() for e in (rule.cc or "").split(",") if e.strip()]
 	cc += [e for e in extra_cc or [] if e.lower() not in {c.lower() for c in cc}]
+	if event in PRIVATE_EVENTS:
+		# Carries the recipient's own login link: nobody else gets a copy.
+		cc, extra_bcc = [], []
 	# Blind copies of this send only; anyone already in CC needs no second copy.
 	bcc = [e for e in dict.fromkeys(extra_bcc or []) if e.lower() not in {c.lower() for c in cc}]
 	# Replies go to the recruitment team (Email Setup > Reply-to address).
@@ -222,7 +229,8 @@ def _send_event(rule_event=None, reference_doctype=None, reference_name=None, co
 			frappe.sendmail(
 				recipients=[email],
 				cc=cc,
-				bcc=bcc,
+				# The recipient needs no blind copy of their own email.
+				bcc=[e for e in bcc if e.lower() != email.lower()],
 				subject=subject,
 				message=message,
 				reference_doctype=reference_doctype,

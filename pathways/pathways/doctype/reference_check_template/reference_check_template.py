@@ -15,7 +15,13 @@ class ReferenceCheckTemplate(Document):
 		if not self.questions:
 			frappe.throw(_("Add at least one question."))
 		# Keep the order staff see in the grid unless they numbered it.
+		seen = {}
 		for idx, row in enumerate(self.questions, start=1):
 			if not row.sequence:
 				row.sequence = idx
 			row.question = (row.question or "").strip()
+			# The referee should never be asked the same thing twice.
+			key = " ".join(row.question.lower().split())
+			if key in seen:
+				frappe.throw(_("Question {0} repeats question {1}: \"{2}\". Remove one of them.").format(idx, seen[key], row.question))
+			seen[key] = idx

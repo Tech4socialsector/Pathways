@@ -74,11 +74,14 @@ const rowNoun = computed(() => {
   return [...words, last.endsWith('s') ? last.slice(0, -1) : last].join(' ')
 })
 
-// "Row 2 · Registrar" — the first filled text value helps tell rows apart.
+// "2. Registrar": the first short value helps tell rows apart. Long text
+// (e.g. a reference check question) is shown in full just below, so it is
+// not repeated here; such rows read "Question 2".
 function rowTitle(row, i) {
-  const first = valueFields.value.find((cf) => ['Data', 'Link', 'Small Text'].includes(cf.fieldtype) && row[cf.fieldname])
+  const first = valueFields.value.find((cf) => ['Data', 'Link'].includes(cf.fieldtype) && row[cf.fieldname])
   const text = first ? String(row[first.fieldname]).replace(/\s+/g, ' ').trim() : ''
-  return text ? `${i + 1}. ${text.length > 60 ? `${text.slice(0, 60)}…` : text}` : `Row ${i + 1}`
+  const noun = rowNoun.value.charAt(0).toUpperCase() + rowNoun.value.slice(1)
+  return text ? `${i + 1}. ${text.length > 60 ? `${text.slice(0, 60)}…` : text}` : `${noun} ${i + 1}`
 }
 
 const add = () => emit('add-row')

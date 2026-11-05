@@ -42,7 +42,9 @@
         </label>
         <EmailRecipients
           v-if="form.send && open"
+          ref="recipients"
           v-model="form.cc"
+          v-model:bcc="form.bcc"
           :round-type="interview.round_type"
           :job-openings="interview.job_opening ? [interview.job_opening] : []"
           :candidate-names="[interview.candidate_name]"
@@ -66,7 +68,7 @@
 </template>
 
 <script setup>
-import { computed, reactive, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { Button, Dialog, FeatherIcon, FormControl } from 'frappe-ui'
 import dayjs from 'dayjs'
 import EmailRecipients from '@/components/jobs/EmailRecipients.vue'
@@ -85,7 +87,7 @@ const emit = defineEmits(['update:open', 'saved'])
 
 const PLATFORMS = ['Microsoft Teams', 'Zoom', 'Google Meet', 'Other']
 const today = dayjs().format('YYYY-MM-DD')
-const form = reactive({ date: '', time: '', minutes: 30, mode: 'Video Conference', platform: 'Microsoft Teams', otherPlatform: '', link: '', location: '', createMeet: false, rsvp: '', note: '', send: true, cc: [], assessors: [], saving: false, error: '' })
+const form = reactive({ date: '', time: '', minutes: 30, mode: 'Video Conference', platform: 'Microsoft Teams', otherPlatform: '', link: '', location: '', createMeet: false, rsvp: '', note: '', send: true, cc: [], bcc: [], assessors: [], saving: false, error: '' })
 const meet = reactive({ ready: false, checked: false })
 const inPerson = computed(() => form.mode === 'In-Person')
 const usesMeetEvent = computed(() => form.platform === 'Google Meet' && (!!props.interview?.calendar_event || (meet.ready && form.createMeet)))
@@ -111,6 +113,7 @@ watch(
       note: '',
       send: true,
       cc: [],
+      bcc: [],
       assessors: (iv.hr_assessors || []).map((a) => a.assessor),
       error: '',
     })
@@ -136,9 +139,17 @@ const blocker = computed(() => {
   return ''
 })
 
+const recipients = ref(null)
+
 async function save() {
-  form.saving = true
   form.error = ''
+  // CC / BCC, including an address typed but not yet added with Enter.
+  const copies = form.send ? recipients.value?.commit() ?? { cc: form.cc, bcc: form.bcc } : { cc: [], bcc: [] }
+  if (!copies) {
+    form.error = 'Correct the CC / BCC addresses first.'
+    return
+  }
+  form.saving = true
   try {
     await interviewService.updateInterview({
       interview: props.interview.name,
@@ -151,7 +162,8 @@ async function save() {
       create_meet: !inPerson.value && form.platform === 'Google Meet' && meet.ready && form.createMeet ? 1 : 0,
       rsvp_deadline: form.rsvp ? dayjs(form.rsvp).format('YYYY-MM-DD HH:mm:ss') : null,
       send_invite: form.send ? 1 : 0,
-      cc: JSON.stringify(form.send ? form.cc : []),
+      cc: JSON.stringify(copies.cc),
+      bcc: JSON.stringify(copies.bcc),
       note: form.note.trim(),
       hr_assessors: props.interview.round_type === 'HR Interaction' ? JSON.stringify(form.assessors) : null,
     })
