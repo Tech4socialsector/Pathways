@@ -829,10 +829,9 @@ class Demo:
 		if spec.get("thanks"):
 			when, amount, approved, paid = spec["thanks"]
 			self.at(when, self.panel_thanks, job, amount)
-			if approved:
-				self.at(approved, self.approve_honoraria, job)
-			if paid:
-				self.at(paid, self.pay_honoraria, job)
+			# The details go to Finance when the old flow approved / paid them.
+			if approved or paid:
+				self.at(approved or paid, self.send_honoraria_to_finance, job)
 		if spec.get("post_gs"):
 			self.at(spec["post_gs"][0], self.raise_post_gs, job, 0)
 			for i, when in enumerate(spec["post_gs"][1]):
@@ -1299,21 +1298,28 @@ class Demo:
 		with _as(self.s(job.raiser)):
 			send_panel_thanks(job.name)
 			for row in frappe.get_all("Panel Honorarium", {"job_opening": job.name, "is_external": 1}, ["name", "panellist"]):
-				update_honorarium(row.name, amount=amount, pan_number=fake_pan(self.rng, row.panellist), remarks="Honorarium for serving as external expert on the Selection Committee.")
+				name = frappe.utils.get_fullname(row.panellist)
+				update_honorarium(
+					row.name,
+					amount=amount,
+					pan_number=fake_pan(self.rng, row.panellist),
+					account_holder_name=name,
+					bank_account_number=str(self.rng.randint(10**11, 10**12 - 1)),
+					bank_name=self.rng.choice(["State Bank of India", "Canara Bank", "HDFC Bank", "ICICI Bank"]),
+					bank_branch="Bengaluru",
+					ifsc_code=f"{self.rng.choice(['SBIN', 'CNRB', 'HDFC', 'ICIC'])}0{self.rng.randint(100000, 999999)}",
+					remarks="Honorarium for serving as external expert on the Selection Committee.",
+				)
 
-	def approve_honoraria(self, job):
-		from pathways.api.honorarium import approve
+	def send_honoraria_to_finance(self, job):
+		from pathways.api.honorarium import send_to_finance
 
-		names = frappe.get_all("Panel Honorarium", {"job_opening": job.name, "status": "Pending"}, pluck="name")
-		with _as(self.s("lakshmi")):
-			approve(names)
-
-	def pay_honoraria(self, job):
-		from pathways.api.honorarium import mark_paid
-
-		names = frappe.get_all("Panel Honorarium", {"job_opening": job.name, "status": "Approved"}, pluck="name")
-		with _as(self.s("sanjana")):
-			mark_paid(names, payment_reference=f"NEFT/{frappe.utils.today().replace('-', '')}/{self.rng.randint(100000, 999999)}")
+		# The Finance team's address is set in Email Setup; the demo uses its own.
+		if not frappe.db.get_value("Recruitment Email Rule", "honorarium_to_finance", "extra_recipients"):
+			frappe.db.set_value("Recruitment Email Rule", "honorarium_to_finance", "extra_recipients", "finance@example.org")
+		names = frappe.get_all("Panel Honorarium", {"job_opening": job.name, "status": "Pending", "is_external": 1}, pluck="name")
+		with _as(self.s(job.raiser)):
+			send_to_finance(names)
 
 	# ------------------------------------------------------------ selection green sheet
 

@@ -9,7 +9,10 @@
         <p v-if="!preview.enabled" class="rounded-md bg-orange-50 px-3 py-2 text-orange-800">
           This email (“{{ preview.label }}”) is switched off in Email Setup, so it will not be sent.
         </p>
+        <!-- e.g. editable To / CC / BCC (then pass hide-addresses) -->
+        <slot name="header" />
         <dl class="grid grid-cols-[6rem_minmax(0,1fr)] gap-x-3 gap-y-1.5 rounded-lg border bg-gray-50 px-4 py-3">
+          <template v-if="!hideAddresses">
           <dt class="text-gray-500">To</dt>
           <dd class="text-gray-900">
             <template v-if="preview.recipients.length">
@@ -24,6 +27,7 @@
           <template v-if="preview.bcc?.length">
             <dt class="text-gray-500">BCC</dt>
             <dd class="text-gray-900">{{ preview.bcc.join(', ') }}</dd>
+          </template>
           </template>
           <template v-if="preview.reply_to">
             <dt class="text-gray-500">Reply-to</dt>
@@ -64,6 +68,8 @@ const props = defineProps({
   preview: { type: Object, default: null },
   loading: { type: Boolean, default: false },
   error: { type: String, default: '' },
+  // The page shows its own (editable) To / CC / BCC in the header slot.
+  hideAddresses: { type: Boolean, default: false },
 })
 const emit = defineEmits(['update:modelValue'])
 const open = computed({ get: () => props.modelValue, set: (v) => emit('update:modelValue', v) })

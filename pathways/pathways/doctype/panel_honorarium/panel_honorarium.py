@@ -2,9 +2,11 @@
 # For license information, please see license.txt
 
 """One row per Selection Committee panellist of a job: when they were
-thanked and where their honorarium is (workflow step 33). Rows are created
-by "Send thank-you to panel" on the consolidated score sheet; finance
-approves and records the payment from the Honorarium page."""
+thanked and, for external experts, their honorarium (workflow step 33).
+Rows are created by "Send thank-you to panel" on the consolidated score
+sheet; the recruitment team enters the amount, PAN and bank details on the
+Honorarium page and sends them to the Finance team. Internal panellists'
+rows are Not applicable and only track the thank-you."""
 
 import re
 
@@ -14,6 +16,8 @@ from frappe.model.document import Document
 from frappe.utils import flt
 
 PAN_PATTERN = re.compile(r"^[A-Z]{5}[0-9]{4}[A-Z]$")
+IFSC_PATTERN = re.compile(r"^[A-Z]{4}0[A-Z0-9]{6}$")
+ACCOUNT_PATTERN = re.compile(r"^[0-9]{6,18}$")
 
 
 class PanelHonorarium(Document):
@@ -29,24 +33,13 @@ class PanelHonorarium(Document):
 			self.pan_number = self.pan_number.strip().upper()
 			if not PAN_PATTERN.match(self.pan_number):
 				frappe.throw(_("{0} is not a valid PAN (e.g. ABCDE1234F).").format(self.pan_number))
+		if self.ifsc_code:
+			self.ifsc_code = self.ifsc_code.strip().upper()
+			if not IFSC_PATTERN.match(self.ifsc_code):
+				frappe.throw(_("{0} is not a valid IFSC code (e.g. SBIN0001234).").format(self.ifsc_code))
+		if self.bank_account_number:
+			self.bank_account_number = re.sub(r"[\s-]", "", self.bank_account_number)
+			if not ACCOUNT_PATTERN.match(self.bank_account_number):
+				frappe.throw(_("The account number should be 6 to 18 digits."))
 		if self.status == "Not applicable":
 			self.amount = 0
-		if self.status == "Paid" and not self.paid_on:
-			self.paid_on = frappe.utils.today()
-		if self.status == "Approved" and self.has_value_changed("status"):
-			# Who may approve is configured in Pathways Settings > Honorarium.
-			if not can_approve():
-				frappe.throw(_("You are not an honorarium approver (Pathways Settings > Honorarium)."), frappe.PermissionError)
-			self.approved_by = frappe.session.user
-			self.approved_on = frappe.utils.now_datetime()
-		if self.status == "Paid" and not self.approved_by:
-			frappe.throw(_("Approve the honorarium before marking it paid."))
-		if self.status == "Pending":
-			self.approved_by = self.approved_on = None
-
-
-def can_approve(user=None):
-	from pathways.permissions import has_duty
-
-	user = user or frappe.session.user
-	return user == "Administrator" or "System Manager" in frappe.get_roles(user) or has_duty("honorarium_approver_roles", user)

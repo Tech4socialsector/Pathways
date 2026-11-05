@@ -151,6 +151,9 @@
             <p v-if="form.on_behalf" class="mt-1.5 text-xs text-gray-500">Typing in {{ form.panellist_name }}'s signed form. It is saved as their score, noting that you entered it.</p>
           </div>
 
+          <p v-if="form.override_reason" class="flex items-start gap-2 border-b bg-amber-50 px-5 py-2.5 text-sm text-amber-800">
+            <FeatherIcon name="unlock" class="mt-0.5 h-4 w-4 shrink-0" />{{ form.override_reason }}
+          </p>
           <p v-if="form.locked_reason" class="flex items-start gap-2 border-b bg-orange-50 px-5 py-2.5 text-sm text-orange-800">
             <FeatherIcon name="lock" class="mt-0.5 h-4 w-4 shrink-0" />{{ form.locked_reason }}
           </p>
@@ -192,17 +195,9 @@
                 <div class="absolute inset-y-0 w-0.5 bg-gray-500" :style="{ left: `${form.rubric.pass_percent}%` }" :title="isHr ? 'Pass mark' : 'Needed for an offer'" />
               </div>
               <div class="mt-1 text-xs" :class="!complete ? 'text-gray-500' : meetsBar ? 'text-green-700' : 'text-orange-700'">
-                {{ fmt(percent) }}% · {{ !complete ? 'Score every criterion' : isHr ? `${meetsBar ? 'At or above' : 'Below'} ${fmt(form.rubric.pass_percent)}% of the HR sheet` : meetsBar ? 'Meets the bar for an offer' : `Below the ${fmt(form.rubric.pass_percent)}% needed for an offer` }}
+                {{ scoreLine }}
               </div>
             </div>
-
-            <FormControl
-              v-if="form.ask_specialization"
-              label="Area of specialization"
-              v-model="extra.area"
-              :disabled="!form.can_score"
-              placeholder="e.g. Constitutional law, Financial reporting"
-            />
 
             <div v-if="isHr">
               <div class="mb-1.5 text-xs font-medium text-gray-700">HR outcome</div>
@@ -314,7 +309,7 @@ const isHr = computed(() => !!form.value?.is_hr)
 const loading = ref(false)
 const error = ref('')
 const scores = reactive({})
-const extra = reactive({ verdict: '', hrOutcome: '', salary: '', notice: '', comments: '', area: '', signature: '', confirm: false })
+const extra = reactive({ verdict: '', hrOutcome: '', salary: '', notice: '', comments: '', signature: '', confirm: false })
 const saving = ref(false)
 const saveError = ref('')
 
@@ -340,6 +335,13 @@ const complete = computed(() => !!form.value && form.value.rubric.criteria.every
 const total = computed(() => (form.value?.rubric.criteria || []).reduce((s, c) => s + (invalid(c) ? 0 : num(scores[c.label]) || 0), 0))
 const percent = computed(() => (form.value?.rubric.max_score ? (total.value * 100) / form.value.rubric.max_score : 0))
 const meetsBar = computed(() => complete.value && percent.value >= (form.value?.rubric.pass_percent || 50))
+// e.g. "Scored 88.33% · above the 50% pass mark"
+const scoreLine = computed(() => {
+  if (!complete.value) return `${fmt(percent.value)}% so far · score every criterion to see the result`
+  const bar = fmt(form.value.rubric.pass_percent)
+  const side = meetsBar.value ? 'above' : 'below'
+  return isHr.value ? `Scored ${fmt(percent.value)}% · ${side} the ${bar}% pass mark` : `Scored ${fmt(percent.value)}% · ${side} the ${bar}% needed for an offer`
+})
 const blocker = computed(() => {
   if (!complete.value) return 'Score every criterion.'
   if (isHr.value ? !extra.hrOutcome : !extra.verdict) return isHr.value ? 'Choose the HR outcome.' : 'Choose your recommendation.'
@@ -360,7 +362,6 @@ async function load(name, panelist = null) {
     Object.assign(extra, {
       verdict: f.mine?.verdict || '',
       comments: f.mine?.additional_comments || '',
-      area: f.mine?.area_of_specialization || '',
       hrOutcome: f.mine?.hr_outcome || '',
       salary: f.mine?.expected_salary || '',
       notice: f.mine?.notice_period || '',
@@ -399,7 +400,6 @@ async function save() {
       scores: Object.fromEntries(form.value.rubric.criteria.map((c) => [c.label, num(scores[c.label])])),
       verdict: extra.verdict,
       additionalComments: extra.comments,
-      areaOfSpecialization: extra.area,
       hrOutcome: isHr.value ? extra.hrOutcome : null,
       expectedSalary: extra.salary,
       noticePeriod: extra.notice,

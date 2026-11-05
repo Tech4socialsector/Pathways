@@ -12,7 +12,7 @@ const props = defineProps({
 
 const POSITIVE = [
   'Approved', 'Shortlisted', 'Selected', 'Offer Accepted', 'Verified', 'Joined', 'Completed', 'Advertised',
-  'Accepted', 'Complete', 'Paid', 'Signed by Registrar', 'Published',
+  'Accepted', 'Complete', 'Paid', 'Signed by Registrar', 'Published', 'Sent to Finance',
 ]
 const NEGATIVE = [
   'Not Selected', 'Withdrawn', 'Declined', 'Returned for Revision', 'Expired', 'Rejected', 'Cancelled', 'No-show',

@@ -155,14 +155,12 @@ class TestSelectionComms(IntegrationTestCase):
 	# ------------------------------------------------------------ thanks + honorarium
 
 	def test_thanks_sent_once_and_honorarium_rows(self):
-		"""Step 33: the thank-you goes to each panellist once and creates one honorarium row each.
-		With 'external experts only', internal panellists are Not applicable and external ones get
-		the default amount. A second run sends and creates nothing.
+		"""Step 33: the thank-you goes to each panellist once and creates one row each. Only external
+		experts get an honorarium (the default amount); internal panellists are Not applicable and are
+		not listed on the Honorarium page. A second run sends and creates nothing.
 		"""
 		settings = frappe.get_single("Pathways Settings")
-		settings.honorarium_internal_amount = 1000
 		settings.honorarium_external_amount = 5000
-		settings.honorarium_external_only = 1
 		settings.flags.ignore_mandatory = True
 		settings.save(ignore_permissions=True)
 
@@ -187,6 +185,8 @@ class TestSelectionComms(IntegrationTestCase):
 		self.assertEqual(rows[self.panel[1]].amount, 5000)
 		self.assertTrue(all(r.thanks_sent_on for r in rows.values()))
 		self.assertEqual(honorarium.panel_thanks_pending(self.job.name)["pending"], 0)
+		listed = {r.panellist for r in honorarium.get_honoraria(self.job.name)["rows"]}
+		self.assertEqual(listed, {self.panel[1], self.panel[2]})
 
 		with patch("pathways.utils.communication.send_event") as send:
 			again = honorarium.send_panel_thanks(self.job.name)
@@ -195,27 +195,46 @@ class TestSelectionComms(IntegrationTestCase):
 		send.assert_not_called()
 		self.assertEqual(frappe.db.count("Panel Honorarium", {"job_opening": self.job.name}), 3)
 
-	def test_honorarium_approve_then_paid(self):
-		"""Step 33: an honorarium cannot be marked paid before approval. Approval records the approver
-		and normalises the PAN; once Paid it records the reference and can no longer be edited.
+	def test_honorarium_details_sent_to_finance(self):
+		"""Step 33: an external expert's honorarium goes to Finance only once the amount, PAN and bank
+		details are entered; PAN and IFSC are normalised and checked; the preview is the email that is
+		sent, and sending marks the record Sent to Finance.
 		"""
 		with patch("pathways.utils.communication.send_event"):
 			honorarium.send_panel_thanks(self.job.name)
 		name = frappe.db.get_value("Panel Honorarium", {"job_opening": self.job.name, "panellist": self.panel[1]}, "name")
+		frappe.db.set_value("Recruitment Email Rule", "honorarium_to_finance", {"enabled": 1, "extra_recipients": "finance@example.com"})
+
+		# Details missing: no preview, and the send skips it.
 		honorarium.update_honorarium(name, amount=2500, pan_number="abcde1234f")
-		# Paid before approval is refused.
-		self.assertEqual(honorarium.mark_paid([name])["updated"], 0)
-		self.assertEqual(honorarium.approve([name])["updated"], 1)
+		self.assertRaises(frappe.ValidationError, honorarium.preview_finance_email, name)
+		with patch("frappe.sendmail") as sendmail:
+			self.assertEqual(honorarium.send_to_finance([name])["sent"], 0)
+		sendmail.assert_not_called()
+
+		self.assertRaises(frappe.ValidationError, honorarium.update_honorarium, name, ifsc_code="BAD")
+		honorarium.update_honorarium(
+			name, account_holder_name="Expert One", bank_account_number="1234 5678 9012", bank_name="Canara Bank", ifsc_code="cnrb0001234"
+		)
 		doc = frappe.get_doc("Panel Honorarium", name)
-		self.assertEqual(doc.status, "Approved")
-		self.assertEqual(doc.approved_by, "Administrator")
-		self.assertEqual(doc.pan_number, "ABCDE1234F")
-		self.assertEqual(honorarium.mark_paid([name], payment_reference="UTR123")["updated"], 1)
+		self.assertEqual((doc.pan_number, doc.ifsc_code, doc.bank_account_number), ("ABCDE1234F", "CNRB0001234", "123456789012"))
+
+		preview = honorarium.preview_finance_email(name)
+		self.assertEqual([r["email"] for r in preview["recipients"]], ["finance@example.com"])
+		self.assertIn("123456789012", preview["body"])
+		self.assertIn("CNRB0001234", preview["body"])
+
+		# To / CC / BCC as edited in the preview, not Email Setup's.
+		with patch("frappe.sendmail") as sendmail:
+			self.assertEqual(honorarium.send_to_finance([name], to="accounts@example.com", cc="pnc@example.com", bcc="audit@example.com")["sent"], 1)
+		kwargs = sendmail.call_args.kwargs
+		self.assertEqual((kwargs["recipients"], kwargs["cc"], kwargs["bcc"]), (["accounts@example.com"], ["pnc@example.com"], ["audit@example.com"]))
+		self.assertIn("CNRB0001234", kwargs["message"])
+		self.assertEqual(frappe.db.get_value("Recruitment Email Rule", "honorarium_to_finance", "extra_recipients"), "finance@example.com")
 		doc.reload()
-		self.assertEqual(doc.status, "Paid")
-		self.assertEqual(doc.payment_reference, "UTR123")
-		self.assertTrue(doc.paid_on)
-		self.assertRaises(frappe.ValidationError, honorarium.update_honorarium, name, amount=1)
+		self.assertEqual(doc.status, "Sent to Finance")
+		self.assertEqual(doc.sent_to_finance_by, "Administrator")
+		self.assertTrue(doc.sent_to_finance_on)
 
 	def test_menu_item_registered(self):
 		"""The Panel Honorarium page is in the app menu."""

@@ -256,7 +256,6 @@
                           <div class="mt-1 text-xs text-gray-600">
                             <span v-for="c in data.criteria" :key="c.label" class="mr-3">{{ c.label }} {{ fmt(r.scores[p.user].criteria[c.label]) }}/{{ fmt(c.max_score) }}</span>
                           </div>
-                          <div v-if="r.scores[p.user].area" class="mt-1 text-xs text-gray-600">Specialization: {{ r.scores[p.user].area }}</div>
                           <p class="mt-1.5 whitespace-pre-line text-gray-700">{{ r.scores[p.user].comments || 'No comments.' }}</p>
                           <div v-if="r.scores[p.user].entered_by" class="mt-1 text-[11px] text-gray-400">Entered by {{ r.scores[p.user].entered_by }}</div>
                         </template>

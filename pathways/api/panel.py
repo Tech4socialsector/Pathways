@@ -22,8 +22,12 @@ VERDICTS = ("Recommended", "Waitlist", "Not Recommended")
 HR_OUTCOMES = ("Recommend for final", "Hold", "Not recommended")
 # Decided applications: their scores are part of the record and stay as they are.
 DECIDED = ("Selected", "Not Selected", "Offer Extended", "Offer Accepted", "Offer Declined", "Documents Pending", "Documents Verified", "Joined", "Withdrawn")
-# The Admin and Faculty forms ask for the candidate's area of specialization.
-SPECIALIZATION_TRACKS = ("Admin", "Faculty")
+# May still correct scores after a decision is recorded for the candidate.
+SCORE_OVERRIDE_ROLES = ("Pathways Admin", "System Manager")
+
+
+def _can_override_decision():
+	return frappe.session.user == "Administrator" or bool(set(SCORE_OVERRIDE_ROLES) & set(frappe.get_roles()))
 
 
 def _my_committees(user=None):
@@ -172,10 +176,14 @@ def get_assessment_form(interview, panelist=None):
 	is_panellist = user in members
 	on_behalf = panelist != user
 	locked = ""
+	# An administrator may still correct the scores after a decision; the
+	# change is noted on the application (submit_assessment).
+	decided = app.selection_outcome or app.status if (app.status in DECIDED or app.selection_outcome) else ""
+	override = bool(decided) and _can_override_decision()
 	if iv.status == "Cancelled":
 		locked = _("This interview was cancelled.")
-	elif app.status in DECIDED or app.selection_outcome:
-		locked = _("A decision has been recorded for this candidate ({0}), so the scores can no longer be changed.").format(app.selection_outcome or app.status)
+	elif decided and not override:
+		locked = _("A decision has been recorded for this candidate ({0}), so the scores can no longer be changed.").format(decided)
 	elif not members:
 		locked = _("This interview has no HR assessors yet.") if is_hr else _("This job has no Selection Committee yet.")
 	elif panelist not in members:
@@ -196,7 +204,6 @@ def get_assessment_form(interview, panelist=None):
 			"max_score": sum(flt(c.max_score) for c in rubric.criteria),
 			"criteria": [{"label": c.criterion_label, "max_score": flt(c.max_score), "guidance": c.guidance_text or "", "score": given.get(c.criterion_label)} for c in rubric.criteria],
 		},
-		"ask_specialization": 1 if track in SPECIALIZATION_TRACKS and not is_hr else 0,
 		"is_hr": 1 if is_hr else 0,
 		"hr_outcomes": list(HR_OUTCOMES),
 		# Pathways Settings: a drawn signature is needed to submit (not for paper forms typed in).
@@ -209,6 +216,9 @@ def get_assessment_form(interview, panelist=None):
 		} if mine else None,
 		"can_score": 0 if locked else 1,
 		"locked_reason": locked,
+		"override_reason": _(
+			"A decision has been recorded for this candidate ({0}). As an administrator you can still correct the scores; the change is noted on the application."
+		).format(decided) if override and not locked else "",
 		"panelist": panelist,
 		"panellist_name": frappe.utils.get_fullname(panelist),
 		"on_behalf": 1 if on_behalf else 0,
@@ -286,7 +296,6 @@ def submit_assessment(
 			"entered_by": frappe.session.user if form["on_behalf"] else None,
 			"verdict": verdict or None,
 			"recommendation": (additional_comments or "").strip() or None,
-			"area_of_specialization": (area_of_specialization or "").strip() or None,
 			"panelist_signature_confirmed": 1,
 			"hr_outcome": hr_outcome if is_hr else None,
 			"expected_salary": ((expected_salary or "").strip() or None) if is_hr else None,
@@ -300,6 +309,17 @@ def submit_assessment(
 	# Access was checked above: a member of this interview's committee.
 	doc.flags.ignore_permissions = True
 	doc.save()
+	if form["override_reason"]:
+		frappe.get_doc("Application", form["application"]["name"]).add_comment(
+			"Info",
+			_("{0} changed {1}'s interview scores after the decision ({2}): total {3}/{4}.").format(
+				frappe.utils.get_fullname(frappe.session.user),
+				form["panellist_name"],
+				form["application"].get("selection_outcome") or form["application"]["status"],
+				frappe.format(doc.total_score),
+				frappe.format(doc.max_score),
+			),
+		)
 	return {"name": doc.name, "total_score": doc.total_score, "max_score": doc.max_score, "score_percent": doc.score_percent}
 
 
@@ -587,7 +607,7 @@ def export_consolidated(job_opening, interview_date=None):
 	ws.freeze_panes = "D5"
 
 	notes = wb.create_sheet("Panel Comments")
-	head = ["Candidate", "Candidate ID", "Panellist", "Total", "Recommendation", "Area of Specialization", "Additional Comments", "Entered By"]
+	head = ["Candidate", "Candidate ID", "Panellist", "Total", "Recommendation", "Additional Comments", "Entered By"]
 	notes.append(head)
 	for c in range(1, len(head) + 1):
 		cell = notes.cell(1, c)
@@ -596,8 +616,8 @@ def export_consolidated(job_opening, interview_date=None):
 		for p in panel:
 			s = r["scores"].get(p["user"])
 			if s:
-				notes.append([r["candidate_name"], r["application_id"], p["full_name"], s["total"], s["verdict"] or "", s["area"] or "", s["comments"] or "", s["entered_by"]])
-	for c, w in zip("ABCDEFGH", (28, 22, 24, 8, 18, 24, 60, 20)):
+				notes.append([r["candidate_name"], r["application_id"], p["full_name"], s["total"], s["verdict"] or "", s["comments"] or "", s["entered_by"]])
+	for c, w in zip("ABCDEFG", (28, 22, 24, 8, 18, 60, 20)):
 		notes.column_dimensions[c].width = w
 	for row in notes.iter_rows(min_row=2):
 		for cell in row:
@@ -924,7 +944,7 @@ def assessment_forms_pdf(job_opening, panelist=None, interview_date=None, blank=
 			"pass_percent": f"{data['pass_percent']:g}",
 			"criteria": [{"label": c["label"], "max": f"{c['max_score']:g}", "guidance": c.get("guidance", "")} for c in data["criteria"]],
 			"max_total": f"{data['max_total']:g}",
-			"ask_area": job.track in SPECIALIZATION_TRACKS,
+			"ask_area": False,
 			"date": ", ".join(frappe.utils.formatdate(d, "dd MMM yyyy") for d in data["interview_dates"]) or (frappe.utils.formatdate(data["interview_date"], "dd MMM yyyy") if data["interview_date"] else ""),
 			"time": frappe.utils.format_datetime(when, "h:mm a 'IST'") if when else "",
 		},

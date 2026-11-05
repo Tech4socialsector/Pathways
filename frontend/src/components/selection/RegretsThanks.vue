@@ -35,7 +35,7 @@
           </template>
           <template v-else>No Selection Committee for this job.</template>
         </p>
-        <p class="text-xs text-gray-500">Each panellist is thanked once and an honorarium record is opened for them.</p>
+        <p class="text-xs text-gray-500">Each panellist is thanked once. Only external experts get an honorarium, on the Panel Honorarium page.</p>
         <p v-if="!summary.thanks.enabled" class="text-xs text-orange-700">The “Thank you to panellists” email is switched off in Email Setup.</p>
         <div class="flex flex-wrap items-center gap-3">
           <Button
@@ -147,8 +147,10 @@ function askThanks() {
     open: true,
     title: 'Send thank-you to panel?',
     message:
-      `The “Thank you to panellists” email goes to ${t.pending} panellist${t.pending === 1 ? '' : 's'} not thanked yet, and an honorarium record ` +
-      `is opened for each on the Panel Honorarium page${t.external_only ? ' (internal panellists: Not applicable)' : ''}.`,
+      `The “Thank you to panellists” email goes to ${t.pending} panellist${t.pending === 1 ? '' : 's'} not thanked yet. ` +
+      (t.external
+        ? `The ${t.external} external expert${t.external === 1 ? '' : 's'} get an honorarium record on the Panel Honorarium page.`
+        : 'There are no external experts on this panel, so no honorarium is due.'),
     label: 'Send thank-you',
     theme: 'gray',
     run: async () => {

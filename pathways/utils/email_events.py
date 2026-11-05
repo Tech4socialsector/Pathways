@@ -329,6 +329,25 @@ TEMPLATES = {
 		"<p>Thank you for being on the selection committee for <b>{{ job_title }}</b>. We are grateful for your time and "
 		"guidance. The PnC team will be in touch about the honorarium.</p>" + SIGN_OFF,
 	),
+	"Honorarium Details to Finance": (
+		"Honorarium for external expert: {{ panellist_name }} ({{ job_title }})",
+		"<p>Dear Finance Team,</p>"
+		"<p>Please process the honorarium for the external expert below, who served on the Selection Committee for "
+		"<b>{{ job_title }}</b>{% if interview_date %} on {{ interview_date }}{% endif %}.</p>"
+		"<table style=\"border-collapse:collapse\" border=\"1\" cellpadding=\"6\">"
+		"<tr><td><b>Name</b></td><td>{{ panellist_name }}</td></tr>"
+		"<tr><td><b>Email</b></td><td>{{ panellist_email }}</td></tr>"
+		"<tr><td><b>Position</b></td><td>{{ job_title }} ({{ job_opening }})</td></tr>"
+		"<tr><td><b>Amount</b></td><td>{{ amount }}</td></tr>"
+		"<tr><td><b>PAN</b></td><td>{{ pan_number }}</td></tr>"
+		"<tr><td><b>Account holder</b></td><td>{{ account_holder_name }}</td></tr>"
+		"<tr><td><b>Account number</b></td><td>{{ bank_account_number }}</td></tr>"
+		"<tr><td><b>Bank</b></td><td>{{ bank_name }}{% if bank_branch %}, {{ bank_branch }}{% endif %}</td></tr>"
+		"<tr><td><b>IFSC</b></td><td>{{ ifsc_code }}</td></tr>"
+		"{% if remarks %}<tr><td><b>Remarks</b></td><td>{{ remarks }}</td></tr>{% endif %}"
+		"</table>"
+		"<p>The PAN card copy and bank documents are attached.</p>" + SIGN_OFF,
+	),
 	# Workflow folder: 11. Onboarding Email.
 	"Onboarding Documents": (
 		"DOCUMENTS TO BE SUBMITTED",
@@ -635,6 +654,12 @@ EVENTS = [
 	("Onboarding & Closure", "panel_thanks", "Thank you to panellists",
 		"Sent from the consolidated score sheet, once to each Selection Committee panellist; also starts their honorarium record (workflow step 33).",
 		"Panel Thank You", {"send_to_approvers": 1}, True, True, "job_title, recipient_name, interview_date, is_external"),
+	("Onboarding & Closure", "honorarium_to_finance", "Honorarium details to Finance",
+		"Sent from the Panel Honorarium page, once an external expert's amount, PAN and bank details are entered: one email per expert, "
+		"with the documents attached. Add the Finance team's address under Recipients.",
+		"Honorarium Details to Finance", {"attach_record_files": 1}, False, True,
+		"panellist_name, panellist_email, job_title, job_opening, interview_date, amount, pan_number, account_holder_name, "
+		"bank_account_number, bank_name, bank_branch, ifsc_code, remarks, sent_by"),
 	("Onboarding & Closure", "onboarding", "Onboarding documents (to new joiner)", "The candidate accepts the offer (workflow step 34).",
 		"Onboarding Documents", {"send_to_candidate": 1}, True, True, CANDIDATE_VARS + ", joining_date, reporting_location, reporting_time, portal_link"),
 	("Onboarding & Closure", "document_resubmission", "Joining document needs resubmission (to new joiner)",

@@ -1,6 +1,6 @@
 <template>
   <StaffLayout>
-    <PageHeader title="Panel Honorarium" subtitle="Thank-you and honorarium for Selection Committee panellists (workflow step 33)">
+    <PageHeader title="Panel Honorarium" subtitle="External experts on Selection Committees: enter their honorarium and bank details, then send them to the Finance team">
       <template #actions>
         <Button variant="outline" icon-left="download" :loading="exporting" @click="exportList">Download Excel</Button>
       </template>
@@ -15,6 +15,9 @@
       </div>
 
       <div v-if="error" class="mb-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">{{ error }}</div>
+      <p v-else-if="!data.finance_email_enabled && !loading" class="mb-4 rounded-lg border border-orange-200 bg-orange-50 px-4 py-3 text-sm text-orange-800">
+        The “Honorarium details to Finance” email is switched off in Email Setup, so nothing can be sent to Finance.
+      </p>
 
       <DataTable
         export-name="panel-honorarium"
@@ -23,8 +26,8 @@
         :loading="loading"
         :filters="filters"
         toolbar-panel
-        empty-title="No honoraria yet. They are created by “Send thank-you to panel” on a job's consolidated score sheet."
-        search-placeholder="Search panellist or position..."
+        empty-title="No external experts yet. Mark a panellist as “External expert” on a job's Selection Committee."
+        search-placeholder="Search expert or position..."
       >
         <template #above-toolbar>
           <div class="flex flex-wrap gap-1 border-b pb-2 pt-2" role="tablist" aria-label="Status">
@@ -49,112 +52,155 @@
         <template #cell-amount="{ row }">
           <span class="tabular-nums">{{ money(row.amount) }}</span>
         </template>
+        <template #cell-details="{ row }">
+          <span v-if="!row.missing.length" class="rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700">Complete</span>
+          <span v-else class="text-xs text-orange-700">Missing: {{ row.missing.join(', ') }}</span>
+          <div v-if="row.bank_name || row.bank_account_number" class="mt-0.5 text-xs text-gray-500">
+            {{ row.bank_name }}<template v-if="row.bank_account_number"> · ••••{{ row.bank_account_number.slice(-4) }}</template>
+          </div>
+        </template>
         <template #cell-status="{ row }">
           <StatusBadge :status="row.status" />
-          <div v-if="row.status === 'Paid'" class="mt-0.5 text-[11px] text-gray-500">
-            {{ fmtDate(row.paid_on) }}<template v-if="row.payment_reference"> · {{ row.payment_reference }}</template>
+          <div v-if="row.sent_to_finance_on" class="mt-0.5 text-[11px] text-gray-500">
+            {{ fmtDate(row.sent_to_finance_on) }}<template v-if="row.sent_to_finance_by_name"> · {{ row.sent_to_finance_by_name }}</template>
           </div>
-          <div v-else-if="row.approved_by_name" class="mt-0.5 text-[11px] text-gray-500">by {{ row.approved_by_name }}</div>
-        </template>
-        <template #cell-paperwork="{ row }">
-          <span class="text-xs" :class="row.pan_number ? 'text-gray-700' : 'text-orange-700'">{{ row.pan_number || 'No PAN' }}</span>
-          <a v-if="row.bank_consent_form" :href="row.bank_consent_form" target="_blank" rel="noopener" class="ml-2 text-xs text-brand-700 hover:underline">Bank form</a>
-          <span v-else class="ml-2 text-xs text-orange-700">No bank form</span>
         </template>
         <template #actions="{ row }">
-          <div class="flex justify-end gap-1">
-            <Button v-if="data.can_approve && row.status === 'Pending'" size="sm" variant="outline" @click="askApprove([row])">Approve</Button>
-            <Button v-if="data.can_write && row.status === 'Approved'" size="sm" variant="outline" @click="openPaid([row])">Mark paid</Button>
-            <Button v-if="data.can_write" size="sm" variant="ghost" icon="edit-2" :aria-label="`Edit ${row.panellist_name}`" @click="openEdit(row)" />
+          <div v-if="data.can_write" class="flex justify-end gap-1">
+            <Button size="sm" variant="outline" icon-left="edit-2" @click="openEdit(row)">{{ row.missing.length ? 'Enter details' : 'Edit' }}</Button>
+            <Button
+              v-if="!row.missing.length"
+              size="sm"
+              :variant="row.status === 'Sent to Finance' ? 'ghost' : 'solid'"
+              icon-left="send"
+              :class="row.status === 'Sent to Finance' ? '' : BTN_BRAND"
+              @click="openPreview([row])"
+            >
+              {{ row.status === 'Sent to Finance' ? 'Send again' : 'Send to Finance' }}
+            </Button>
           </div>
         </template>
         <template #bulk-actions="{ rows: picked, clear }">
-          <Button v-if="data.can_approve" size="sm" icon-left="check" @click="askApprove(picked, clear)">Approve</Button>
-          <Button v-if="data.can_write" size="sm" icon-left="credit-card" @click="openPaid(picked, clear)">Mark paid</Button>
+          <Button v-if="data.can_write" size="sm" icon-left="send" @click="openPreview(picked, clear)">Send to Finance</Button>
         </template>
       </DataTable>
       <p class="mt-2 text-xs text-gray-500">
-        Pending → Approved (by an honorarium approver, Pathways Settings › Panel Honorarium) → Paid. Default amounts and
-        “external experts only” are set in Pathways Settings.
+        Only external experts are paid an honorarium. Enter the details, preview the email and send it: the Finance team gets one email per expert with
+        the documents attached. The Finance address and wording are in Email Setup › “Honorarium details to Finance”.
       </p>
     </div>
 
-    <ConfirmActionDialog v-model:open="confirmBox.open" v-bind="confirmBox" />
-
-    <!-- Mark paid -->
-    <Dialog v-model="paid.open" :options="{ title: `Mark ${paid.rows.length === 1 ? 'honorarium' : paid.rows.length + ' honoraria'} paid`, size: 'sm' }">
+    <!-- Enter / edit details -->
+    <Dialog v-model="edit.open" :options="{ title: edit.row ? `Honorarium · ${edit.row.panellist_name || edit.row.panellist}` : 'Honorarium', size: '2xl' }">
       <template #body-content>
-        <div class="flex flex-col gap-3">
-          <FormControl v-model="paid.date" type="date" label="Paid on" />
-          <FormControl v-model="paid.reference" label="Payment reference" placeholder="e.g. UTR / voucher number" />
-          <p v-if="paid.rows.some((r) => r.status !== 'Approved')" class="text-xs text-orange-700">Only approved honoraria are marked paid; the others are skipped.</p>
-        </div>
-      </template>
-      <template #actions>
-        <div class="flex justify-end gap-2">
-          <Button variant="ghost" @click="paid.open = false">Cancel</Button>
-          <Button variant="solid" :class="BTN_BRAND" :loading="paid.busy" @click="markPaid">Mark paid</Button>
-        </div>
-      </template>
-    </Dialog>
+        <div v-if="edit.row" class="flex flex-col gap-5 text-sm">
+          <p class="text-gray-600">{{ edit.row.job_title }} · External expert · {{ edit.row.panellist }}</p>
 
-    <!-- Edit details -->
-    <Dialog v-model="edit.open" :options="{ title: edit.row ? `Honorarium · ${edit.row.panellist_name || edit.row.panellist}` : 'Honorarium', size: 'md' }">
-      <template #body-content>
-        <div v-if="edit.row" class="flex flex-col gap-3">
-          <p class="text-sm text-gray-600">{{ edit.row.job_title }} · {{ edit.row.is_external ? 'External expert' : 'Internal panellist' }}</p>
-          <FormControl
-            v-model="edit.amount"
-            type="number"
-            label="Amount"
-            :disabled="!['Pending', 'Not applicable'].includes(edit.row.status)"
-            :description="['Pending', 'Not applicable'].includes(edit.row.status) ? '' : 'The amount cannot change after approval.'"
-          />
-          <FormControl v-model="edit.pan" label="PAN" placeholder="ABCDE1234F" />
-          <div>
-            <div class="mb-1.5 text-xs text-gray-600">Bank details / consent form</div>
-            <div class="flex flex-wrap items-center gap-2">
-              <a v-if="edit.form" :href="edit.form" target="_blank" rel="noopener" class="truncate text-sm text-brand-700 hover:underline">{{ edit.form.split('/').pop() }}</a>
-              <FileUploader
-                file-types=".pdf,.jpg,.jpeg,.png"
-                :upload-args="{ doctype: 'Panel Honorarium', docname: edit.row.name, private: true }"
-                @success="(f) => (edit.form = f.file_url)"
-              >
-                <template #default="{ openFileSelector, uploading }">
-                  <Button size="sm" icon-left="paperclip" :loading="uploading" @click="openFileSelector">{{ edit.form ? 'Replace' : 'Attach' }}</Button>
-                </template>
-              </FileUploader>
-              <Button v-if="edit.form" size="sm" variant="ghost" @click="edit.form = ''">Remove</Button>
+          <section class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <FormControl v-model="edit.f.amount" type="number" label="Honorarium amount (₹) *" :min="0" />
+            <FormControl v-model="edit.f.pan_number" label="PAN *" placeholder="ABCDE1234F" maxlength="10" />
+          </section>
+
+          <section>
+            <h3 class="mb-2 text-sm font-semibold text-gray-900">Bank account</h3>
+            <div class="grid grid-cols-1 gap-3 rounded-xl border bg-gray-50/60 p-4 sm:grid-cols-2">
+              <FormControl v-model="edit.f.account_holder_name" label="Account holder name *" placeholder="As in the bank records" />
+              <FormControl v-model="edit.f.bank_account_number" label="Account number *" placeholder="Digits only" inputmode="numeric" />
+              <FormControl v-model="edit.f.bank_name" label="Bank name *" placeholder="e.g. State Bank of India" />
+              <FormControl v-model="edit.f.bank_branch" label="Branch" placeholder="e.g. Nagarbhavi, Bengaluru" />
+              <FormControl v-model="edit.f.ifsc_code" label="IFSC code *" placeholder="e.g. SBIN0001234" maxlength="11" />
             </div>
-            <p class="mt-1 text-xs text-gray-500">Attach the signed form; do not type account numbers here.</p>
-          </div>
-          <FormControl v-model="edit.remarks" type="textarea" label="Remarks" :rows="2" />
-          <label v-if="['Pending', 'Not applicable'].includes(edit.row.status)" class="flex items-center gap-2 text-sm text-gray-700">
-            <input v-model="edit.notApplicable" type="checkbox" class="rounded border-gray-300 text-brand-700 focus:ring-brand-700" />
-            No honorarium for this panellist (Not applicable)
-          </label>
-          <p v-if="edit.error" class="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{{ edit.error }}</p>
+          </section>
+
+          <section>
+            <h3 class="mb-2 text-sm font-semibold text-gray-900">Documents <span class="font-normal text-gray-500">(attached to the email to Finance)</span></h3>
+            <ul class="divide-y overflow-hidden rounded-xl border">
+              <li v-for="d in DOCS" :key="d.field" class="flex flex-wrap items-center gap-3 px-3 py-2.5">
+                <FeatherIcon name="file-text" class="h-4 w-4 shrink-0 text-gray-400" />
+                <div class="min-w-0 flex-1">
+                  <p class="text-sm font-medium text-gray-900">{{ d.label }}</p>
+                  <a v-if="edit.f[d.field]" :href="edit.f[d.field]" target="_blank" rel="noopener" class="block truncate text-xs text-brand-700 hover:underline">
+                    {{ edit.f[d.field].split('/').pop() }}
+                  </a>
+                  <p v-else class="text-xs text-gray-500">Not attached</p>
+                </div>
+                <FileUploader
+                  file-types=".pdf,.jpg,.jpeg,.png"
+                  :upload-args="{ doctype: 'Panel Honorarium', docname: edit.row.name, private: true }"
+                  @success="(f) => (edit.f[d.field] = f.file_url)"
+                >
+                  <template #default="{ openFileSelector, uploading }">
+                    <Button size="sm" icon-left="paperclip" :loading="uploading" @click="openFileSelector">{{ edit.f[d.field] ? 'Replace' : 'Attach' }}</Button>
+                  </template>
+                </FileUploader>
+                <Button v-if="edit.f[d.field]" size="sm" variant="ghost" @click="edit.f[d.field] = ''">Remove</Button>
+              </li>
+            </ul>
+          </section>
+
+          <FormControl v-model="edit.f.remarks" type="textarea" label="Remarks (included in the email)" :rows="2" />
+          <p v-if="edit.error" class="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">{{ edit.error }}</p>
         </div>
       </template>
       <template #actions>
-        <div class="flex justify-end gap-2">
-          <Button variant="ghost" @click="edit.open = false">Cancel</Button>
-          <Button variant="solid" :class="BTN_BRAND" :loading="edit.busy" @click="saveEdit">Save</Button>
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <p class="text-xs text-gray-500">* needed before sending to Finance</p>
+          <div class="flex gap-2">
+            <Button variant="ghost" @click="edit.open = false">Cancel</Button>
+            <Button :loading="edit.busy === 'save'" :disabled="!!edit.busy" @click="saveEdit(false)">Save</Button>
+            <Button variant="solid" icon-left="eye" :class="BTN_BRAND" :loading="edit.busy === 'preview'" :disabled="!!edit.busy" @click="saveEdit(true)">
+              Save &amp; preview email
+            </Button>
+          </div>
         </div>
       </template>
     </Dialog>
+
+    <!-- Preview, then send -->
+    <EmailPreviewDialog v-model="preview.open" :preview="preview.data" :loading="preview.loading" :error="preview.error" hide-addresses>
+      <template #header>
+        <div class="flex flex-col gap-3 rounded-lg border px-4 py-3">
+          <FormControl v-model="preview.to" label="To *" placeholder="finance@nls.ac.in (separate several with commas)" />
+          <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <FormControl v-model="preview.cc" label="CC" placeholder="Optional" />
+            <FormControl v-model="preview.bcc" label="BCC" placeholder="Optional" />
+          </div>
+          <label v-if="preview.data?.can_remember" class="flex items-center gap-2 text-xs text-gray-600">
+            <input v-model="preview.remember" type="checkbox" class="rounded border-gray-300 text-brand-700 focus:ring-brand-700" />
+            Remember To and CC for next time (saved in Email Setup)
+          </label>
+          <p v-if="addressError" class="text-xs text-red-600">{{ addressError }}</p>
+        </div>
+      </template>
+      <template #actions>
+        <span v-if="preview.rows.length > 1" class="mr-auto self-center text-xs text-gray-500">
+          Showing {{ preview.rows[0].panellist_name }}'s email; {{ preview.rows.length }} emails will go, one per expert.
+        </span>
+        <Button
+          v-if="preview.data && !preview.error"
+          variant="solid"
+          icon-left="send"
+          :class="BTN_BRAND"
+          :loading="preview.sending"
+          :disabled="!preview.data.enabled || !!addressError"
+          @click="send"
+        >
+          {{ preview.rows.length > 1 ? `Send ${preview.rows.length} emails` : 'Send to Finance' }}
+        </Button>
+      </template>
+    </EmailPreviewDialog>
   </StaffLayout>
 </template>
 
 <script setup>
-import { computed, reactive, ref, watch } from 'vue'
-import { Button, Dialog, FileUploader, FormControl } from 'frappe-ui'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { Button, Dialog, FeatherIcon, FileUploader, FormControl } from 'frappe-ui'
 import dayjs from 'dayjs'
 import StaffLayout from '@/layouts/StaffLayout.vue'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import DataTable from '@/components/common/DataTable.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
-import ConfirmActionDialog from '@/components/common/ConfirmActionDialog.vue'
+import EmailPreviewDialog from '@/components/common/EmailPreviewDialog.vue'
 import { honorariumService } from '@/services/honorarium'
 import { BTN_BRAND } from '@/utils/buttonStyles'
 import { toast } from '@/utils/notify'
@@ -162,25 +208,28 @@ import { toast } from '@/utils/notify'
 const STATUS_TABS = [
   { value: '', label: 'All' },
   { value: 'Pending', label: 'Pending' },
-  { value: 'Approved', label: 'Approved' },
-  { value: 'Paid', label: 'Paid' },
-  { value: 'Not applicable', label: 'Not applicable' },
+  { value: 'Sent to Finance', label: 'Sent to Finance' },
 ]
+const DOCS = [
+  { field: 'pan_card_copy', label: 'PAN card copy' },
+  { field: 'bank_consent_form', label: 'Cancelled cheque / bank consent form' },
+  { field: 'supporting_document', label: 'Other document' },
+]
+const FIELDS = ['amount', 'pan_number', 'account_holder_name', 'bank_account_number', 'bank_name', 'bank_branch', 'ifsc_code', 'remarks', ...DOCS.map((d) => d.field)]
 const columns = [
-  { key: 'panellist_name', label: 'Panellist' },
+  { key: 'panellist_name', label: 'External expert' },
   { key: 'job_title', label: 'Position' },
-  { key: 'panel_type', label: 'Type' },
   { key: 'amount', label: 'Amount', align: 'right' },
+  { key: 'details', label: 'Details', sortable: false },
   { key: 'status', label: 'Status' },
-  { key: 'paperwork', label: 'PAN / bank form', sortable: false },
   { key: 'thanked', label: 'Thanked on' },
 ]
 const filters = [
   { key: 'job_title', label: 'Positions' },
-  { key: 'panel_type', label: 'Types' },
+  { key: 'details_label', label: 'Details' },
 ]
 
-const data = ref({ rows: [], can_approve: false, can_write: false })
+const data = ref({ rows: [], can_write: false, finance_email_enabled: true })
 const loading = ref(false)
 const error = ref('')
 const exporting = ref(false)
@@ -191,17 +240,21 @@ const fmtDate = (d) => (d ? dayjs(d).format('DD MMM YYYY') : '')
 const rows = computed(() =>
   (data.value.rows || []).map((r) => ({
     ...r,
-    panel_type: r.is_external ? 'External expert' : 'Internal',
+    details_label: r.missing.length ? 'Details missing' : 'Complete',
     thanked: r.thanks_sent_on ? dayjs(r.thanks_sent_on).format('DD MMM YYYY') : 'Not yet',
   })),
 )
-const sum = (s) => (data.value.rows || []).filter((r) => r.status === s).reduce((n, r) => n + Number(r.amount || 0), 0)
-const tiles = computed(() => [
-  { label: 'Panellists', value: (data.value.rows || []).length, tone: 'text-gray-900' },
-  { label: 'Pending approval', value: money(sum('Pending')), tone: 'text-orange-700' },
-  { label: 'Approved, to pay', value: money(sum('Approved')), tone: 'text-brand-700' },
-  { label: 'Paid', value: money(sum('Paid')), tone: 'text-green-700' },
-])
+const tiles = computed(() => {
+  const all = data.value.rows || []
+  const pending = all.filter((r) => r.status === 'Pending')
+  const sent = all.filter((r) => r.status === 'Sent to Finance')
+  return [
+    { label: 'External experts', value: all.length, tone: 'text-gray-900' },
+    { label: 'Details to enter', value: pending.filter((r) => r.missing.length).length, tone: 'text-orange-700' },
+    { label: 'Ready to send', value: pending.filter((r) => !r.missing.length).length, tone: 'text-brand-700' },
+    { label: 'Sent to Finance', value: `${sent.length} · ${money(sent.reduce((n, r) => n + Number(r.amount || 0), 0))}`, tone: 'text-green-700' },
+  ]
+})
 
 async function load() {
   loading.value = true
@@ -214,91 +267,95 @@ async function load() {
     loading.value = false
   }
 }
-watch(status, load, { immediate: true })
-
-function report(r, verb) {
-  toast({ title: `${r.updated} ${verb}.`, icon: 'check', iconClasses: 'text-green-500' })
-  if (r.skipped?.length) toast({ title: `Skipped: ${r.skipped.join('; ')}`, icon: 'alert-triangle', iconClasses: 'text-orange-500' })
-}
-function failed(e, fallback) {
-  toast({ title: e?.messages?.[0] || fallback, icon: 'alert-triangle', iconClasses: 'text-red-500' })
-}
-
-const confirmBox = reactive({ open: false, title: '', message: '', label: '', theme: 'gray', run: null })
-function askApprove(picked, clear) {
-  const total = picked.filter((r) => r.status === 'Pending').reduce((n, r) => n + Number(r.amount || 0), 0)
-  Object.assign(confirmBox, {
-    open: true,
-    title: 'Approve honorarium?',
-    message:
-      picked.length === 1
-        ? `Approve ${money(picked[0].amount)} for ${picked[0].panellist_name}?`
-        : `Approve ${picked.length} honoraria, ${money(total)} in all? Records that are not pending, or have no amount, are skipped.`,
-    label: 'Approve',
-    theme: 'gray',
-    run: async () => {
-      try {
-        report(await honorariumService.approve(picked.map((r) => r.name)), 'approved')
-        clear?.()
-        await load()
-      } catch (e) {
-        failed(e, 'Could not approve.')
-      }
-    },
-  })
-}
-
-const paid = reactive({ open: false, rows: [], date: '', reference: '', busy: false, clear: null })
-function openPaid(picked, clear) {
-  Object.assign(paid, { open: true, rows: picked, date: dayjs().format('YYYY-MM-DD'), reference: '', busy: false, clear })
-}
-async function markPaid() {
-  paid.busy = true
+watch(status, load)
+onMounted(async () => {
+  // External experts added to a committee since the last visit get their record.
   try {
-    report(await honorariumService.markPaid(paid.rows.map((r) => r.name), paid.date, paid.reference), 'marked paid')
-    paid.open = false
-    paid.clear?.()
-    await load()
-  } catch (e) {
-    failed(e, 'Could not mark paid.')
-  } finally {
-    paid.busy = false
+    await honorariumService.syncExternalPanellists()
+  } catch {
+    // Listing still works without it.
   }
-}
+  await load()
+})
 
-const edit = reactive({ open: false, row: null, amount: 0, pan: '', form: '', remarks: '', notApplicable: false, busy: false, error: '' })
+// ----- enter / edit details
+const edit = reactive({ open: false, row: null, f: {}, busy: '', error: '' })
 function openEdit(row) {
-  Object.assign(edit, {
-    open: true,
-    row,
-    amount: row.amount || 0,
-    pan: row.pan_number || '',
-    form: row.bank_consent_form || '',
-    remarks: row.remarks || '',
-    notApplicable: row.status === 'Not applicable',
-    busy: false,
-    error: '',
-  })
+  Object.assign(edit, { open: true, row, f: Object.fromEntries(FIELDS.map((k) => [k, row[k] ?? ''])), busy: '', error: '' })
 }
-async function saveEdit() {
-  edit.busy = true
+async function saveEdit(thenPreview) {
+  edit.busy = thenPreview ? 'preview' : 'save'
   edit.error = ''
-  const editable = ['Pending', 'Not applicable'].includes(edit.row.status)
   try {
-    await honorariumService.update(edit.row.name, {
-      amount: editable ? edit.amount : undefined,
-      pan_number: edit.pan,
-      bank_consent_form: edit.form,
-      remarks: edit.remarks,
-      not_applicable: editable ? (edit.notApplicable ? 1 : 0) : undefined,
-    })
-    toast({ title: 'Saved.', icon: 'check', iconClasses: 'text-green-500' })
-    edit.open = false
+    await honorariumService.update(edit.row.name, edit.f)
     await load()
+    const fresh = data.value.rows.find((r) => r.name === edit.row.name)
+    if (thenPreview && fresh?.missing.length) {
+      edit.error = `Saved. Enter ${fresh.missing.join(', ')} to preview the email.`
+      return
+    }
+    edit.open = false
+    if (thenPreview) openPreview([fresh || edit.row])
+    else toast({ title: 'Saved.', icon: 'check', iconClasses: 'text-green-500' })
   } catch (e) {
     edit.error = e?.messages?.[0] || 'Could not save.'
   } finally {
-    edit.busy = false
+    edit.busy = ''
+  }
+}
+
+// ----- preview, then send (one email per expert; the first is previewed)
+const preview = reactive({ open: false, rows: [], data: null, loading: false, error: '', sending: false, clear: null, to: '', cc: '', bcc: '', remember: false })
+const splitEmails = (v) => (v || '').split(/[,;\s]+/).filter(Boolean)
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const addressError = computed(() => {
+  if (!splitEmails(preview.to).length) return "Enter the Finance team's email address in To."
+  const bad = [preview.to, preview.cc, preview.bcc].flatMap(splitEmails).filter((e) => !EMAIL.test(e))
+  return bad.length ? `Not a valid email address: ${bad.join(', ')}` : ''
+})
+async function openPreview(picked, clear = null) {
+  const incomplete = picked.filter((r) => r.missing.length)
+  const ready = picked.filter((r) => !r.missing.length)
+  if (incomplete.length) {
+    toast({
+      title: `Details missing for ${incomplete.map((r) => r.panellist_name).join(', ')}: ${ready.length ? 'they are left out' : 'enter them first'}.`,
+      icon: 'alert-triangle',
+      iconClasses: 'text-orange-500',
+    })
+  }
+  if (!ready.length) return
+  Object.assign(preview, { open: true, rows: ready, data: null, loading: true, error: '', sending: false, clear, to: '', cc: '', bcc: '', remember: false })
+  try {
+    preview.data = await honorariumService.previewFinanceEmail(ready[0].name)
+    // Start from Email Setup's addresses; whatever is here when Send is clicked is used.
+    preview.to = preview.data.recipients.map((r) => r.email).join(', ')
+    preview.cc = (preview.data.cc || []).join(', ')
+    preview.bcc = (preview.data.bcc || []).join(', ')
+    preview.remember = !preview.to
+  } catch (e) {
+    preview.error = e?.messages?.[0] || 'Could not build the email preview.'
+  } finally {
+    preview.loading = false
+  }
+}
+async function send() {
+  preview.sending = true
+  try {
+    const r = await honorariumService.sendToFinance(preview.rows.map((x) => x.name), {
+      to: preview.to,
+      cc: preview.cc,
+      bcc: preview.bcc,
+      remember: preview.remember ? 1 : 0,
+    })
+    toast({ title: `Sent to Finance: ${r.sent} email${r.sent === 1 ? '' : 's'}.`, icon: 'check', iconClasses: 'text-green-500' })
+    if (r.skipped?.length) toast({ title: `Skipped: ${r.skipped.join('; ')}`, icon: 'alert-triangle', iconClasses: 'text-orange-500' })
+    preview.open = false
+    preview.clear?.()
+    await load()
+  } catch (e) {
+    toast({ title: e?.messages?.[0] || 'Could not send.', icon: 'alert-triangle', iconClasses: 'text-red-500' })
+  } finally {
+    preview.sending = false
   }
 }
 
@@ -307,7 +364,7 @@ async function exportList() {
   try {
     await honorariumService.exportList('', status.value)
   } catch (e) {
-    failed(e, 'Could not download the list.')
+    toast({ title: e?.messages?.[0] || 'Could not download the list.', icon: 'alert-triangle', iconClasses: 'text-red-500' })
   } finally {
     exporting.value = false
   }
