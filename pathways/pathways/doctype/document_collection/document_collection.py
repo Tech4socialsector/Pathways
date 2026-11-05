@@ -5,9 +5,11 @@
 on the day of joining), uploaded on the candidate portal and verified by
 staff in Documents > Onboarding Verification.
 
-The checklist is built once, from Document Type Master rows marked Used In
+The checklist is built once, from the job's Position (Onboarding
+Documents) or, when it lists none, Document Type Master rows marked Used In
 Onboarding/Both (all tracks, or this application's track), so HR changes
-the list from Master Setup without code. Each row carries the master's
+the list from Master Setup without code. Staff can add or remove documents
+for one candidate while verifying (api.documents). Each row carries the master's
 requirement; the collection is Complete when every Mandatory row is
 Verified.
 """
@@ -74,11 +76,25 @@ class DocumentCollection(Document):
 
 
 def onboarding_document_types(application):
-	track = None
+	"""The joining documents for this application: its job's Position's
+	Onboarding Documents when it lists any, otherwise every active
+	onboarding document type for all tracks or this track."""
+	track = position = None
 	if application:
 		job_opening = frappe.db.get_value("Application", application, "job_opening")
 		if job_opening:
-			track = frappe.db.get_value("Job Opening", job_opening, "track")
+			track, position = frappe.db.get_value("Job Opening", job_opening, ["track", "position"])
+	if position:
+		rows = frappe.get_all(
+			"Position Onboarding Document",
+			filters={"parent": position, "parenttype": "Position"},
+			fields=["document_type as name", "requirement"],
+			order_by="idx asc",
+		)
+		active = set(frappe.get_all("Document Type Master", filters={"name": ["in", [r.name for r in rows] or [""]], "is_active": 1}, pluck="name"))
+		rows = [r for r in rows if r.name in active]
+		if rows:
+			return rows
 	doc_types = frappe.get_all(
 		"Document Type Master",
 		filters={"used_in": ["in", ["Onboarding", "Both"]], "is_active": 1},

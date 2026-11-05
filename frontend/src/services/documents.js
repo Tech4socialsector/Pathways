@@ -28,4 +28,11 @@ export const documentService = {
   getCollection(name) {
     return callMethod('pathways.api.documents.get_collection', { name })
   },
+  // Per new joiner: ask for one more document, or stop asking for one.
+  addChecklistDocument(name, documentType, requirement) {
+    return callMethod('pathways.api.documents.add_checklist_document', { name, document_type: documentType, requirement })
+  },
+  removeChecklistDocument(name, documentType) {
+    return callMethod('pathways.api.documents.remove_checklist_document', { name, document_type: documentType })
+  },
 }

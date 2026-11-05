@@ -23,3 +23,17 @@ class Position(Document):
 			self.specialization_discipline = None
 		if cint(self.ask_publications) and cint(self.min_publications) > cint(self.max_publications):
 			frappe.throw(_("Minimum Publications cannot be more than Maximum Publications."))
+		self.validate_onboarding_documents()
+
+	def validate_onboarding_documents(self):
+		seen = set()
+		for row in self.onboarding_documents or []:
+			if row.document_type in seen:
+				frappe.throw(_("Onboarding document {0} is listed twice.").format(row.document_type))
+			seen.add(row.document_type)
+			if frappe.db.get_value("Document Type Master", row.document_type, "used_in") not in ("Onboarding", "Both"):
+				frappe.throw(
+					_("{0} is an application document. Set its Used In to Onboarding or Both in Master Setup › Document Types to use it here.").format(
+						row.document_type
+					)
+				)

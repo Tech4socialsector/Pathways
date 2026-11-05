@@ -39,7 +39,9 @@
   "screening_section",
   "screening_questions",
   "documents_section",
-  "required_documents"
+  "required_documents",
+  "onboarding_documents_section",
+  "onboarding_documents"
  ],
  "fields": [
   {
@@ -265,6 +267,18 @@
    "fieldtype": "Table",
    "label": "Required Documents",
    "options": "Job Required Document"
+  },
+  {
+   "fieldname": "onboarding_documents_section",
+   "fieldtype": "Section Break",
+   "label": "Onboarding Documents"
+  },
+  {
+   "fieldname": "onboarding_documents",
+   "fieldtype": "Table",
+   "label": "Onboarding Documents",
+   "options": "Position Onboarding Document",
+   "description": "The joining documents new joiners for this position upload. Leave empty to ask for every active onboarding document type (Master Setup › Document Types). Staff can still add or remove documents for one candidate when verifying."
   }
  ],
  "links": [
@@ -273,7 +287,7 @@
    "link_fieldname": "position"
   }
  ],
- "modified": "2026-11-04 16:51:33.065623",
+ "modified": "2026-11-05 18:00:00.000000",
  "modified_by": "Administrator",
  "module": "Pathways",
  "name": "Position",

@@ -17,6 +17,30 @@
           You can view these documents. Verifying them needs a role listed under Document Verifier Roles in Settings.
         </p>
 
+        <!-- Add a document for this candidate only (the position's list is in Master Setup › Positions) -->
+        <div v-if="data.can_verify" class="mb-3 flex flex-wrap items-end gap-2 rounded-lg border border-dashed px-3 py-2.5">
+          <label class="block min-w-[14rem] flex-1">
+            <span class="mb-1.5 block text-xs text-gray-600">Add a document for this candidate</span>
+            <!-- Suggests onboarding documents not on the list; a new name becomes a new document type. -->
+            <input
+              v-model="adding.type"
+              type="text"
+              :list="`addable-${data.name}`"
+              :placeholder="data.addable?.length ? 'Type or pick a document, e.g. Medical Fitness Certificate' : 'All listed documents are added: type a new document name'"
+              class="h-8 w-full rounded border-gray-300 bg-white px-2.5 text-sm text-gray-900 placeholder-gray-400 focus:border-brand-500 focus:ring-brand-500"
+              @keydown.enter.prevent="adding.type.trim() && addDocument()"
+            />
+            <datalist :id="`addable-${data.name}`">
+              <option v-for="d in data.addable" :key="d.name" :value="d.name" />
+            </datalist>
+          </label>
+          <div class="w-40">
+            <FormControl v-model="adding.requirement" type="select" label="Requirement" :options="REQUIREMENTS" />
+          </div>
+          <Button icon-left="plus" :disabled="!adding.type.trim()" :loading="busy === 'add'" @click="addDocument">Add</Button>
+          <p v-if="isNewType" class="w-full text-xs text-gray-500">“{{ adding.type.trim() }}” is not a document type yet: adding it also creates it in Master Setup › Document Types.</p>
+        </div>
+
         <div class="overflow-x-auto rounded-lg border">
           <table class="w-full text-sm">
             <thead class="bg-gray-50 text-left text-xs uppercase text-gray-500">
@@ -67,6 +91,15 @@
                     >
                       Ask again
                     </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      icon="trash-2"
+                      :aria-label="`Remove ${row.document_type}`"
+                      title="Remove from this candidate's checklist"
+                      :loading="busy === row.document_type + ':remove'"
+                      @click="askRemove(row)"
+                    />
                   </div>
                 </td>
               </tr>
@@ -94,6 +127,8 @@
     </template>
   </Dialog>
 
+  <ConfirmActionDialog v-model:open="confirmBox.open" v-bind="confirmBox" />
+
   <DocumentViewer v-model:open="viewerOpen" :title="`Joining documents - ${data?.candidate_name || ''}`" :documents="viewerDocs" :start-index="viewerIndex" />
 </template>
 
@@ -101,6 +136,7 @@
 import { computed, reactive, ref, watch } from 'vue'
 import dayjs from 'dayjs'
 import { Button, Dialog, FeatherIcon, FormControl } from 'frappe-ui'
+import ConfirmActionDialog from '@/components/common/ConfirmActionDialog.vue'
 import DocumentViewer from '@/components/common/DocumentViewer.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
 import { documentService } from '@/services/documents'
@@ -184,6 +220,61 @@ async function reject() {
   } finally {
     busy.value = ''
   }
+}
+
+// ----- add / remove documents for this candidate
+const REQUIREMENTS = ['Mandatory', 'Optional', 'If Applicable'].map((r) => ({ label: r, value: r }))
+const adding = reactive({ type: '', requirement: 'Mandatory' })
+const isNewType = computed(() => {
+  const t = adding.type.trim().toLowerCase()
+  if (!t || !data.value) return false
+  return ![...(data.value.addable || []).map((d) => d.name), ...data.value.checklist.map((r) => r.document_type)].some((n) => n.toLowerCase() === t)
+})
+// Start from the document type's own requirement.
+watch(
+  () => adding.type,
+  (t) => {
+    const d = data.value?.addable?.find((x) => x.name === t)
+    if (d?.requirement) adding.requirement = d.requirement
+  },
+)
+async function addDocument() {
+  busy.value = 'add'
+  try {
+    data.value = await documentService.addChecklistDocument(data.value.name, adding.type.trim(), adding.requirement)
+    toast({ title: `${adding.type.trim()} added. The candidate can upload it on the portal.`, icon: 'check', iconClasses: 'text-green-500' })
+    adding.type = ''
+    emit('changed')
+  } catch (e) {
+    toast({ title: e?.messages?.[0] || 'Could not add the document.', icon: 'alert-triangle', iconClasses: 'text-red-500' })
+  } finally {
+    busy.value = ''
+  }
+}
+
+const confirmBox = reactive({ open: false, title: '', message: '', label: '', theme: 'red', run: null })
+function askRemove(row) {
+  Object.assign(confirmBox, {
+    open: true,
+    title: `Remove ${row.document_type}?`,
+    message:
+      `${data.value.candidate_name} will no longer be asked for ${row.document_type}.` +
+      (row.attachment ? ' The file they uploaded is kept with their documents but leaves this checklist.' : ''),
+    label: 'Remove',
+    theme: 'red',
+    run: async () => {
+      busy.value = row.document_type + ':remove'
+      try {
+        data.value = await documentService.removeChecklistDocument(data.value.name, row.document_type)
+        toast({ title: `${row.document_type} removed.`, icon: 'check', iconClasses: 'text-green-500' })
+        emit('changed')
+      } catch (e) {
+        toast({ title: e?.messages?.[0] || 'Could not remove the document.', icon: 'alert-triangle', iconClasses: 'text-red-500' })
+      } finally {
+        busy.value = ''
+      }
+    },
+  })
 }
 
 const formatDate = (value) => (value ? dayjs(value).format('DD MMM YYYY, h:mm A') : '')

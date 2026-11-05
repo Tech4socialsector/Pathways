@@ -188,4 +188,69 @@ def get_collection(name):
 		"checklist": rows,
 		"summary": _summary(rows),
 		"can_verify": has_duty("document_verifier_roles"),
+		# Onboarding document types not on this checklist, for "Add document".
+		"addable": frappe.get_all(
+			"Document Type Master",
+			filters={
+				"used_in": ["in", ["Onboarding", "Both"]],
+				"is_active": 1,
+				"name": ["not in", [r["document_type"] for r in rows] or [""]],
+			},
+			fields=["name", "requirement"],
+			order_by="document_name asc",
+		),
 	}
+
+
+def _require_verifier():
+	if not has_duty("document_verifier_roles"):
+		frappe.throw(frappe._("Only document verifiers can change the checklist."), frappe.PermissionError)
+
+
+@frappe.whitelist(methods=["POST"])
+def add_checklist_document(name, document_type, requirement="Mandatory"):
+	"""Ask this new joiner for one more document (not on their position's
+	list). A name that is not a Document Type yet becomes one (Used In
+	Onboarding); an application-only type is widened to Both."""
+	_require_verifier()
+	if requirement not in ("Mandatory", "Optional", "If Applicable"):
+		frappe.throw(frappe._("Choose Mandatory, Optional or If Applicable."))
+	document_type = " ".join((document_type or "").split())
+	if not document_type:
+		frappe.throw(frappe._("Enter the document's name."))
+	existing = frappe.db.get_value("Document Type Master", {"document_name": document_type}, ["name", "used_in"], as_dict=True)
+	if not existing:
+		frappe.get_doc(
+			{"doctype": "Document Type Master", "document_name": document_type, "used_in": "Onboarding", "requirement": requirement, "max_file_size_mb": 2, "is_active": 1}
+		).insert(ignore_permissions=True)
+	else:
+		document_type = existing.name
+		if existing.used_in == "Application":
+			frappe.db.set_value("Document Type Master", existing.name, "used_in", "Both")
+	doc = frappe.get_doc("Document Collection", name)
+	if any(r.document_type == document_type for r in doc.checklist):
+		frappe.throw(frappe._("{0} is already on the checklist.").format(document_type))
+	doc.append("checklist", {"document_type": document_type, "requirement": requirement, "status": "Requested"})
+	doc.save(ignore_permissions=True)
+	doc.add_comment("Info", frappe._("{0} added {1} ({2}) to the checklist.").format(frappe.utils.get_fullname(frappe.session.user), document_type, requirement))
+	return get_collection(name)
+
+
+@frappe.whitelist(methods=["POST"])
+def remove_checklist_document(name, document_type):
+	"""Stop asking this new joiner for a document. Its upload, if any, stays
+	in the collection's files."""
+	_require_verifier()
+	doc = frappe.get_doc("Document Collection", name)
+	rows = [r for r in doc.checklist if r.document_type != document_type]
+	if len(rows) == len(doc.checklist):
+		frappe.throw(frappe._("{0} is not on the checklist.").format(document_type))
+	if not rows:
+		frappe.throw(frappe._("The checklist needs at least one document."))
+	doc.set("checklist", rows)
+	# Rows keep their old idx through set(): renumber so a later add goes last.
+	for i, row in enumerate(doc.checklist, start=1):
+		row.idx = i
+	doc.save(ignore_permissions=True)
+	doc.add_comment("Info", frappe._("{0} removed {1} from the checklist.").format(frappe.utils.get_fullname(frappe.session.user), document_type))
+	return get_collection(name)
