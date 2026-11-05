@@ -716,7 +716,7 @@
           <span class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-brand-50 text-brand-700">
             <FeatherIcon name="save" class="h-6 w-6" />
           </span>
-          <h2 class="mt-4 font-heading text-lg font-bold text-gray-900">Save your progress before you go?</h2>
+          <h2 class="mt-4 font-heading text-lg font-bold text-gray-900">{{ leave.mode === 'reload' ? 'Save your progress before you refresh?' : 'Save your progress before you go?' }}</h2>
           <p class="mx-auto mt-2 max-w-sm text-sm text-gray-600">
             Your latest changes to <b class="text-gray-900">{{ job?.job_title || 'this application' }}</b> are not saved yet.
             <template v-if="accountDrafts">Save them as a draft and continue any time from <b class="text-gray-900">My Applications</b>, on any device.</template>
@@ -729,7 +729,7 @@
           </div>
           <div class="mt-6 flex flex-col gap-2">
             <Button variant="solid" size="lg" icon-left="save" :class="BTN_BRAND" :loading="leave.saving" @click="saveAndLeave">
-              {{ leave.error ? 'Try again' : 'Save draft and leave' }}
+              {{ leave.error ? 'Try again' : leave.mode === 'reload' ? 'Save draft and refresh' : 'Save draft and leave' }}
             </Button>
             <Button size="lg" :disabled="leave.saving" @click="answerLeave('stay')">Keep editing</Button>
             <button
@@ -738,7 +738,7 @@
               class="mt-1 text-sm text-gray-500 underline-offset-2 hover:text-gray-800 hover:underline"
               @click="answerLeave('leave')"
             >
-              Leave anyway: your answers stay on this device
+              {{ leave.mode === 'reload' ? 'Refresh anyway' : 'Leave anyway' }}: your answers stay on this device
             </button>
           </div>
         </div>
@@ -1225,11 +1225,11 @@ function formatSavedAt(value) {
 // ----- leaving with unsaved changes
 const mustAsk = () => unsaved.value && !submitted.value
 
-// Closing the tab or reloading: save on the way out instead of asking.
-// The answers go to this device at once (and, logged in, to the account in
-// the background); the draft is restored on return. The browser's own
-// "Leave site?" box (which a page cannot restyle) shows only when nothing
-// could be kept.
+// Closing the tab or reloading with the browser's button: browsers allow
+// only their own "Leave site?" box there (a page cannot show or style its
+// own), so that box warns the candidate. The answers are also saved on the
+// way out (device at once, account in the background) in case they leave.
+// Refreshing from the keyboard is caught first and asks in our dialog.
 function flushToAccount() {
   const headers = { 'Content-Type': 'application/json; charset=utf-8' }
   if (window.csrf_token && window.csrf_token !== '{{ csrf_token }}') headers['X-Frappe-CSRF-Token'] = window.csrf_token
@@ -1245,20 +1245,41 @@ function flushToAccount() {
     // too large for a keepalive request: the device copy syncs on return
   }
 }
+let reloadConfirmed = false // the candidate chose to refresh in our dialog
 function onBeforeUnload(event) {
-  if (!mustAsk()) return
+  if (!mustAsk() || reloadConfirmed) return
   clearTimeout(localTimer)
-  const kept = saveLocal(false)
+  saveLocal(false)
   if (accountDrafts.value && dirty) flushToAccount()
-  if (kept) return
   event.preventDefault()
   event.returnValue = ''
 }
-onMounted(() => window.addEventListener('beforeunload', onBeforeUnload))
-onBeforeUnmount(() => window.removeEventListener('beforeunload', onBeforeUnload))
+// F5, Ctrl+R / Cmd+R (with or without Shift).
+function onReloadKey(event) {
+  const reload = event.key === 'F5' || ((event.ctrlKey || event.metaKey) && !event.altKey && event.key.toLowerCase() === 'r')
+  if (!reload || !mustAsk() || leave.open) return
+  event.preventDefault()
+  askLeave('reload').then((choice) => {
+    if (choice !== 'leave') return
+    reloadConfirmed = true
+    window.location.reload()
+  })
+}
+onMounted(() => {
+  window.addEventListener('beforeunload', onBeforeUnload)
+  window.addEventListener('keydown', onReloadKey)
+})
+onBeforeUnmount(() => {
+  window.removeEventListener('beforeunload', onBeforeUnload)
+  window.removeEventListener('keydown', onReloadKey)
+})
 
-// Moving elsewhere in the portal (Back, Openings, My Applications).
-const leave = reactive({ open: false, resolve: null, saving: false, error: '' })
+// Moving elsewhere in the portal (Back, Openings, My Applications), or
+// refreshing from the keyboard. mode: navigate | reload
+const leave = reactive({ open: false, resolve: null, saving: false, error: '', mode: 'navigate' })
+function askLeave(mode) {
+  return new Promise((resolve) => Object.assign(leave, { open: true, resolve, error: '', mode }))
+}
 function answerLeave(choice) {
   const resolve = leave.resolve
   if (!resolve || leave.saving) return
@@ -1276,17 +1297,18 @@ async function saveAndLeave() {
     leave.error = draft.error || "Couldn't save your draft. Please try again."
     return
   }
-  toast({
-    title: accountDrafts.value ? 'Draft saved. Continue any time from My Applications.' : 'Saved on this device.',
-    icon: 'check',
-    iconClasses: 'text-green-500',
-  })
+  if (leave.mode !== 'reload') {
+    toast({
+      title: accountDrafts.value ? 'Draft saved. Continue any time from My Applications.' : 'Saved on this device.',
+      icon: 'check',
+      iconClasses: 'text-green-500',
+    })
+  }
   answerLeave('leave')
 }
 onBeforeRouteLeave(async () => {
   if (!mustAsk()) return true
-  const choice = await new Promise((resolve) => Object.assign(leave, { open: true, resolve, error: '' }))
-  return choice === 'leave'
+  return (await askLeave('navigate')) === 'leave'
 })
 
 onBeforeUnmount(() => {
