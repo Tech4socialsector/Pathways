@@ -43,7 +43,7 @@
  ],
  "index_web_pages_for_search": 0,
  "links": [],
- "modified": "2026-10-22 11:00:00.000000",
+ "modified": "2026-11-05 18:00:00.000000",
  "modified_by": "Administrator",
  "module": "Pathways",
  "name": "Application Draft",
@@ -55,6 +55,12 @@
    "read": 1,
    "report": 1,
    "role": "System Manager"
+  },
+  {
+   "role": "Pathways Admin",
+   "read": 1,
+   "delete": 1,
+   "report": 1
   }
  ],
  "sort_field": "modified",

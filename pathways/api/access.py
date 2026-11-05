@@ -33,6 +33,12 @@ from pathways.utils.approval import is_approver
 from pathways.utils.master_setup import MASTER_SETUP, can_manage
 
 MANAGER_ROLE = "System Manager"
+ADMIN_ROLE = "Pathways Admin"
+# Roles & Permissions is open to both. A Pathways Admin works only inside
+# Pathways (its roles and DocTypes) and cannot raise its own reach: it cannot
+# bring an existing non-Pathways role in, change or drop the Pathways Admin
+# role, or take that role from themselves.
+ACCESS_ROLES = (MANAGER_ROLE, ADMIN_ROLE)
 PTYPES = ("read", "write", "create", "delete", "submit", "cancel", "amend")
 SUBMIT_PTYPES = ("submit", "cancel", "amend")
 # Turning a permission on turns on what it needs; turning one off turns
@@ -134,7 +140,7 @@ def get_my_access():
 		"menu": menu,
 		"doctypes": doctypes,
 		"can_view_pipeline": pipeline,
-		"can_manage_access": MANAGER_ROLE in all_roles,
+		"can_manage_access": bool(all_roles & set(ACCESS_ROLES)),
 		"can_manage_settings": bool(doctypes.get("Pathways Settings", {}).get("write")),
 	}
 
@@ -143,7 +149,28 @@ def get_my_access():
 
 
 def _only_manager():
-	frappe.only_for(MANAGER_ROLE)
+	frappe.only_for(ACCESS_ROLES)
+
+
+def _is_system_manager():
+	return MANAGER_ROLE in frappe.get_roles()
+
+
+def _guard_admin_role(role, action):
+	"""Only a System Manager may change the Pathways Admin role itself."""
+	if role == ADMIN_ROLE and not _is_system_manager():
+		frappe.throw(_("Only a System Manager can {0} the {1} role.").format(action, ADMIN_ROLE), frappe.PermissionError)
+
+
+def _save_user_roles(user, add=(), remove=()):
+	"""Change a user's Pathways roles. The endpoints check who may do it;
+	the User record itself is writable only by System Managers in Desk."""
+	doc = frappe.get_doc("User", user)
+	doc.flags.ignore_permissions = True
+	if add:
+		doc.add_roles(*add)
+	if remove:
+		doc.remove_roles(*remove)
 
 
 def _pathways_doctypes():
@@ -209,6 +236,7 @@ def get_access_matrix():
 	for item in MENU_ITEMS:
 		menu_by_doctype.setdefault(item["doctype"], []).append(item["label"])
 
+	is_manager = _is_system_manager()
 	matrix = {role: {} for role in roles}
 	customised = []
 	for dt in doctypes:
@@ -225,6 +253,8 @@ def get_access_matrix():
 				"role": role,
 				"users": counts.get(role, 0),
 				"editable": role != CANDIDATE_ROLE,
+				# Pathways Admin's own grants and the role itself: System Manager only.
+				"system_manager_only": role == ADMIN_ROLE and not is_manager,
 				"row_scoped": role in SCOPED_ROLES,
 				"desk_access": cint(frappe.db.get_value("Role", role, "desk_access")),
 			}
@@ -275,6 +305,7 @@ def set_role_permission(doctype, role, ptype, value):
 	_only_manager()
 	_assert_doctype(doctype)
 	_assert_editable_role(role)
+	_guard_admin_role(role, _("change the permissions of"))
 	if ptype not in PTYPES:
 		frappe.throw(_("Unknown permission type {0}.").format(ptype))
 
@@ -353,9 +384,16 @@ def create_role(role_name, desk_access=1):
 		frappe.throw(_("Role name is required."))
 	if role_name in PROTECTED_ROLES:
 		frappe.throw(_("{0} cannot be managed from Pathways.").format(role_name))
+	exists = frappe.db.exists("Role", role_name)
+	if exists and role_name not in get_pathways_roles() and not _is_system_manager():
+		# It may give access to other apps (SLCM, ERPNext...).
+		frappe.throw(
+			_("{0} already exists outside Pathways. Only a System Manager can add it to Pathways; choose another name.").format(role_name),
+			frappe.PermissionError,
+		)
 
-	if not frappe.db.exists("Role", role_name):
-		frappe.get_doc({"doctype": "Role", "role_name": role_name, "desk_access": cint(desk_access)}).insert()
+	if not exists:
+		frappe.get_doc({"doctype": "Role", "role_name": role_name, "desk_access": cint(desk_access)}).insert(ignore_permissions=True)
 
 	if role_name not in get_pathways_roles():
 		settings = _settings_for_update()
@@ -371,6 +409,7 @@ def remove_role(role):
 	_only_manager()
 	if role in SCOPED_ROLES:
 		frappe.throw(_("{0} is used by the application itself and cannot be removed.").format(role))
+	_guard_admin_role(role, _("remove"))
 	settings = _settings_for_update()
 	settings.set("pathways_roles", [row for row in settings.pathways_roles if row.role != role])
 	settings.save()
@@ -417,7 +456,7 @@ def assign_role(user, role):
 		frappe.throw(_("{0} is not a Pathways role.").format(role))
 	if user in ("Administrator", "Guest") or not frappe.db.exists("User", user):
 		frappe.throw(_("Choose a valid user."))
-	frappe.get_doc("User", user).add_roles(role)
+	_save_user_roles(user, add=[role])
 	return True
 
 
@@ -426,7 +465,11 @@ def unassign_role(user, role):
 	_only_manager()
 	if role not in get_pathways_roles():
 		frappe.throw(_("{0} is not a Pathways role.").format(role))
-	frappe.get_doc("User", user).remove_roles(role)
+	if user in ("Administrator", "Guest") or not frappe.db.exists("User", user):
+		frappe.throw(_("Choose a valid user."))
+	if role == ADMIN_ROLE and user == frappe.session.user and not _is_system_manager():
+		frappe.throw(_("You cannot remove the {0} role from yourself. Ask another administrator.").format(ADMIN_ROLE))
+	_save_user_roles(user, remove=[role])
 	return True
 
 
@@ -457,9 +500,10 @@ def create_staff_user(email, first_name, last_name=None, roles=None):
 			"send_welcome_email": 0 if own_welcome else 1,
 		}
 	)
-	user.insert()
+	user.insert(ignore_permissions=True)
 	if roles:
-		user.add_roles(*roles)
+		_save_user_roles(user.name, add=roles)
+		user.reload()
 	if own_welcome:
 		send_staff_welcome(user)
 	return user.name

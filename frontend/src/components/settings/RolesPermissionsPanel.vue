@@ -29,7 +29,7 @@
         >
           <span class="truncate">{{ displayRole(r.role) }}</span>
           <span class="flex shrink-0 items-center gap-1.5">
-            <FeatherIcon v-if="!r.editable" name="lock" class="h-3.5 w-3.5 text-gray-400" />
+            <FeatherIcon v-if="!r.editable || r.system_manager_only" name="lock" class="h-3.5 w-3.5 text-gray-400" />
             <span class="rounded bg-gray-100 px-1.5 text-xs text-gray-600">{{ r.users }}</span>
           </span>
         </button>
@@ -44,6 +44,9 @@
               <template v-if="!selected.editable">
                 Candidate access is fixed: candidates only reach their own records through the portal.
               </template>
+              <template v-else-if="selected.system_manager_only">
+                Full access to Pathways. Only a System Manager can change this role's permissions; you can still add or remove its users.
+              </template>
               <template v-else-if="selected.row_scoped">
                 Built-in committee role: members only ever see the Job Openings whose committee they sit on.
               </template>
@@ -53,7 +56,7 @@
           <div class="flex items-center gap-2">
             <TabButtons v-model="tab" :buttons="[{ label: 'Permissions', value: 'permissions' }, { label: `Users (${selected.users})`, value: 'users' }]" />
             <Button
-              v-if="selected.editable && !selected.row_scoped"
+              v-if="selected.editable && !selected.row_scoped && !selected.system_manager_only"
               variant="ghost"
               theme="red"
               @click="confirmRemoveRole = true"
@@ -117,7 +120,7 @@
                       type="checkbox"
                       class="h-4 w-4 rounded border-gray-300 disabled:opacity-40"
                       :checked="isGranted(dt.name, p)"
-                      :disabled="!selected.editable || isBusy(dt.name)"
+                      :disabled="!selected.editable || selected.system_manager_only || isBusy(dt.name)"
                       :aria-label="`${ptypeLabel(p)} ${dt.name}`"
                       @change="toggle(dt.name, p, $event.target.checked)"
                     />

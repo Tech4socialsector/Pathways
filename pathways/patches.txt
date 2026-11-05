@@ -59,3 +59,4 @@ pathways.patches.v1_0.seed_email_events #reschedule-request-declined
 pathways.patches.v1_0.honorarium_to_finance
 pathways.patches.v1_0.portal_login_wording
 pathways.patches.v1_0.portal_login_wording #news-not-each-update
+pathways.patches.v1_0.pathways_admin_full_access
