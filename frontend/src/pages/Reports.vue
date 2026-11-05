@@ -71,13 +71,13 @@
           <table class="w-full min-w-[640px] text-sm">
             <thead>
               <tr class="border-b text-left text-xs uppercase tracking-wide text-gray-500">
-                <th class="py-2 pr-3 font-medium">Track</th>
-                <th class="py-2 pr-3 text-right font-medium">Offers accepted</th>
-                <th class="py-2 pr-3 text-right font-medium">Median days to acceptance</th>
-                <th class="py-2 pr-3 text-right font-medium">Average</th>
-                <th class="py-2 pr-3 text-right font-medium">Joined</th>
-                <th class="py-2 pr-3 text-right font-medium">Median days to joining</th>
-                <th class="py-2 text-right font-medium">Average</th>
+                <th class="py-2 pr-3 font-semibold">Track</th>
+                <th class="py-2 pr-3 text-right font-semibold">Offers accepted</th>
+                <th class="py-2 pr-3 text-right font-semibold">Median days to acceptance</th>
+                <th class="py-2 pr-3 text-right font-semibold">Average</th>
+                <th class="py-2 pr-3 text-right font-semibold">Joined</th>
+                <th class="py-2 pr-3 text-right font-semibold">Median days to joining</th>
+                <th class="py-2 text-right font-semibold">Average</th>
               </tr>
             </thead>
             <tbody>

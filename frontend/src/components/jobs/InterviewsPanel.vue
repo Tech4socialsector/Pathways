@@ -48,10 +48,10 @@
                   @change="selected = $event.target.checked ? data.candidates.map((c) => c.name) : []"
                 />
               </th>
-              <th class="px-3 py-2 font-medium">Candidate</th>
-              <th class="px-3 py-2 font-medium">Round 1 (HR)</th>
-              <th class="px-3 py-2 font-medium">Final</th>
-              <th class="px-3 py-2 font-medium">Status</th>
+              <th class="px-3 py-2 font-semibold">Candidate</th>
+              <th class="px-3 py-2 font-semibold">Round 1 (HR)</th>
+              <th class="px-3 py-2 font-semibold">Final</th>
+              <th class="px-3 py-2 font-semibold">Status</th>
             </tr>
           </thead>
           <tbody class="divide-y">

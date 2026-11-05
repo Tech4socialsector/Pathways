@@ -44,8 +44,8 @@
             <table class="w-full text-sm">
               <thead class="sticky top-0 z-10 bg-gray-50 text-xs text-gray-600">
                 <tr>
-                  <th class="px-3 py-2 text-left font-medium">Document</th>
-                  <th v-for="p in options.panel" :key="p.user" class="min-w-[7rem] border-l px-2 py-2 text-center font-medium">
+                  <th class="px-3 py-2 text-left font-semibold">Document</th>
+                  <th v-for="p in options.panel" :key="p.user" class="min-w-[7rem] border-l px-2 py-2 text-center font-semibold">
                     <div class="truncate" :title="p.user">{{ p.full_name }}</div>
                     <label class="mt-1 inline-flex cursor-pointer items-center gap-1 font-normal text-gray-500">
                       <input

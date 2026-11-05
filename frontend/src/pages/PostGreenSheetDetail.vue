@@ -155,13 +155,13 @@
               <table class="w-full text-sm">
                 <thead class="text-left text-xs text-gray-500">
                   <tr>
-                    <th class="px-1 py-1 font-medium">Candidate</th>
-                    <th class="px-1 py-1 font-medium">Experience</th>
-                    <th class="px-1 py-1 font-medium">Highest Qualification</th>
-                    <th class="px-1 py-1 font-medium">Salary / Fee per Month</th>
-                    <th class="px-1 py-1 font-medium">Position Offered</th>
-                    <th class="px-1 py-1 text-center font-medium">Insurance</th>
-                    <th class="px-1 py-1 text-center font-medium">Leave</th>
+                    <th class="px-1 py-1 font-semibold">Candidate</th>
+                    <th class="px-1 py-1 font-semibold">Experience</th>
+                    <th class="px-1 py-1 font-semibold">Highest Qualification</th>
+                    <th class="px-1 py-1 font-semibold">Salary / Fee per Month</th>
+                    <th class="px-1 py-1 font-semibold">Position Offered</th>
+                    <th class="px-1 py-1 text-center font-semibold">Insurance</th>
+                    <th class="px-1 py-1 text-center font-semibold">Leave</th>
                     <th v-if="editable" />
                   </tr>
                 </thead>

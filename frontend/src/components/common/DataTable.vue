@@ -189,8 +189,8 @@
             <th
               v-for="col in shownColumns"
               :key="col.key"
-              class="whitespace-nowrap px-4 py-2 font-medium"
-              :class="[col.align === 'right' && 'text-right', col.sortable !== false && 'cursor-pointer select-none hover:text-gray-800']"
+              class="whitespace-nowrap px-4 py-2.5 font-semibold"
+              :class="[col.align === 'right' && 'text-right', col.sortable !== false && 'cursor-pointer select-none hover:text-gray-900']"
               @click="col.sortable !== false && toggleSort(col.key)"
             >
               {{ col.label }}

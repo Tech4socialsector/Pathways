@@ -1,10 +1,7 @@
 <template>
   <!-- Candidate portal: the appointment order once it has been sent. -->
   <div v-if="offer" class="rounded-xl border bg-white p-5 shadow-sm">
-    <div class="mb-3 flex items-center justify-between gap-2">
-      <div class="text-xs font-bold uppercase tracking-wide text-brand-700">Appointment order</div>
-      <StatusBadge :status="offer.status" />
-    </div>
+    <div class="mb-3 text-xs font-bold uppercase tracking-wide text-brand-700">Appointment order</div>
     <dl class="flex flex-col gap-1.5 text-sm">
       <div v-if="offer.designation" class="flex justify-between gap-2"><dt class="text-gray-500">Position</dt><dd class="text-right font-medium">{{ offer.designation }}</dd></div>
       <div v-if="offer.proposed_doj" class="flex justify-between gap-2"><dt class="text-gray-500">Proposed joining</dt><dd>{{ fmt(offer.proposed_doj) }}</dd></div>
@@ -62,7 +59,6 @@
 import { onMounted, ref, watch } from 'vue'
 import { Button, Dialog, FileUploader, FormControl } from 'frappe-ui'
 import dayjs from 'dayjs'
-import StatusBadge from '@/components/common/StatusBadge.vue'
 import LetterPreviewDialog from '@/components/offers/LetterPreviewDialog.vue'
 import { offerService } from '@/services/offers'
 import { BTN_DANGER, BTN_SUCCESS } from '@/utils/buttonStyles'

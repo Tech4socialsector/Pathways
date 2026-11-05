@@ -32,7 +32,7 @@
           </p>
           <table v-else class="w-full rounded-lg border text-sm">
             <thead class="bg-gray-50 text-left text-xs text-gray-500">
-              <tr><th class="px-3 py-2 font-medium">Candidate</th><th class="px-3 py-2 font-medium">Round 1 (HR)</th><th class="w-2/5 px-3 py-2 font-medium">Remarks</th></tr>
+              <tr><th class="px-3 py-2 font-semibold">Candidate</th><th class="px-3 py-2 font-semibold">Round 1 (HR)</th><th class="w-2/5 px-3 py-2 font-semibold">Remarks</th></tr>
             </thead>
             <tbody class="divide-y">
               <tr v-for="r in data.final_shortlist" :key="r.application" class="align-top">

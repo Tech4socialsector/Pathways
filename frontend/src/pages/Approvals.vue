@@ -83,7 +83,7 @@
                   <div class="overflow-x-auto rounded-lg border">
                     <table class="w-full text-sm">
                       <thead class="bg-gray-50 text-left text-xs text-gray-500">
-                        <tr><th v-for="c in t.columns" :key="c" class="px-3 py-2 font-medium">{{ c }}</th></tr>
+                        <tr><th v-for="c in t.columns" :key="c" class="px-3 py-2 font-semibold">{{ c }}</th></tr>
                       </thead>
                       <tbody>
                         <tr v-for="(r, i) in t.rows" :key="i" class="border-t">

@@ -91,12 +91,12 @@
             <table class="w-full min-w-[760px] text-sm">
               <thead class="bg-white text-left text-xs uppercase tracking-wide text-gray-500">
                 <tr class="border-b">
-                  <th class="px-4 py-2.5 font-medium">Interview</th>
-                  <th class="px-4 py-2.5 font-medium">Candidate</th>
-                  <th class="px-4 py-2.5 font-medium">Mode</th>
-                  <th class="px-4 py-2.5 font-medium">Panel progress</th>
-                  <th v-if="g.anyMine" class="px-4 py-2.5 font-medium">Your score</th>
-                  <th class="px-4 py-2.5 text-right font-medium"><span class="sr-only">Actions</span></th>
+                  <th class="px-4 py-2.5 font-semibold">Interview</th>
+                  <th class="px-4 py-2.5 font-semibold">Candidate</th>
+                  <th class="px-4 py-2.5 font-semibold">Mode</th>
+                  <th class="px-4 py-2.5 font-semibold">Panel progress</th>
+                  <th v-if="g.anyMine" class="px-4 py-2.5 font-semibold">Your score</th>
+                  <th class="px-4 py-2.5 text-right font-semibold"><span class="sr-only">Actions</span></th>
                 </tr>
               </thead>
               <tbody class="divide-y">

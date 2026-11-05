@@ -142,8 +142,8 @@
                     @change="selected = $event.target.checked ? decidable.map((r) => r.application) : []"
                   />
                 </th>
-                <th :rowspan="showCriteria ? 2 : 1" class="px-3 py-2 text-left font-medium uppercase">#</th>
-                <th :rowspan="showCriteria ? 2 : 1" class="min-w-[12rem] px-3 py-2 text-left font-medium uppercase">Candidate</th>
+                <th :rowspan="showCriteria ? 2 : 1" class="px-3 py-2 text-left font-semibold uppercase">#</th>
+                <th :rowspan="showCriteria ? 2 : 1" class="min-w-[12rem] px-3 py-2 text-left font-semibold uppercase">Candidate</th>
                 <th
                   v-for="p in data.panel"
                   :key="p.user"
@@ -152,10 +152,10 @@
                 >
                   {{ p.full_name }}
                 </th>
-                <th :rowspan="showCriteria ? 2 : 1" class="border-l px-3 py-2 text-center font-medium uppercase">Total of {{ data.panel.length }}</th>
-                <th :rowspan="showCriteria ? 2 : 1" class="px-3 py-2 text-center font-medium uppercase">Average / {{ fmt(data.max_total) }}</th>
-                <th :rowspan="showCriteria ? 2 : 1" class="px-3 py-2 text-center font-medium uppercase">Panel says</th>
-                <th :rowspan="showCriteria ? 2 : 1" class="px-3 py-2 text-left font-medium uppercase">Decision</th>
+                <th :rowspan="showCriteria ? 2 : 1" class="border-l px-3 py-2 text-center font-semibold uppercase">Total of {{ data.panel.length }}</th>
+                <th :rowspan="showCriteria ? 2 : 1" class="px-3 py-2 text-center font-semibold uppercase">Average / {{ fmt(data.max_total) }}</th>
+                <th :rowspan="showCriteria ? 2 : 1" class="px-3 py-2 text-center font-semibold uppercase">Panel says</th>
+                <th :rowspan="showCriteria ? 2 : 1" class="px-3 py-2 text-left font-semibold uppercase">Decision</th>
               </tr>
               <tr v-if="showCriteria">
                 <template v-for="p in data.panel" :key="'c-' + p.user">

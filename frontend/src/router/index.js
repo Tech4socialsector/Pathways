@@ -247,10 +247,9 @@ const routes = [
     meta: { requiresCandidate: true },
   },
   {
+    // Candidates cannot edit their details; old links land on Change password.
     path: '/portal/profile',
-    name: 'MyProfile',
-    component: () => import('@/pages/candidate-portal/MyProfile.vue'),
-    meta: { requiresCandidate: true },
+    redirect: '/portal/change-password',
   },
   {
     path: '/portal/change-password',

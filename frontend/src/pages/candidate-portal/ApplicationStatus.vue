@@ -20,14 +20,6 @@
               {{ status.department }} · <span class="font-mono">{{ status.application_id }}</span> · Applied {{ formatDay(status.application_date) }}
             </p>
           </div>
-          <StatusBadge :status="status.status" />
-          <div class="flex w-full items-start gap-3 rounded-lg px-4 py-3 text-sm" :class="headline.tone">
-            <FeatherIcon :name="headline.icon" class="mt-0.5 h-4 w-4 shrink-0" />
-            <div>
-              <div class="font-semibold">{{ headline.title }}</div>
-              <div class="mt-0.5 opacity-90">{{ headline.text }}</div>
-            </div>
-          </div>
         </div>
 
         <!-- Staff opening a candidate's page (e.g. from an email link) -->
@@ -94,12 +86,6 @@
           </div>
         </section>
 
-        <!-- Progress: the same line as the staff application page (hidden for now)
-        <section class="isolate mb-6 rounded-xl border bg-white p-5 shadow-sm">
-          <div class="mb-4 text-xs font-bold uppercase tracking-wide text-brand-700">Your progress</div>
-          <ProgressStepper :steps="timelineSteps" />
-        </section>
-        -->
 
         <div class="mb-6 grid grid-cols-1 items-start gap-6 md:grid-cols-2 xl:grid-cols-3">
             <!-- Files they uploaded with the application -->
@@ -133,10 +119,7 @@
             <div v-if="pastInterviews.length" class="rounded-xl border bg-white p-5 shadow-sm">
               <div class="mb-3 text-xs font-bold uppercase tracking-wide text-brand-700">Past interviews</div>
               <div v-for="(iv, idx) in pastInterviews" :key="iv.name || idx" class="mb-4 rounded-lg border p-3 text-sm last:mb-0">
-                <div class="flex flex-wrap items-center justify-between gap-2">
-                  <span class="font-semibold text-gray-900">{{ iv.round_type === 'HR Interaction' ? 'Round 1 · HR interaction' : 'Final interview' }}</span>
-                  <span class="rounded-full px-2 py-0.5 text-xs font-medium" :class="ivTone(iv)">{{ ivLabel(iv) }}</span>
-                </div>
+                <div class="font-semibold text-gray-900">{{ iv.round_type === 'HR Interaction' ? 'Round 1 · HR interaction' : 'Final interview' }}</div>
                 <div class="mt-1 text-gray-700">{{ dayjs(iv.scheduled_datetime).format('dddd, DD MMM YYYY · h:mm A [IST]') }} · {{ iv.mode === 'In-Person' ? 'In person' : 'Online' }}</div>
                 <div v-if="iv.location" class="mt-1 flex items-center gap-1 text-gray-700">
                   <FeatherIcon name="map-pin" class="h-3.5 w-3.5 text-gray-400" />{{ iv.location }}
@@ -223,9 +206,7 @@ import DocumentViewer from '@/components/common/DocumentViewer.vue'
 import { applicationService } from '@/services/applications'
 import { toast } from '@/utils/notify'
 import CandidatePortalLayout from '@/layouts/CandidatePortalLayout.vue'
-import StatusBadge from '@/components/common/StatusBadge.vue'
 import OnboardingDocumentsPanel from '@/components/candidate/OnboardingDocumentsPanel.vue'
-import ProgressStepper from '@/components/common/ProgressStepper.vue'
 import { useApplicationStatus } from '@/composables/useApplications'
 import CandidateOfferCard from '@/components/offers/CandidateOfferCard.vue'
 
@@ -233,80 +214,6 @@ const session = useSessionStore()
 const props = defineProps({ id: { type: String, required: true } })
 
 const { status, loading, error, fetchStatus } = useApplicationStatus()
-
-// The same six stages as the My Applications list.
-const STAGES = [
-  { key: 'received', label: 'Application received', detail: 'We have your application and documents.' },
-  { key: 'screening', label: 'Screening', detail: 'Eligibility and documents are checked.' },
-  { key: 'shortlisted', label: 'Shortlisted', detail: 'The committee shortlists candidates for interview.' },
-  { key: 'interview', label: 'Interview', detail: 'Interview details are emailed and shown here.' },
-  { key: 'decision', label: 'Decision & offer', detail: 'The selection outcome and any offer.' },
-  { key: 'joining', label: 'Joining', detail: 'Documents and onboarding.' },
-]
-const STAGE_OF = {
-  Submitted: 0,
-  'Under Review': 1,
-  Shortlisted: 2,
-  'Interview Scheduled': 3,
-  'Interview Completed': 3,
-  Selected: 4,
-  'Offer Extended': 4,
-  'Offer Declined': 4,
-  'Offer Accepted': 5,
-  'Documents Pending': 5,
-  'Documents Verified': 5,
-  Joined: 5,
-}
-
-const timelineSteps = computed(() => {
-  if (!status.value) return []
-  const current = status.value.status
-  if (current === 'Not Selected' || current === 'Withdrawn') {
-    return [
-      { ...STAGES[0], state: 'completed' },
-      { ...STAGES[1], state: 'completed' },
-      {
-        key: current,
-        label: current === 'Withdrawn' ? 'Withdrawn' : 'Not progressed',
-        detail: current === 'Withdrawn' ? 'You withdrew this application.' : 'Your application was not taken forward.',
-        state: 'rejected',
-      },
-    ]
-  }
-  const idx = STAGE_OF[current] ?? 1
-  const done = current === 'Joined'
-  return STAGES.map((step, i) => ({
-    ...step,
-    state: i < idx || (done && i === idx) ? 'completed' : i === idx ? 'current' : 'pending',
-  }))
-})
-
-const HEADLINES = {
-  Submitted: ['inbox', 'Application received', 'Your application is in the queue for screening.'],
-  'Under Review': ['search', 'Under review', 'The recruitment team is reviewing eligibility and documents. We will email you when there is an update.'],
-  Shortlisted: ['star', 'You have been shortlisted', 'Interview details will be emailed to you and shown on this page.'],
-  'Interview Scheduled': ['calendar', 'Interview scheduled', 'See the interview details below.'],
-  'Interview Completed': ['check-circle', 'Interview completed', 'The selection committee is finalising its decision.'],
-  Selected: ['award', 'Selected', 'Your offer is being prepared.'],
-  'Offer Extended': ['mail', 'Offer extended', 'Please review and respond to your offer below.'],
-  'Offer Accepted': ['thumbs-up', 'Offer accepted', 'We will be in touch about joining documents.'],
-  'Offer Declined': ['x-circle', 'Offer declined', 'You declined the offer.'],
-  'Documents Pending': ['file-text', 'Documents pending', 'Please submit the joining documents requested by email.'],
-  'Documents Verified': ['check-square', 'Documents verified', 'You are all set for joining.'],
-  Joined: ['smile', 'Welcome to NLSIU', 'You have joined.'],
-  'Not Selected': ['info', 'Not taken forward', 'Thank you for your interest. Unfortunately your application was not taken forward this time.'],
-  Withdrawn: ['slash', 'Withdrawn', 'You withdrew this application.'],
-}
-const headline = computed(() => {
-  const st = status.value?.status
-  const [icon, title, text] = HEADLINES[st] || ['info', st, '']
-  const tone = st === 'Not Selected' || st === 'Withdrawn' || st === 'Offer Declined'
-    ? 'bg-gray-50 text-gray-700'
-    : ['Shortlisted', 'Selected', 'Offer Extended', 'Offer Accepted', 'Joined'].includes(st)
-      ? 'bg-green-50 text-green-800'
-      : 'bg-brand-50 text-brand-900'
-  return { icon, title, text, tone }
-})
 
 const submission = ref(null)
 const submissionLoading = ref(false)
@@ -340,17 +247,6 @@ const needsReply = (iv) => (iv.rsvp_status || 'Pending') === 'Pending'
 // ----- interviews: RSVP
 const rsvpBusy = ref('')
 const isOpen = (iv) => ['Scheduled', 'Rescheduled'].includes(iv.status) && dayjs(iv.scheduled_datetime).isAfter(dayjs())
-function ivLabel(iv) {
-  if (iv.status === 'Completed') return 'Completed'
-  if (iv.status === 'Cancelled') return 'Cancelled'
-  if (!isOpen(iv)) return iv.status
-  return { Confirmed: 'You confirmed', Declined: 'You declined' }[iv.rsvp_status] || 'Please reply'
-}
-function ivTone(iv) {
-  if (iv.status === 'Completed') return 'bg-green-50 text-green-700'
-  if (iv.status === 'Cancelled') return 'bg-gray-100 text-gray-500'
-  return { Confirmed: 'bg-green-50 text-green-700', Declined: 'bg-red-50 text-red-700' }[iv.rsvp_status] || 'bg-orange-50 text-orange-700'
-}
 async function rsvp(iv, response) {
   rsvpBusy.value = iv.name + response
   try {

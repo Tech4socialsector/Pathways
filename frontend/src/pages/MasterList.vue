@@ -92,10 +92,10 @@
             <table class="w-full min-w-[640px] text-sm">
               <thead class="border-b bg-gray-50 text-left text-xs font-medium uppercase tracking-wide text-gray-500">
                 <tr>
-                  <th class="px-5 py-3 font-medium">Name</th>
-                  <th v-for="c in columns" :key="c.fieldname" class="px-5 py-3 font-medium">{{ c.label }}</th>
-                  <th v-if="form?.active_field" class="px-5 py-3 font-medium">Status</th>
-                  <th class="px-5 py-3 text-right font-medium">Last updated</th>
+                  <th class="px-5 py-3 font-semibold">Name</th>
+                  <th v-for="c in columns" :key="c.fieldname" class="px-5 py-3 font-semibold">{{ c.label }}</th>
+                  <th v-if="form?.active_field" class="px-5 py-3 font-semibold">Status</th>
+                  <th class="px-5 py-3 text-right font-semibold">Last updated</th>
                   <th class="w-12 px-3 py-3"><span class="sr-only">Actions</span></th>
                 </tr>
               </thead>

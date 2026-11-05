@@ -398,10 +398,12 @@ def get_my_applications():
 	if not candidate:
 		return []
 
+	# No status: the portal shows candidates what they applied for, never
+	# where an application stands (that reaches them by email).
 	apps = frappe.get_all(
 		"Application",
 		filters={"candidate": candidate},
-		fields=["name", "application_id", "job_opening", "status", "application_date", "modified"],
+		fields=["name", "application_id", "job_opening", "application_date", "modified"],
 		order_by="creation desc",
 	)
 	jobs = {
@@ -413,8 +415,6 @@ def get_my_applications():
 		)
 	} if apps else {}
 	for a in apps:
-		if a.status == "Not Selected" and not frappe.db.get_value("Application", a.name, "regret_sent_on"):
-			a.status = "Under Review"
 		job = jobs.get(a.job_opening) or {}
 		a.update({"job_title": job.get("job_title"), "department": job.get("department"), "track": job.get("track")})
 	return apps
@@ -457,13 +457,9 @@ def get_application_status(application_name):
 		"Document Collection", {"application": application_name}, "overall_status"
 	)
 
-	status = app.status
-	if status == "Not Selected" and not app.get("regret_sent_on"):
-		# Screening outcomes reach candidates with the regret email, not before.
-		status = "Under Review"
-	return {
+	out = {
 		"application_id": app.application_id,
-		"status": status,
+		"status": app.status,
 		"job_title": job.job_title if job else None,
 		"department": job.department if job else None,
 		"application_date": app.application_date,
@@ -472,6 +468,12 @@ def get_application_status(application_name):
 		"acceptance_deadline": offer.acceptance_deadline if offer else None,
 		"document_status": doc_collection,
 	}
+	if frappe.db.get_value("Candidate", app.candidate, "email") == frappe.session.user:
+		# The candidate never sees where the application or offer stands;
+		# interviews, the offer card and joining documents ask what they must do.
+		out.pop("status")
+		out.pop("offer_status")
+	return out
 
 
 # What a candidate never sees on their own application.
@@ -490,7 +492,7 @@ def get_my_application_detail(application_name):
 		frappe.throw(_("Not permitted."), frappe.PermissionError)
 
 	job = frappe.get_doc("Job Opening", app.job_opening)
-	hidden = CANDIDATE_HIDDEN | _fields_not_asked(job, app)
+	hidden = CANDIDATE_HIDDEN | _pipeline_fields() | _fields_not_asked(job, app)
 	candidate_fields = [
 		df for df in _data_fields("Candidate") if df.fieldname not in hidden and df.fieldname != "password_change_required"
 	]
@@ -500,6 +502,18 @@ def get_my_application_detail(application_name):
 	out["candidate_fields"] = [_field_def(df) for df in candidate_fields]
 	out["documents"] = _application_documents(app)
 	return out
+
+
+def _pipeline_fields():
+	"""The Application's first tab (status, outcome, eligibility, regrets…):
+	recruitment bookkeeping, not what the candidate filled in. Hidden from
+	them as a block, so a field added there later stays hidden too."""
+	out = set()
+	for df in frappe.get_meta("Application").fields:
+		if df.fieldtype == "Tab Break":
+			break
+		out.add(df.fieldname)
+	return out - {"application_id"}
 
 
 # Application fields each Job Opening form switch adds to the apply form.

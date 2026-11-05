@@ -37,6 +37,14 @@ h3 {
   font-family: var(--font-heading);
 }
 
+/* Table column headers. Lists set a pale grey on <thead>; small uppercase
+   serif text in that grey was hard to read. A rule on th itself beats the
+   inherited colour, while a th with its own colour class (e.g. white on
+   the maroon header of the shortlisting sheet) still keeps it. */
+thead th {
+  @apply font-semibold tracking-wide text-gray-700;
+}
+
 /* Apply form: outline the control of a field with an error (FormField.vue). */
 .field-invalid input:not([type='checkbox']):not([type='radio']),
 .field-invalid select,

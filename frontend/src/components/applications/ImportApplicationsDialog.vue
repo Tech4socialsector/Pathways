@@ -61,11 +61,11 @@
             <table class="w-full text-sm">
               <thead class="sticky top-0 bg-gray-50 text-xs text-gray-600">
                 <tr>
-                  <th class="px-3 py-2 text-left font-medium">Row</th>
-                  <th class="px-3 py-2 text-left font-medium">Candidate</th>
-                  <th class="px-3 py-2 text-left font-medium">Job opening</th>
-                  <th class="px-3 py-2 text-left font-medium">Status</th>
-                  <th class="px-3 py-2 text-left font-medium">Check</th>
+                  <th class="px-3 py-2 text-left font-semibold">Row</th>
+                  <th class="px-3 py-2 text-left font-semibold">Candidate</th>
+                  <th class="px-3 py-2 text-left font-semibold">Job opening</th>
+                  <th class="px-3 py-2 text-left font-semibold">Status</th>
+                  <th class="px-3 py-2 text-left font-semibold">Check</th>
                 </tr>
               </thead>
               <tbody class="divide-y">
@@ -117,9 +117,9 @@
             <table class="w-full text-sm">
               <thead class="sticky top-0 bg-gray-50 text-xs text-gray-600">
                 <tr>
-                  <th class="px-3 py-2 text-left font-medium">Row</th>
-                  <th class="px-3 py-2 text-left font-medium">Candidate</th>
-                  <th class="px-3 py-2 text-left font-medium">Problem</th>
+                  <th class="px-3 py-2 text-left font-semibold">Row</th>
+                  <th class="px-3 py-2 text-left font-semibold">Candidate</th>
+                  <th class="px-3 py-2 text-left font-semibold">Problem</th>
                 </tr>
               </thead>
               <tbody class="divide-y">
