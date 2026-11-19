@@ -8,7 +8,7 @@
          controls kept together on the right; on narrow screens the right
          group moves under the filters as a whole. -->
     <div class="flex flex-wrap items-start gap-2 lg:flex-nowrap" :class="toolbarPanel && $slots['above-toolbar'] && 'pt-3'">
-      <div class="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+      <div class="flex min-w-0 grow basis-full flex-wrap items-center gap-2 lg:basis-0">
         <div class="w-full sm:w-64">
           <TextInput v-model="search" type="text" :placeholder="searchPlaceholder">
             <template #prefix><FeatherIcon name="search" class="h-4 w-4 text-gray-500" /></template>

@@ -122,6 +122,8 @@ export function applyAppearance(values = {}) {
   root.setProperty('--font-body', fontStack(next.body_font))
   root.setProperty('--font-heading', fontStack(next.heading_font))
   document.title = next.app_name
+  // Browser / installed-app title bar follows the brand colour.
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', isValidHex(next.brand_color) ? next.brand_color : DEFAULT_APPEARANCE.brand_color)
 }
 
 export async function loadAppearance() {

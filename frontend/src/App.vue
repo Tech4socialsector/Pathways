@@ -1,6 +1,7 @@
 <template>
   <FrappeUIProvider>
     <router-view />
+    <InstallPrompt />
   </FrappeUIProvider>
 </template>
 
@@ -8,6 +9,7 @@
 import { onMounted } from 'vue'
 import { FrappeUIProvider } from 'frappe-ui'
 import { useSessionStore } from '@/stores/session'
+import InstallPrompt from '@/components/common/InstallPrompt.vue'
 
 const session = useSessionStore()
 

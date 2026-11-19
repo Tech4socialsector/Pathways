@@ -1,5 +1,22 @@
 <template>
-  <header class="flex h-12 shrink-0 items-center gap-4 bg-brand-700 px-4 text-white shadow-sm">
+  <!-- The safe-area inset keeps the bar clear of a phone's notch / status
+       bar when installed as an app (it is 0 in a normal browser tab). -->
+  <header
+    class="relative flex shrink-0 items-center gap-2 bg-brand-700 px-2 text-white shadow-sm sm:gap-4 sm:px-4"
+    style="height: calc(3rem + env(safe-area-inset-top)); padding-top: env(safe-area-inset-top)"
+  >
+    <!-- Phones: opens the menu drawer (RoleAwareSidebar). -->
+    <button
+      type="button"
+      class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md hover:bg-white/10 md:hidden"
+      aria-label="Open menu"
+      aria-controls="pathways-drawer"
+      :aria-expanded="mobileOpen"
+      @click="openMobile"
+    >
+      <FeatherIcon name="menu" class="h-5 w-5" />
+    </button>
+
     <RouterLink to="/" class="flex min-w-0 items-center gap-2.5">
       <img
         v-if="appearance.app_logo"
@@ -16,24 +33,44 @@
 
     <div class="flex-1" />
 
+    <!-- Phones: a search button that drops the search box below the bar. -->
+    <button
+      v-if="session.hasMenu('jobs')"
+      type="button"
+      class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md hover:bg-white/10 sm:hidden"
+      :class="mobileSearch && 'bg-white/10'"
+      :aria-label="mobileSearch ? 'Close search' : 'Search job openings'"
+      :aria-expanded="mobileSearch"
+      @click="toggleMobileSearch"
+    >
+      <FeatherIcon :name="mobileSearch ? 'x' : 'search'" class="h-4 w-4" />
+    </button>
+
     <!-- Job opening search: title or job code. -->
-    <div v-if="session.hasMenu('jobs')" class="relative hidden w-64 sm:block">
-      <FeatherIcon name="search" class="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-white/70" />
-      <input
-        v-model="query"
-        type="search"
-        placeholder="Search job openings..."
-        class="h-8 w-full rounded-md border border-white/25 bg-white/10 pl-8 pr-2 text-sm text-white placeholder-white/70 focus:border-white/60 focus:bg-white/15 focus:outline-none focus:ring-0"
-        @focus="open = true"
-        @blur="closeSoon"
-        @keydown.down.prevent="move(1)"
-        @keydown.up.prevent="move(-1)"
-        @keydown.enter.prevent="go(results[active])"
-        @keydown.esc="open = false"
-      />
+    <div
+      v-if="session.hasMenu('jobs')"
+      class="sm:relative sm:inset-x-auto sm:top-auto sm:z-auto sm:block sm:w-64 sm:bg-transparent sm:p-0 sm:shadow-none"
+      :class="mobileSearch ? 'absolute inset-x-0 top-full z-40 block bg-brand-700 p-2 shadow-md' : 'hidden'"
+    >
+      <div class="relative">
+        <FeatherIcon name="search" class="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-white/70" />
+        <input
+          ref="searchInput"
+          v-model="query"
+          type="search"
+          placeholder="Search job openings..."
+          class="h-8 w-full rounded-md border border-white/25 bg-white/10 pl-8 pr-2 text-sm text-white placeholder-white/70 focus:border-white/60 focus:bg-white/15 focus:outline-none focus:ring-0"
+          @focus="open = true"
+          @blur="closeSoon"
+          @keydown.down.prevent="move(1)"
+          @keydown.up.prevent="move(-1)"
+          @keydown.enter.prevent="go(results[active])"
+          @keydown.esc="onSearchEsc"
+        />
+      </div>
       <div
         v-if="open && query.trim()"
-        class="absolute right-0 top-10 z-20 w-80 overflow-hidden rounded-lg border bg-white py-1 text-gray-900 shadow-lg"
+        class="absolute inset-x-2 top-full z-20 mt-1 overflow-hidden rounded-lg border bg-white py-1 text-gray-900 shadow-lg sm:inset-x-auto sm:right-0 sm:top-10 sm:mt-0 sm:w-80"
       >
         <div v-if="searching && !results.length" class="px-3 py-2 text-sm text-gray-500">Searching...</div>
         <div v-else-if="!results.length" class="px-3 py-2 text-sm text-gray-500">No job openings found.</div>
@@ -71,7 +108,10 @@
         >{{ pendingCount > 9 ? '9+' : pendingCount }}</span>
       </button>
 
-      <div v-if="bellOpen" class="absolute right-0 top-10 z-40 w-96 overflow-hidden rounded-lg border bg-white text-gray-900 shadow-xl">
+      <div
+        v-if="bellOpen"
+        class="absolute right-0 top-10 z-40 w-96 overflow-hidden rounded-lg border bg-white text-gray-900 shadow-xl max-sm:fixed max-sm:inset-x-2 max-sm:top-[calc(3.25rem+env(safe-area-inset-top))] max-sm:w-auto"
+      >
         <div class="flex items-center justify-between border-b px-4 py-2.5">
           <span class="font-semibold">Pending approvals</span>
           <span v-if="pendingCount" class="rounded-full bg-brand-50 px-2 py-0.5 text-xs font-semibold text-brand-700">{{ pendingCount }}</span>
@@ -134,7 +174,7 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { Avatar, Button, Dialog, Dropdown, FeatherIcon } from 'frappe-ui'
 import { BTN_BRAND } from '@/utils/buttonStyles'
@@ -144,9 +184,12 @@ import { approvalService } from '@/services/approvals'
 import StatusBadge from '@/components/common/StatusBadge.vue'
 import SettingsDialog from './SettingsDialog.vue'
 import { appearance } from '@/utils/theme'
+import { useSidebar } from '@/composables/useSidebar'
+import { installAvailable, openInstallGuide } from '@/utils/pwa'
 
 const session = useSessionStore()
 const router = useRouter()
+const { mobileOpen, openMobile } = useSidebar()
 
 // ----- search
 const query = ref('')
@@ -197,8 +240,28 @@ function move(step) {
 function go(job) {
   if (!job) return
   open.value = false
+  mobileSearch.value = false
   query.value = ''
   router.push(`/jobs/${job.name}`)
+}
+
+// Phones: the search box opens below the bar on demand.
+const mobileSearch = ref(false)
+const searchInput = ref(null)
+
+async function toggleMobileSearch() {
+  mobileSearch.value = !mobileSearch.value
+  if (mobileSearch.value) {
+    await nextTick()
+    searchInput.value?.focus()
+  } else {
+    query.value = ''
+  }
+}
+
+function onSearchEsc() {
+  open.value = false
+  if (mobileSearch.value) toggleMobileSearch()
 }
 
 function closeSoon() {
@@ -263,6 +326,10 @@ const appMenuOptions = computed(() => {
   }
   if (session.canManageSettings) {
     items.push({ label: 'Email Setup', icon: 'mail', onClick: () => router.push('/settings/email') })
+  }
+  // Installable app: the browser's dialog, or the install steps popup.
+  if (installAvailable()) {
+    items.push({ label: 'Install app', icon: 'download', onClick: openInstallGuide })
   }
   items.push(
     { label: 'Desk', icon: 'grid', onClick: () => window.open('/app', '_blank', 'noopener') },

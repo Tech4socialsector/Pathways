@@ -1,5 +1,5 @@
 <template>
-  <div class="border-b bg-white px-6 py-4">
+  <div class="border-b bg-white px-4 py-3 sm:px-6 sm:py-4">
     <div class="flex flex-wrap items-start justify-between gap-3">
       <div class="flex min-w-0 items-start gap-3">
         <BackButton v-if="showBack" :fallback="backFallback" class="mt-0.5" />
@@ -12,7 +12,7 @@
               <span v-else aria-current="page">{{ c.label }}</span>
             </template>
           </nav>
-          <h1 class="text-2xl font-semibold text-gray-900">{{ title }}</h1>
+          <h1 class="text-xl font-semibold text-gray-900 sm:text-2xl">{{ title }}</h1>
           <p v-if="subtitle" class="mt-0.5 text-sm text-gray-500">{{ subtitle }}</p>
           <slot name="meta" />
         </div>

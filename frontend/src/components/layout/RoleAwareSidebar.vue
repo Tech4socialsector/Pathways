@@ -1,9 +1,12 @@
 <template>
+  <!-- Tablet / desktop (md+): a rail beside the page — icons only when
+       collapsed (labels as tooltips), icons + labels when expanded. -->
   <nav
-    class="flex h-full flex-col border-r bg-white px-2 py-3 transition-all duration-200 ease-in-out"
-    :class="isExpanded ? 'w-56' : 'w-14'"
+    class="hidden h-full shrink-0 flex-col border-r bg-white py-3 transition-[width] duration-200 ease-in-out md:flex"
+    :class="isExpanded ? 'w-60 px-3' : 'w-16 px-2.5'"
+    aria-label="Main menu"
   >
-    <div class="flex flex-1 flex-col gap-0.5 overflow-y-auto overflow-x-hidden">
+    <div class="flex flex-1 flex-col gap-1 overflow-y-auto overflow-x-hidden">
       <SidebarNavLink
         v-for="item in visibleItems"
         :key="item.to"
@@ -15,25 +18,83 @@
       />
     </div>
 
-    <div class="border-t pt-2">
+    <div class="mt-2 border-t pt-2">
       <SidebarNavLink
-        :icon="isExpanded ? 'chevron-left' : 'chevron-right'"
-        :label="isExpanded ? 'Collapse' : 'Expand'"
+        :icon="isExpanded ? 'chevrons-left' : 'chevrons-right'"
+        :label="isExpanded ? 'Collapse menu' : 'Expand menu'"
         :is-expanded="isExpanded"
+        :aria-expanded="isExpanded"
         as="button"
         @click="isExpanded = !isExpanded"
       />
     </div>
   </nav>
+
+  <!-- Phones (below md): the same menu as a drawer from the left, opened by
+       the top bar's menu button. Above page content (z-40 at most), below
+       dialogs (z-50). -->
+  <Transition
+    enter-from-class="opacity-0"
+    enter-active-class="transition-opacity duration-200"
+    leave-to-class="opacity-0"
+    leave-active-class="transition-opacity duration-150"
+  >
+    <div v-if="mobileOpen" class="fixed inset-0 z-[44] bg-gray-900/40 md:hidden" aria-hidden="true" @click="closeMobile" />
+  </Transition>
+  <Transition
+    enter-from-class="-translate-x-full"
+    enter-active-class="transition-transform duration-200 ease-out"
+    leave-to-class="-translate-x-full"
+    leave-active-class="transition-transform duration-150 ease-in"
+  >
+    <nav
+      v-if="mobileOpen"
+      id="pathways-drawer"
+      class="fixed inset-y-0 left-0 z-[45] flex w-72 max-w-[85vw] flex-col bg-white shadow-2xl md:hidden"
+      style="padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom)"
+      aria-label="Main menu"
+    >
+      <div class="flex h-14 shrink-0 items-center gap-2.5 border-b px-4">
+        <img v-if="appearance.app_logo" :src="appearance.app_logo" alt="" class="h-8 w-8 shrink-0 rounded-md object-contain" />
+        <img v-else :src="APP_ICON" alt="" class="h-8 w-8 shrink-0 rounded-md" />
+        <span class="min-w-0 flex-1 truncate font-heading text-lg font-bold text-gray-900">{{ appearance.app_name }}</span>
+        <button
+          ref="closeButton"
+          type="button"
+          class="flex h-9 w-9 items-center justify-center rounded-md text-gray-500 hover:bg-gray-100"
+          aria-label="Close menu"
+          @click="closeMobile"
+        >
+          <FeatherIcon name="x" class="h-5 w-5" />
+        </button>
+      </div>
+      <div class="flex flex-1 flex-col gap-1 overflow-y-auto p-3">
+        <SidebarNavLink
+          v-for="item in visibleItems"
+          :key="item.to"
+          :to="item.to"
+          :icon="item.icon"
+          :label="item.label"
+          :is-expanded="true"
+          :force-active="item.to === sectionTo"
+        />
+      </div>
+    </nav>
+  </Transition>
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import { FeatherIcon } from 'frappe-ui'
 import { useSessionStore } from '@/stores/session'
+import { useSidebar } from '@/composables/useSidebar'
+import { appearance } from '@/utils/theme'
 import SidebarNavLink from './SidebarNavLink.vue'
+import { APP_ICON } from '@/utils/pwa'
 
 const session = useSessionStore()
+const { mobileOpen, closeMobile } = useSidebar()
 
 // Collapsed by default; once the user expands or collapses it, that choice
 // is remembered. (New key: the old 'pathways-sidebar-expanded' defaulted to
@@ -92,5 +153,35 @@ const route = useRoute()
 const sectionTo = computed(() => {
   const sections = route.meta?.sections || []
   return sections.find((to) => visibleItems.value.some((item) => item.to === to)) || null
+})
+
+// ----- phone drawer: closes on navigation, Escape, or growing to md+.
+const closeButton = ref(null)
+
+watch(() => route.fullPath, closeMobile)
+watch(mobileOpen, async (open) => {
+  if (open) {
+    await nextTick()
+    closeButton.value?.focus()
+  }
+})
+
+function onKeydown(e) {
+  if (e.key === 'Escape' && mobileOpen.value) closeMobile()
+}
+
+const desktop = window.matchMedia('(min-width: 768px)')
+function onBreakpoint(e) {
+  if (e.matches) closeMobile()
+}
+
+onMounted(() => {
+  document.addEventListener('keydown', onKeydown)
+  desktop.addEventListener?.('change', onBreakpoint)
+})
+onBeforeUnmount(() => {
+  document.removeEventListener('keydown', onKeydown)
+  desktop.removeEventListener?.('change', onBreakpoint)
+  closeMobile()
 })
 </script>

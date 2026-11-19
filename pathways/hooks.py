@@ -85,7 +85,9 @@ website_route_rules = [
 
 # Public job feeds for Indeed and the NLSIU website: /jobs-feed.xml and
 # /jobs-feed.json (pathways.api.public_feed).
-page_renderer = ["pathways.api.public_feed.JobFeedPage"]
+# Installable app: /pathways.webmanifest and the /pathways-sw.js service
+# worker (pathways.pwa).
+page_renderer = ["pathways.api.public_feed.JobFeedPage", "pathways.pwa.PWAPage"]
 
 # Home Pages
 # ----------

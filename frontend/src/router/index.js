@@ -264,6 +264,12 @@ const routes = [
     component: () => import('@/pages/RefereeForm.vue'),
   },
   {
+    // Signed-out landing for /pathways: sign-in button + install popup.
+    path: '/welcome',
+    name: 'Welcome',
+    component: () => import('@/pages/Welcome.vue'),
+  },
+  {
     path: '/login',
     name: 'Login',
     beforeEnter() {
@@ -279,6 +285,12 @@ const router = createRouter({
 
 router.beforeEach(async (to) => {
   const session = useSessionStore()
+
+  // Opening the app itself (/pathways) signed out shows the welcome page,
+  // where the browser can offer to install it; /login is outside the app.
+  // Deep links (emails etc.) still go straight to the login page below.
+  if (to.name === 'Welcome' && session.isLoggedIn) return { path: '/' }
+  if (!session.isLoggedIn && to.path === '/') return { name: 'Welcome' }
 
   if (!session.isLoggedIn && (to.meta.requiresStaff || to.meta.requiresCandidate)) {
     window.location.href = `/login?redirect-to=${encodeURIComponent('/pathways' + to.fullPath)}`
