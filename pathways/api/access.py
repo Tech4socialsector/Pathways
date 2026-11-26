@@ -30,7 +30,7 @@ from pathways.permissions import (
 	has_full_access,
 )
 from pathways.utils.approval import is_approver
-from pathways.utils.master_setup import MASTER_SETUP, can_manage
+from pathways.utils.master_setup import MASTER_SETUP, can_view
 
 MANAGER_ROLE = "System Manager"
 ADMIN_ROLE = "Pathways Admin"
@@ -123,7 +123,8 @@ def get_my_access():
 		pipeline = has_full_access("Application")
 		if pipeline:
 			menu.append("reports")
-		if any(can_manage(m["doctype"]) for category in MASTER_SETUP for m in category["masters"]):
+		# Read permission on any master (Role Permissions) reveals Master Setup.
+		if any(can_view(m["doctype"]) for category in MASTER_SETUP for m in category["masters"]):
 			menu.append("master_setup")
 	else:
 		pipeline = False

@@ -19,13 +19,12 @@ Entry keys:
 	              hash-named masters; field-named masters are already
 	              unique through their primary key.
 
-Access is permission-driven, not role-driven. The Master Setup menu is
-given to users whose role permissions grant write/create on at least one
-master (System Manager / Pathways Admin today; configurable per master
-through Role Permission Manager). Read-only users of every master — e.g.
-Recruiters, who need them for Link fields — therefore do not get Master
-Setup. Inside Master Setup, every master the user can read is listed;
-ones they cannot write open read-only (can_view vs can_manage).
+Access comes only from Frappe Role Permissions (Role Permission Manager /
+Pathways > Roles & Permissions) — no role names are checked here:
+	read          the master is listed in Master Setup (and the Master
+	              Setup menu appears once any master is readable)
+	write/create  it can be edited / added; otherwise it opens read-only
+	delete        it can be deleted
 """
 
 import frappe

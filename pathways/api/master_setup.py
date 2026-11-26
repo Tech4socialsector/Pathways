@@ -18,25 +18,25 @@ from pathways.utils.options import sort_options
 
 @frappe.whitelist()
 def has_access():
-	"""Cheap check for the sidebar — no record counts."""
-	return any(can_manage(m["doctype"]) for category in MASTER_SETUP for m in category["masters"])
+	"""Cheap check for the sidebar — no record counts. Read permission on
+	any master (from Role Permissions) opens Master Setup."""
+	return any(can_view(m["doctype"]) for category in MASTER_SETUP for m in category["masters"])
 
 
 @frappe.whitelist()
 def get_master_setup():
 	"""Categories with the masters the session user may read; ones they
 	cannot write are shown read-only (can_create / can_write false).
-	Raises PermissionError (HTTP 403) unless the user may manage at least
-	one master, so direct URL access by an unauthorised user gets a proper
-	permission response."""
-	if not has_access():
-		frappe.throw(_("You do not have permission to access Master Setup."), frappe.PermissionError)
-
+	Raises PermissionError (HTTP 403) when there are none, so direct URL
+	access by an unauthorised user gets a proper permission response."""
 	categories = []
 	for category in MASTER_SETUP:
 		masters = [_describe(m) for m in category["masters"] if can_view(m["doctype"])]
 		if masters:
 			categories.append({"key": category["key"], "label": _(category["label"]), "masters": masters})
+
+	if not categories:
+		frappe.throw(_("You do not have permission to access Master Setup."), frappe.PermissionError)
 
 	return categories
 
@@ -68,7 +68,7 @@ def _describe(master):
 def get_master_records(doctype, limit=8):
 	"""Master Setup detail panel: the latest records of one master."""
 	allowed = {m["doctype"] for category in MASTER_SETUP for m in category["masters"]}
-	if doctype not in allowed or not has_access() or not can_view(doctype):
+	if doctype not in allowed or not can_view(doctype):
 		frappe.throw(_("You do not have permission to view this master."), frappe.PermissionError)
 	meta = frappe.get_meta(doctype)
 	active_field, active_value = get_active_field(meta)
@@ -123,9 +123,9 @@ def _check_master(doctype):
 
 
 def _check_view_master(doctype):
-	"""Form layout / list / record reads: a Master Setup user who can read
-	this master (it opens read-only when they cannot write it)."""
-	if not get_master(doctype) or not has_access() or not can_view(doctype):
+	"""Form layout / list / record reads: read permission on this master
+	(it opens read-only when the user cannot write it)."""
+	if not get_master(doctype) or not can_view(doctype):
 		frappe.throw(_("You do not have permission to view this master."), frappe.PermissionError)
 
 
@@ -306,7 +306,7 @@ def _link_targets():
 def search_link(doctype, txt="", page_length=20):
 	"""Link-field search for the master forms. Only active records are
 	offered, since the inactive-link guard would reject them on save."""
-	if not any(can_manage(m["doctype"]) for c in MASTER_SETUP for m in c["masters"]) or doctype not in _link_targets():
+	if not has_access() or doctype not in _link_targets():
 		frappe.throw(_("You do not have permission to search {0}.").format(_(doctype)), frappe.PermissionError)
 
 	from frappe.desk.search import search_link as desk_search_link

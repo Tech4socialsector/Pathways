@@ -38,7 +38,6 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { Autocomplete, Button, FeatherIcon } from 'frappe-ui'
-import { useSessionStore } from '@/stores/session'
 import { clearLinkCache, newRoute, resolveMaster, searchLink as search, slugOf } from '@/utils/masterForm'
 
 const props = defineProps({
@@ -74,14 +73,13 @@ function onQuery(txt) {
   timer = setTimeout(() => load((txt || '').trim()), 250)
 }
 
-// "Create new" at the end of the dropdown, for System Managers, when the
-// linked DocType is itself a master they can create. It opens the full form
+// "Create new" at the end of the dropdown when the linked DocType is itself
+// a master the user can create (create permission from Role Permissions). It opens the full form
 // in a new tab so this form's unsaved changes stay put; coming back to this
 // tab refreshes the options, so the new record can be picked straight away.
 const router = useRouter()
-const session = useSessionStore()
 const target = ref(null)
-const createTarget = computed(() => (session.hasRole('System Manager') && target.value?.can_create ? target.value : null))
+const createTarget = computed(() => (target.value?.can_create ? target.value : null))
 let awaitingCreate = false
 
 function createNew(togglePopover) {
