@@ -12,7 +12,7 @@ from urllib.parse import quote
 import frappe
 from frappe import _
 
-from pathways.utils.master_setup import MASTER_SETUP, can_manage, get_active_field, get_master
+from pathways.utils.master_setup import MASTER_SETUP, can_manage, can_view, get_active_field, get_master
 from pathways.utils.options import sort_options
 
 
@@ -24,17 +24,19 @@ def has_access():
 
 @frappe.whitelist()
 def get_master_setup():
-	"""Categories with only the masters the session user may manage.
-	Raises PermissionError (HTTP 403) when there are none, so direct URL
-	access by an unauthorised user gets a proper permission response."""
+	"""Categories with the masters the session user may read; ones they
+	cannot write are shown read-only (can_create / can_write false).
+	Raises PermissionError (HTTP 403) unless the user may manage at least
+	one master, so direct URL access by an unauthorised user gets a proper
+	permission response."""
+	if not has_access():
+		frappe.throw(_("You do not have permission to access Master Setup."), frappe.PermissionError)
+
 	categories = []
 	for category in MASTER_SETUP:
-		masters = [_describe(m) for m in category["masters"] if can_manage(m["doctype"])]
+		masters = [_describe(m) for m in category["masters"] if can_view(m["doctype"])]
 		if masters:
 			categories.append({"key": category["key"], "label": _(category["label"]), "masters": masters})
-
-	if not categories:
-		frappe.throw(_("You do not have permission to access Master Setup."), frappe.PermissionError)
 
 	return categories
 
@@ -55,6 +57,7 @@ def _describe(master):
 		"route": route,
 		"new_route": route + "/new",
 		"can_create": bool(frappe.has_permission(doctype, "create")),
+		"can_write": bool(frappe.has_permission(doctype, "write")),
 		"total": frappe.db.count(doctype),
 		"inactive": frappe.db.count(doctype, {active_field: ["!=", active_value]}) if active_field else None,
 		"last_updated": (frappe.get_all(doctype, fields=["modified"], order_by="modified desc", limit=1) or [{}])[0].get("modified"),
@@ -65,7 +68,7 @@ def _describe(master):
 def get_master_records(doctype, limit=8):
 	"""Master Setup detail panel: the latest records of one master."""
 	allowed = {m["doctype"] for category in MASTER_SETUP for m in category["masters"]}
-	if doctype not in allowed or not can_manage(doctype):
+	if doctype not in allowed or not has_access() or not can_view(doctype):
 		frappe.throw(_("You do not have permission to view this master."), frappe.PermissionError)
 	meta = frappe.get_meta(doctype)
 	active_field, active_value = get_active_field(meta)
@@ -114,8 +117,16 @@ FIELD_PROPS = (
 
 
 def _check_master(doctype):
+	"""Save / delete: the user must be able to write this master."""
 	if not get_master(doctype) or not can_manage(doctype):
 		frappe.throw(_("You do not have permission to manage this master."), frappe.PermissionError)
+
+
+def _check_view_master(doctype):
+	"""Form layout / list / record reads: a Master Setup user who can read
+	this master (it opens read-only when they cannot write it)."""
+	if not get_master(doctype) or not has_access() or not can_view(doctype):
+		frappe.throw(_("You do not have permission to view this master."), frappe.PermissionError)
 
 
 def _fields(meta):
@@ -147,7 +158,7 @@ def _name_field(meta):
 @frappe.whitelist()
 def get_master_form(doctype):
 	"""Field layout and permissions for the in-app master form."""
-	_check_master(doctype)
+	_check_view_master(doctype)
 	meta = frappe.get_meta(doctype)
 	master = get_master(doctype)
 	active_field, active_value = get_active_field(meta)
@@ -201,7 +212,7 @@ def _filter_fields(doctype, meta, columns):
 def get_master_list(doctype, txt="", status="", start=0, page_length=20, field_filters=None):
 	"""One page of a master's records for the in-app list. field_filters:
 	{fieldname: value} for the dropdown filters; "__blank__" matches empty."""
-	_check_master(doctype)
+	_check_view_master(doctype)
 	meta = frappe.get_meta(doctype)
 	active_field, active_value = get_active_field(meta)
 	title_field = meta.title_field if meta.title_field and meta.has_field(meta.title_field) else None
@@ -273,7 +284,7 @@ def get_master_list(doctype, txt="", status="", start=0, page_length=20, field_f
 
 @frappe.whitelist()
 def get_master_doc(doctype, name):
-	_check_master(doctype)
+	_check_view_master(doctype)
 	doc = frappe.get_doc(doctype, name)
 	doc.check_permission("read")
 	return doc.as_dict(no_default_fields=False, convert_dates_to_str=True)

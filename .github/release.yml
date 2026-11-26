@@ -1,0 +1,32 @@
+# Groups the pull requests listed by GitHub's "Generate release notes".
+# See spec/RELEASE_PROCESS.md.
+changelog:
+  exclude:
+    labels:
+      - skip-changelog
+      - duplicate
+      - invalid
+      - wontfix
+      - question
+    authors:
+      - dependabot
+      - github-actions
+  categories:
+    - title: Breaking Changes
+      labels:
+        - breaking-change
+    - title: Security
+      labels:
+        - security
+    - title: New Features
+      labels:
+        - enhancement
+    - title: Bug Fixes
+      labels:
+        - bug
+    - title: Documentation
+      labels:
+        - documentation
+    - title: Other Changes
+      labels:
+        - "*"

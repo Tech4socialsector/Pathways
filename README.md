@@ -71,12 +71,12 @@ Log in as a System Manager and open `/pathways`:
 3. **Master Setup**: check the approval chains for each track, positions, scoring rubrics, appointment order templates, reference check templates and onboarding documents.
 4. **Settings**: interview rounds, reference checks, offers (reviewer and signatory roles), joining defaults, honorarium amounts, Google Meet.
 
-Part A of the [User Guide](docs/USER_GUIDE.md) has the full checklist.
+Part A of the [User Guide](spec/USER_GUIDE.md) has the full checklist.
 
 ### Documentation
 
-- [User Guide](docs/USER_GUIDE.md): step-by-step guide to running a recruitment, by role and workflow step
-- [Testing Guide](docs/TESTING_GUIDE.md): manual end-to-end test checklist for all stages
+- [User Guide](spec/USER_GUIDE.md): step-by-step guide to running a recruitment, by role and workflow step
+- [Testing Guide](spec/TESTING_GUIDE.md): manual end-to-end test checklist for all stages
 
 ### Tests
 
@@ -106,7 +106,7 @@ frontend/src/
   pages/          staff pages and candidate-portal/
   components/     UI components grouped by area
   services/       API wrappers
-docs/             user and testing guides
+spec/             user, testing and release guides
 ```
 
 Emails are only sent through `pathways.utils.communication.send_event`. Each event is defined in `pathways/utils/email_events.py`, and staff edit the rules and templates on the Email Setup page.

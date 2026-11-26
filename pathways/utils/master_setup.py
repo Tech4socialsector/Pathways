@@ -19,11 +19,13 @@ Entry keys:
 	              hash-named masters; field-named masters are already
 	              unique through their primary key.
 
-Access is permission-driven, not role-driven: a master is visible to a
-user only if their role permissions grant write/create on its DocType
-(System Manager / Pathways Admin today; configurable per master through
-Role Permission Manager). Read-only users of a master — e.g. Recruiters,
-who need it for Link fields — therefore do not get Master Setup.
+Access is permission-driven, not role-driven. The Master Setup menu is
+given to users whose role permissions grant write/create on at least one
+master (System Manager / Pathways Admin today; configurable per master
+through Role Permission Manager). Read-only users of every master — e.g.
+Recruiters, who need them for Link fields — therefore do not get Master
+Setup. Inside Master Setup, every master the user can read is listed;
+ones they cannot write open read-only (can_view vs can_manage).
 """
 
 import frappe
@@ -170,6 +172,12 @@ def get_active_field(meta):
 		if meta.has_field(fieldname):
 			return fieldname, active_value
 	return None, None
+
+
+def can_view(doctype):
+	if not frappe.db.exists("DocType", doctype):
+		return False
+	return bool(frappe.has_permission(doctype, "read"))
 
 
 def can_manage(doctype):
